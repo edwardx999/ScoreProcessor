@@ -36,14 +36,16 @@ namespace ImageUtils {
 	bool Rectangle::intersects(Rectangle const& other) const {
 		return overlapsX(other)&&overlapsY(other);
 	}
+	void compressRectangles(std::vector<Rectangle*> container) {
 
+	}
 	float RGBColorDiff(unsigned char r1,unsigned char g1,unsigned char b1,unsigned char r2,unsigned char g2,unsigned char b2) {
 		float rdif=r1>r2?r1-r2:r2-r1;
 		float gdif=g1>g2?g1-g2:g2-g1;
 		float bdif=b1>b2?b1-b2:b2-b1;
 		return (rdif*rdif+gdif*gdif+bdif*bdif)/maxDif;
 	}
-	void SplitHoriz(Rectangle* orig,Rectangle* buffer,int numRects) {
+	void splitHoriz(Rectangle* orig,Rectangle* buffer,int numRects) {
 		int height=(orig->bottom-orig->top)/numRects;
 		--numRects;
 		for(int i=0;i<numRects;) {

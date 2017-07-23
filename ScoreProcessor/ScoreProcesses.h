@@ -1,6 +1,7 @@
 #pragma once
 #include "CImg.h"
 #include "ImageUtils.h"
+#include <vector>
 namespace ScoreProcessor {
 	int copyShiftSelection(cimg_library::CImg<unsigned char>* const image,ImageUtils::Rectangle const* const selection,int const shiftx,unsigned int const shifty);
 	int fillSelection(cimg_library::CImg<unsigned char>* const image,ImageUtils::Rectangle const* const selection,ImageUtils::ColorRGB const color);
@@ -14,5 +15,7 @@ namespace ScoreProcessor {
 	int autoRotate(cimg_library::CImg<unsigned char>* const image);
 	int autoSkew(cimg_library::CImg<unsigned char>* const image);
 	int undistort(cimg_library::CImg<unsigned char>* const image);
+	int globalSelect(cimg_library::CImg<unsigned char>* const image,std::vector<ImageUtils::Rectangle*> container,float const tolerance,ImageUtils::ColorRGB color);
 	int clusterClear(cimg_library::CImg<unsigned char>* const image,unsigned int const tolerance,bool const mode);
+	int autoPadding(cimg_library::CImg<unsigned char>* const image,int const paddingSize);
 }

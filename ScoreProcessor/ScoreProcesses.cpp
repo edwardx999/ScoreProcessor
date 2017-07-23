@@ -133,7 +133,6 @@ namespace ScoreProcessor {
 		}
 		return 1;
 	}
-
 	int autoCenterVert(cimg_library::CImg<unsigned char>* const image) {
 		int top,bottom;
 		ImageUtils::ColorRGB white{255,255,255};
@@ -220,6 +219,12 @@ namespace ScoreProcessor {
 		return 0;
 	}
 	int clusterClear(cimg_library::CImg<unsigned char>* const image,unsigned int const tolerance,bool const mode) {
+		return 0;
+	}
+	int globalSelect(cimg_library::CImg<unsigned char>* const image,std::vector<ImageUtils::Rectangle*> container,float const tolerance,ImageUtils::ColorRGB color) {
+		return 1;
+	}
+	int autoPadding(cimg_library::CImg<unsigned char>* const image,int const paddingSize) {
 		return 0;
 	}
 }
