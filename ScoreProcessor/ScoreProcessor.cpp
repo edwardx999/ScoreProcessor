@@ -29,7 +29,7 @@ int main() {
 	}
 	templateImage->display();
 	int numberOfImages;
-	vector<string*> imageNames;
+	vector<string> imageNames;
 	return 0;
 }
 

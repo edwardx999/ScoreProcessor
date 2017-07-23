@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ImageUtils.h"
+#include <algorithm>
 namespace ImageUtils {
 	bool Rectangle::operator<(Rectangle const& other) const{
 		if(left<other.left) return true;
@@ -37,7 +38,16 @@ namespace ImageUtils {
 		return overlapsX(other)&&overlapsY(other);
 	}
 	void compressRectangles(std::vector<Rectangle*> container) {
-
+		std::sort(container.begin(),container.end(),[](Rectangle* a,Rectangle* b) {return *a<*b;});
+		for(int i=1;i<container.size();++i) {
+			if(container[i]->left==container[i-1]->left&&
+				container[i]->top==container[i-1]->bottom&&
+				container[i]->right==container[i-1]->right) {
+				*container[--i]={container[i]->left,container[i]->right,container[i]->top,container[i+1]->bottom};
+				delete container[i+1];
+				container.erase(container.begin()+1);
+			}
+		}
 	}
 	float RGBColorDiff(unsigned char r1,unsigned char g1,unsigned char b1,unsigned char r2,unsigned char g2,unsigned char b2) {
 		float rdif=r1>r2?r1-r2:r2-r1;
