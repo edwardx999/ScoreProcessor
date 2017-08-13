@@ -141,13 +141,20 @@
     <ClInclude Include="CImg.h" />
     <ClInclude Include="Cluster.h" />
     <ClInclude Include="ImageUtils.h" />
+    <ClInclude Include="moreAlgorithms.h" />
     <ClInclude Include="ScoreProcesses.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Cluster.cpp" />
-    <ClCompile Include="ImageUtils.cpp" />
+    <ClCompile Include="ImageUtils.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ImageUtilsTemplate.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="ScoreProcesses.cpp" />
     <ClCompile Include="ScoreProcessor.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -158,9 +165,15 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="%3b_Page_05.jpg" />
+    <Image Include="ExPic3.jpg" />
+    <Image Include="ExPic5.jpg" />
     <Image Include="Offcenter.jpg" />
+    <Image Include="Outside.jpg" />
     <Image Include="TestPic.jpg" />
     <Image Include="TestPic2.jpg" />
+    <Image Include="TestPicNew.jpg" />
+    <Image Include="TestPicNew2.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

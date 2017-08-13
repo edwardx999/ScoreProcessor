@@ -6,38 +6,37 @@ using namespace std;
 namespace ScoreProcessor {
 	Cluster::Cluster():ranges() {}
 	Cluster::~Cluster() {}
-	int Cluster::size() {
-		int size=0;
+	unsigned int Cluster::size() {
+		unsigned int size=0;
 		for(unsigned int i=0;i<ranges.size();++i) {
 			size+=ranges[i]->area();
 		}
 		return size;
 	}
-	std::vector<std::shared_ptr<ImageUtils::Rectangle>> const& Cluster::getRanges() const {
+	vector<shared_ptr<ImageUtils::RectangleUINT>> const& Cluster::getRanges() const {
 		return ranges;
 	}
-	struct ClusterPart {
-		Cluster* cluster;
-		shared_ptr<ImageUtils::Rectangle> rect;
-		ClusterPart(shared_ptr<ImageUtils::Rectangle> const& rect):cluster(nullptr),rect(rect) {}
-	};
-	struct ClusterTestNode {
-		ClusterPart* parent;
-		bool const isTop;
-		int const y;
-		bool operator<(ClusterTestNode const& other) const {
-			return y<other.y;
-		}
-		bool operator>(ClusterTestNode const& other) const {
-			return y>other.y;
-		}
-		ClusterTestNode(ClusterPart* parent,bool isTop):
-			parent(parent),
-			isTop(isTop),
-			y(isTop?parent->rect->top:parent->rect->bottom) {
-		}
-	};
-	void clusterRanges(vector<unique_ptr<Cluster>>& clusterContainer,vector<shared_ptr<ImageUtils::Rectangle>>& ranges) {
+	void clusterRanges(vector<unique_ptr<Cluster>>& clusterContainer,vector<shared_ptr<ImageUtils::RectangleUINT>>& ranges) {
+		struct ClusterPart {
+			Cluster* cluster;
+			shared_ptr<ImageUtils::RectangleUINT> rect;
+			ClusterPart(shared_ptr<ImageUtils::RectangleUINT> const& rect):cluster(nullptr),rect(rect) {}
+		};
+		struct ClusterTestNode {
+			ClusterPart* parent;
+			bool const isTop;
+			unsigned int const y;
+			bool operator<(ClusterTestNode const& other) const {
+				return y<other.y;
+			}
+			bool operator>(ClusterTestNode const& other) const {
+				return y>other.y;
+			}
+			ClusterTestNode(ClusterPart* parent,bool isTop):
+				parent(parent),
+				isTop(isTop),
+				y(isTop?parent->rect->top:parent->rect->bottom) {}
+		};
 		vector<ClusterPart> parts;
 		vector<unique_ptr<ClusterTestNode>> tests;
 		for(unsigned int i=0;i<ranges.size();++i) {

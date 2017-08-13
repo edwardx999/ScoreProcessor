@@ -5,12 +5,12 @@
 namespace ScoreProcessor {
 	class Cluster {
 	private:
-		std::vector<std::shared_ptr<ImageUtils::Rectangle>> ranges;
+		::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>> ranges;
 	public:
 		Cluster();
 		~Cluster();
-		int size();
-		std::vector<std::shared_ptr<ImageUtils::Rectangle>> const& getRanges() const;
-		friend void clusterRanges(std::vector<std::unique_ptr<Cluster>>& clusterContainer,std::vector<std::shared_ptr<ImageUtils::Rectangle>>& ranges);
+		unsigned int size();
+		::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>> const& getRanges() const;
+		friend void clusterRanges(::std::vector<::std::unique_ptr<Cluster>>& clusterContainer,::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>>& ranges);
 	};
 }

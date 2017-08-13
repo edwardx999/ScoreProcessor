@@ -36,6 +36,12 @@
     <ClInclude Include="ScoreProcesses.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="moreAlgorithms.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -47,10 +53,13 @@
     <ClCompile Include="ScoreProcesses.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ImageUtils.cpp">
+    <ClCompile Include="Cluster.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Cluster.cpp">
+    <ClCompile Include="ImageUtilsTemplate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,6 +71,24 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="TestPic2.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Outside.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="ExPic5.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="%3b_Page_05.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="ExPic3.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="TestPicNew.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="TestPicNew2.jpg">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
