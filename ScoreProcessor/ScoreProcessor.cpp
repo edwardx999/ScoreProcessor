@@ -8,28 +8,67 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include "moreAlgorithms.h"
 using namespace cimg_library;
 using namespace std;
 using namespace ScoreProcessor;
 using namespace ImageUtils;
 
 void stop() {
+	cout<<"Stopping\n";
 	int e;
 	cin>>e;
 }
 void test() {
 	cimg::imagemagick_path("C:\\\"Program Files\"\\ImageMagick-7.0.6-Q16\\convert.exe");
-	string filename=";_Page_32.jpg";
-	//filename="outside.jpg";
-	//filename="C:\\Eddie\\Pictures and Videos\\50.jpg";
-	CImg<unsigned char> templateImage(filename.c_str());
-	if(templateImage._spectrum==3) {
-		templateImage=get_grayscale(templateImage);
+	string filename=";_Page_31.jpg";
+	CImg<unsigned char> image(filename.c_str());
+	CImg<float> map(image._width,image._height);
+	map.fill(100.0f);
+	for(unsigned int x=0;x<image._width;++x) {
+		unsigned int nodeStart;
+		bool nodeFound=grayDiff(WHITE_GRAYSCALE,image(x,0))<.2f;
+		if(nodeFound) {
+			nodeStart=0;
+		}
+		unsigned int mid=(image._height)>>1;
+		unsigned int y;
+		float const value=100.0f;
+		for(y=1;y<image._height;++y) {
+			if(nodeFound) {
+				if(!(nodeFound=grayDiff(WHITE_GRAYSCALE,image(x,y))<.2f)) {
+					unsigned int mid=(nodeStart+y)>>1;
+					unsigned int valueDivider=2U;
+					unsigned int nodeY;
+					for(nodeY=nodeStart;nodeY<mid;++nodeY) {
+						map(x,nodeY)=value/(++valueDivider);
+					}
+					for(;nodeY<y;++nodeY) {
+						map(x,nodeY)=value/(--valueDivider);
+					}
+
+				}
+			}
+			else {
+				if(nodeFound=grayDiff(WHITE_GRAYSCALE,image(x,y))<.2f) {
+					nodeStart=y;
+				}
+			}
+		}
+		if(nodeFound) {
+			unsigned int mid=(nodeStart+y)>>1;
+			unsigned int valueDivider=2U;
+			unsigned int nodeY;
+			for(nodeY=nodeStart;nodeY<mid;++nodeY) {
+				map(x,nodeY)=value/(++valueDivider);
+			}
+			for(;nodeY<y;++nodeY) {
+				map(x,nodeY)=value/(--valueDivider);
+			}
+		}
 	}
-	//vector<unique_ptr<RectangleUINT>> outside;
-	cout<<cutImage(templateImage,"ll.jpg")<<'\n';
-	stop();
-	vector<unique_ptr<string>> imageNames;
+	minEnergyToRight(map);
+	map.display();
 }
 
 int main() {
