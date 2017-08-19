@@ -4,6 +4,21 @@
 #include <vector>
 #include <memory>
 namespace ScoreProcessor {
+	/*
+		Returns an image that has the vertical brightness gradient at each point
+	*/
+	::cimg_library::CImg<float> get_vertical_gradient(::cimg_library::CImg<unsigned char>&);
+	/*
+	Returns an image that has the horizontal brightness gradient at each point
+	*/
+	::cimg_library::CImg<float> get_horizontal_gradient(::cimg_library::CImg<unsigned char>&);
+	/*
+	Returns an image that has the brightness gradient at each point
+	*/
+	cimg_library::CImg<float> get_gradient(::cimg_library::CImg<unsigned char>&);
+	/*
+		Returns an image that has the brightness at each point
+	*/
 	::cimg_library::CImg<unsigned char> get_brightness_spectrum(::cimg_library::CImg<unsigned char>&);
 	/*
 		Returns the average RGB color of the image
@@ -178,65 +193,65 @@ namespace ScoreProcessor {
 	/*
 		Creates a profile of the left side of the image
 		@param image, must be 3 channel RGB
-		@param container, where the profile will be stored, as a vector of x coordinates of the left side
 		@param background, the background color of the image
+		@return where the profile will be stored, as a vector of x coordinates of the left side
 	*/
-	void buildLeftProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::ColorRGB const background);
+	::std::vector<unsigned int> buildLeftProfile(::cimg_library::CImg<unsigned char> const& image,ImageUtils::ColorRGB const background);
 	/*
 		Creates a profile of the left side of the image
 		@param image, must be 1 channel grayscale
-		@param container, where the profile will be stored, as a vector of x coordinates of the left side
 		@param background, the background gray of the image
+		@return where the profile will be stored, as a vector of x coordinates of the left side
 	*/
-	void buildLeftProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::Grayscale const background);
+	::std::vector<unsigned int> buildLeftProfile(::cimg_library::CImg<unsigned char> const& image,ImageUtils::Grayscale const background);
 	/*
 		Creates a profile of the right side of the image
 		@param image, must be 3 channel RGB
-		@param container, where the profile will be stored, as a vector of x coordinates of the right side
 		@param background, the background color of the image
+		@return where the profile will be stored, as a vector of x coordinates of the right side
 	*/
-	void buildRightProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::ColorRGB const background);
+	::std::vector<unsigned int> buildRightProfile(::cimg_library::CImg<unsigned char> const& image,ImageUtils::ColorRGB const background);
 	/*
 		Creates a profile of the right side of the image
 		@param image, must be 1 channel grayscale
-		@param container, where the profile will be stored, as a vector of x coordinates of the right side
 		@param background, the background gray of the image
+		@return where the profile will be stored, as a vector of x coordinates of the right side
 	*/
-	void buildRightProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::Grayscale const background);
+	::std::vector<unsigned int> buildRightProfile(::cimg_library::CImg<unsigned char> const& image, ImageUtils::Grayscale const background);
 	/*
 		Creates a profile of the top of the image
 		@param image, must be 3 channel RGB
-		@param container, where the profile will be stored, as a vector of y coordinates of the top
 		@param background, the background color of the image
+		@return where the profile will be stored, as a vector of y coordinates of the top
 	*/
-	void buildTopProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::ColorRGB const background);
+	::std::vector<unsigned int> buildTopProfile(::cimg_library::CImg<unsigned char> const& image,ImageUtils::ColorRGB const background);
 	/*
 		Creates a profile of the top of the image
 		@param image, must be 1 channel grayscale
-		@param container, where the profile will be stored, as a vector of y coordinates of the top
 		@param background, the background gray of the image
+		@return where the profile will be stored, as a vector of y coordinates of the top
 	*/
-	void buildTopProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::Grayscale const background);
+	::std::vector<unsigned int> buildTopProfile(::cimg_library::CImg<unsigned char> const& image,ImageUtils::Grayscale const background);
 	/*
 		Creates a profile of the bottom of the image
 		@param image, must be 3 channel RGB
-		@param container, where the profile will be stored, as a vector of y coordinates of the bottom
 		@param background, the background color of the image
+		@return where the profile will be stored, as a vector of y coordinates of the bottom
 	*/
-	void buildBottomProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::ColorRGB const background);
+	::std::vector<unsigned int> buildBottomProfile(::cimg_library::CImg<unsigned char> const& image,ImageUtils::ColorRGB const background);
 	/*
 		Creates a profile of the bottom of the image
 		@param image, must be 1 channel grayscale
-		@param container, where the profile will be stored, as a vector of y coordinates of the bottom
 		@param background, the background gray of the image
+		@return container, where the profile will be stored, as a vector of y coordinates of the bottom
 	*/
-	void buildBottomProfile(::cimg_library::CImg<unsigned char>& image,::std::vector<unsigned int>& container,ImageUtils::Grayscale const background);
+	::std::vector<unsigned int> buildBottomProfile(::cimg_library::CImg<unsigned char> const& image,ImageUtils::Grayscale const background);
 	/*
 		Selects the outside (non-systems) of a score image
 		@param image, must be 1 channel grayscale
-		@param resultContainer, where the selected rectangles go
+		@return where the selected rectangles go
 	*/
-	void selectOutside(::cimg_library::CImg<unsigned char>& image,::std::vector<::std::unique_ptr<ImageUtils::RectangleUINT>>& resultContainer);
+	::std::vector<::std::unique_ptr<ImageUtils::RectangleUINT>> selectOutside(::cimg_library::CImg<unsigned char> const& image);
 	/*
 		Cuts a specified score image into multiple smaller images
 		@param image
@@ -244,7 +259,7 @@ namespace ScoreProcessor {
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cutImage(::cimg_library::CImg<unsigned char>& image,char const* filename);
+	unsigned int cutImage(::cimg_library::CImg<unsigned char> const& image,char const* filename);
 
 	/*
 		Finds the line that is the top of the score image
@@ -289,31 +304,31 @@ namespace ScoreProcessor {
 	/*
 		Finds all pixels within or without certain tolerance of selected color
 		@param image, must be 3 channel RGB
-		@param resultContainer, where the selected pixels will go as a vector of rectangles
 		@param tolerance, the tolerance 0.0f-1.0f between colors
 		@param color, selected color
 		@param ignoreWithinTolerance, whether selected pixels must be within tolerance
+		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	void globalSelect(::cimg_library::CImg<unsigned char> const& image,::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>>& resultContainer,float const tolerance,ImageUtils::ColorRGB const color,bool const ignoreWithinTolerance);
+	::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>> globalSelect(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::ColorRGB const color,bool const ignoreWithinTolerance);
 	/*
 		Finds all pixels within or without certain tolerance of selected color
 		@param image, must be 1 channel grayscale
-		@param resultContainer, where the selected pixels will go as a vector of rectangles
 		@param tolerance, the tolerance 0.0f-1.0f between colors
 		@param gray, selected gray
 		@param ignoreWithinTolerance, whether selected pixels must be within tolerance
+		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	void globalSelect(::cimg_library::CImg<unsigned char> const& image,::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>>& resultContainer,float const tolerance,ImageUtils::Grayscale const gray,bool const ignoreWithinTolerance);
+	::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>> globalSelect(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,bool const ignoreWithinTolerance);
 
 	/*
 		Flood selects from point
 		@param image, must be 1 channel grayscale
-		@param resultContainer, where the selected pixels will go as a vector of rectangles
 		@param tolerance, the tolerance 0.0f-1.0f between colors
 		@param gray, selected gray
 		@param start, seed point of flood fill
+		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	void floodSelect(::cimg_library::CImg<unsigned char> const& image,::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>>& resultContainer,float const tolerance,ImageUtils::Grayscale const gray,ImageUtils::vec2_t<unsigned int> start);
+	::std::vector<::std::shared_ptr<ImageUtils::RectangleUINT>> floodSelect(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,ImageUtils::vec2_t<unsigned int> start);
 	/*
 	Paints over black clusters within certain size thresholds with white
 	@param image

@@ -11,9 +11,13 @@ namespace ImageUtils {
 		vec2_t<T>& operator+=(vec2_t<T> const& other);
 		vec2_t<T>& operator-=(vec2_t<T> const& other);
 	};
+	typedef vec2_t<unsigned int>PointUINT;
+	typedef vec2_t<int> PointINT;
 	template<typename T>
 	struct line {
 		vec2_t<T> a,b;
+		template<typename U>
+		friend ::std::ostream& operator<<(::std::ostream& os,line<U> const& aline);
 	};
 	template<typename T>
 	struct Rectangle {
