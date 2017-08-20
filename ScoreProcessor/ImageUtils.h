@@ -20,6 +20,11 @@ namespace ImageUtils {
 		friend ::std::ostream& operator<<(::std::ostream& os,line<U> const& aline);
 	};
 	template<typename T>
+	struct line_norm {
+		T theta;//the normal has this angle with the x-axis
+		T r;//the line is r away from the origin
+	};
+	template<typename T>
 	struct Rectangle {
 		T left,right,top,bottom;
 		bool operator<(Rectangle<T> const& other) const;

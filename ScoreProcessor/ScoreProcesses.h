@@ -5,57 +5,6 @@
 #include <memory>
 namespace ScoreProcessor {
 	/*
-		Returns an image that has the vertical brightness gradient at each point
-	*/
-	::cimg_library::CImg<float> get_vertical_gradient(::cimg_library::CImg<unsigned char>&);
-	/*
-	Returns an image that has the horizontal brightness gradient at each point
-	*/
-	::cimg_library::CImg<float> get_horizontal_gradient(::cimg_library::CImg<unsigned char>&);
-	/*
-	Returns an image that has the brightness gradient at each point
-	*/
-	cimg_library::CImg<float> get_gradient(::cimg_library::CImg<unsigned char>&);
-	/*
-		Returns an image that has the brightness at each point
-	*/
-	::cimg_library::CImg<unsigned char> get_brightness_spectrum(::cimg_library::CImg<unsigned char>&);
-	/*
-		Returns the average RGB color of the image
-		@param image, must be 3 channel RGB
-	*/
-	ImageUtils::ColorRGB averageColor(::cimg_library::CImg<unsigned char>& image);
-	/*
-		Returns the average grayness of the image
-		@param image, must be 1 channel grayscale
-	*/
-	ImageUtils::Grayscale averageGray(::cimg_library::CImg<unsigned char>& image);
-	/*
-		Returns the darkest color in the image
-		@param image, must be 3 channel RGB
-	*/
-	ImageUtils::ColorRGB darkestColor(::cimg_library::CImg<unsigned char>& image);
-	/*
-		Returns the darkest gray in the image
-		@param image, must be 1 channel grayscale
-	*/
-	ImageUtils::Grayscale darkestGray(::cimg_library::CImg<unsigned char>& image);
-	/*
-		Returns the brightest color in the image
-		@param image, must be 3 channel RGB
-	*/
-	ImageUtils::ColorRGB brightestColor(::cimg_library::CImg<unsigned char>& image);
-	/*
-		Returns the brightest gray in the image
-		@param image, must be 1 channel grayscale
-	*/
-	ImageUtils::Grayscale brightestGray(::cimg_library::CImg<unsigned char>& image);
-	/*
-		Converts image to a 1 channel grayscale image
-		@param image, must be 3 channel RGB
-	*/
-	::cimg_library::CImg<unsigned char> get_grayscale(::cimg_library::CImg<unsigned char>& image);
-	/*
 		Reduces colors to two colors
 		@param image, must be a 3 channel RGB image
 		@param middleColor, pixels darker than this color will be set to lowColor, brighter to highColor
@@ -360,6 +309,6 @@ namespace ScoreProcessor {
 	@return 0 if worked, 1 if already padded, 2 if improper image
 	*/
 	int vertPadding(::cimg_library::CImg<unsigned char>& image,unsigned int const paddingSize);
-	unsigned int combinescores(::std::vector<::std::unique_ptr<::std::string>>& filenames,unsigned int const padding,unsigned int const optimalHeight);
+	unsigned int combinescores(::std::vector<::std::unique_ptr<::std::string>>& filenames,unsigned int const horizPadding,unsigned int const minVertPadding,unsigned int const maxVertPadding,unsigned int const optimalHeight);
 	void compress(::cimg_library::CImg<unsigned char>& image,int const minPadding,unsigned int const optimalHeight);
 }
