@@ -1,4 +1,5 @@
 #pragma once
+//#include <stdint.h>
 #include <vector>
 #include <memory>
 #include <iostream>
@@ -11,11 +12,12 @@ namespace ImageUtils {
 		vec2_t<T>& operator+=(vec2_t<T> const& other);
 		vec2_t<T>& operator-=(vec2_t<T> const& other);
 	};
-	typedef vec2_t<unsigned int>PointUINT;
-	typedef vec2_t<int> PointINT;
+	template<typename T>
+	using Point=vec2_t<T>;
+	using PointUINT=Point<unsigned int>;
 	template<typename T>
 	struct line {
-		vec2_t<T> a,b;
+		Point<T> a,b;
 		template<typename U>
 		friend ::std::ostream& operator<<(::std::ostream& os,line<U> const& aline);
 	};
@@ -45,7 +47,7 @@ namespace ImageUtils {
 	template<typename T>
 	void splitHoriz(Rectangle<T>* orig,Rectangle<T>* buffer,unsigned int numRects);
 	template<typename T>
-	void compressRectangles(::std::vector<::std::shared_ptr<Rectangle<T>>,::std::allocator<::std::shared_ptr<Rectangle<T>>>>& container);
+	void compressRectangles(::std::vector<Rectangle<T>,::std::allocator<Rectangle<T>>>& container);
 	using RectangleUINT=Rectangle<unsigned int>;
 
 	struct ColorRGBA;
@@ -59,7 +61,7 @@ namespace ImageUtils {
 		float colorDiff(ColorRGB other);
 	};
 	inline unsigned char brightness(ColorRGB color) {
-		return static_cast<unsigned char>((unsigned short(color.r)+unsigned short(color.g)+unsigned short(color.b))/3);
+		return static_cast<unsigned char>((uint16_t(color.r)+uint16_t(color.g)+uint16_t(color.b))/3);
 	}
 	ColorRGB const WHITE_RGB={255,255,255};
 	ColorRGB const BLACK_RGB={0,0,0};

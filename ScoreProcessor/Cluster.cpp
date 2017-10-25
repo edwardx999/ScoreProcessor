@@ -9,18 +9,19 @@ namespace ScoreProcessor {
 	unsigned int Cluster::size() {
 		unsigned int size=0;
 		for(unsigned int i=0;i<ranges.size();++i) {
-			size+=ranges[i]->area();
+			size+=ranges[i].area();
 		}
 		return size;
 	}
-	vector<shared_ptr<ImageUtils::RectangleUINT>> const& Cluster::getRanges() const {
+	vector<ImageUtils::RectangleUINT> const& Cluster::get_ranges() const {
 		return ranges;
 	}
-	void clusterRanges(vector<unique_ptr<Cluster>>& clusterContainer,vector<shared_ptr<ImageUtils::RectangleUINT>>& ranges) {
+	::std::vector<::std::unique_ptr<Cluster>> Cluster::cluster_ranges(::std::vector<ImageUtils::RectangleUINT>& ranges) {
+		::std::vector<::std::unique_ptr<Cluster>> cluster_container;
 		struct ClusterPart {
 			Cluster* cluster;
-			shared_ptr<ImageUtils::RectangleUINT> rect;
-			ClusterPart(shared_ptr<ImageUtils::RectangleUINT> const& rect):cluster(nullptr),rect(rect) {}
+			ImageUtils::RectangleUINT rect;
+			ClusterPart(ImageUtils::RectangleUINT const& rect):cluster(nullptr),rect(rect) {}
 		};
 		struct ClusterTestNode {
 			ClusterPart* parent;
@@ -35,7 +36,7 @@ namespace ScoreProcessor {
 			ClusterTestNode(ClusterPart* parent,bool isTop):
 				parent(parent),
 				isTop(isTop),
-				y(isTop?parent->rect->top:parent->rect->bottom) {}
+				y(isTop?parent->rect.top:parent->rect.bottom) {}
 		};
 		vector<ClusterPart> parts;
 		vector<unique_ptr<ClusterTestNode>> tests;
@@ -65,29 +66,30 @@ namespace ScoreProcessor {
 					currentCluster->ranges.emplace_back(searchNode->parent->rect);
 					for(unsigned int s=searchIndex-1;s<max;--s) {
 						if(!tests[s]->isTop) {
-							if(tests[s]->y==searchNode->parent->rect->top&&tests[s]->parent->rect->overlapsX(*(searchNode->parent->rect))) {
+							if(tests[s]->y==searchNode->parent->rect.top&&tests[s]->parent->rect.overlapsX(searchNode->parent->rect)) {
 								searchStack.push(s);
 							}
-							else if(tests[s]->y<searchNode->parent->rect->top) {
+							else if(tests[s]->y<searchNode->parent->rect.top) {
 								break;
 							}
 						}
 					}
 					for(unsigned int s=searchIndex+1;s<max;++s) {
 						if(tests[s]->isTop) {
-							if(tests[s]->y==searchNode->parent->rect->bottom&&tests[s]->parent->rect->overlapsX(*(searchNode->parent->rect))) {
+							if(tests[s]->y==searchNode->parent->rect.bottom&&tests[s]->parent->rect.overlapsX(searchNode->parent->rect)) {
 								searchStack.push(s);
 							}
-							else if(tests[s]->y>searchNode->parent->rect->bottom) {
+							else if(tests[s]->y>searchNode->parent->rect.bottom) {
 								break;
 							}
 						}
 					}
 				#undef searchNode
 				}
-				clusterContainer.push_back(move(currentCluster));
+				cluster_container.push_back(move(currentCluster));
 			}
 		#undef currentNode
 		}
+		return cluster_container;
 	}
 }
