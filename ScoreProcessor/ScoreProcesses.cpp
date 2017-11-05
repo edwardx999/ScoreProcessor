@@ -58,7 +58,7 @@ namespace ScoreProcessor {
 			{
 				if(image(x,y)>middleGray)
 				{
-					image(x,y)+=((255-image(x,y))/scale);
+					image(x,y)=255-(255-image(x,y))/scale;
 				}
 				else
 				{
@@ -91,35 +91,6 @@ namespace ScoreProcessor {
 					image(x,y,1)=replacer.g;
 					image(x,y,2)=replacer.b;
 				}
-			}
-		}
-	}
-
-	void fill_selection(CImg<unsigned char>& image,RectangleUINT const& selection,ColorRGB const color) {
-		//unsigned int startX=selection.left;//>=0?selection.left:0;
-		//unsigned int startY=selection.top;//>=0?selection.top:0;
-		//unsigned int endX=selection.right>image._width?image._width:selection.right;
-		//unsigned int endY=selection.bottom>image._height?image._height:selection.bottom;
-		for(unsigned int x=selection.left;x<selection.right;++x)
-		{
-			for(unsigned int y=selection.top;y<selection.bottom;++y)
-			{
-				image(x,y,0)=color.r;
-				image(x,y,1)=color.g;
-				image(x,y,2)=color.b;
-			}
-		}
-	}
-	void fill_selection(CImg<unsigned char>& image,RectangleUINT const& selection,Grayscale const gray) {
-		unsigned int startX=selection.left;//>=0?selection.left:0;
-		unsigned int startY=selection.top;//>=0?selection.top:0;
-		unsigned int endX=selection.right>image._width?image._width:selection.right;
-		unsigned int endY=selection.bottom>image._height?image._height:selection.bottom;
-		for(unsigned int x=startX;x<endX;++x)
-		{
-			for(unsigned int y=startY;y<endY;++y)
-			{
-				image(x,y)=gray;
 			}
 		}
 	}
@@ -1525,44 +1496,20 @@ namespace ScoreProcessor {
 		{
 			return;
 		}
-		auto map=create_compress_energy(image);
-		min_energy_to_right(map);
 		uint num_seams=image._height-optimal_height;
-		vector<float> right_side;
-		right_side.resize(map._height);
-		auto x=map._width-1;
-		for(auto y=0U;y<map._height;++y)
+		for(uint i=0;i<num_seams;++i)
 		{
-			right_side[y]=map(x,y);
-		}
-		auto min_seams=min_n_ind(right_side,num_seams);
-		for(auto s:min_seams)
-		{
-			cout<<s<<'\n';
-		}
-		return;
-		for(uint i=0U;i<num_seams;++i)
-		{
-			//cout<<"Seam count: "<<i<<'\n';
-			auto seam=trace_back_seam(map,min_seams[i]);
-			//cout<<"\tDone seam\n";
+			auto map=create_compress_energy(image);
+			min_energy_to_right(map);
+			auto seam=create_seam(map);
 			for(auto s=0U;s<map._width;++s)
 			{
 				ImageUtils::Rectangle<uint> to_shift{map._width-s-1,map._width-s,seam[s]+1,map._height};
 				copy_shift_selection(image,to_shift,0,-1);
 				copy_shift_selection(map,to_shift,0,-1);
 			}
-			//cout<<"\tDone shift\n";
-			for(auto mi=i+1;mi<num_seams;++mi)
-			{
-				if(min_seams[mi]>seam[0])
-				{
-					--min_seams[mi];
-				}
-			}
-			//cout<<"\tDone adjust\n";
+			image.crop(0,0,image._width-1,image._height-2);
 		}
-		image.crop(0,0,image._width,optimal_height);
 	}
 	float const VERTICAL_ENERGY_CONSTANT=100.0f;
 	CImg<float> create_vertical_energy(CImg<unsigned char> const& refImage) {

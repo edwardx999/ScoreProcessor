@@ -82,5 +82,6 @@ namespace ImageUtils {
 	Grayscale const WHITE_GRAYSCALE=255;
 	Grayscale const BLACK_GRAYSCALE=0;
 	float grayDiff(Grayscale g1,Grayscale g2);
+	inline unsigned char brightness(Grayscale g) { return g; }
 }
 #include "ImageUtilsTemplate.cpp"

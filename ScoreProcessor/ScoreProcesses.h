@@ -30,7 +30,7 @@ namespace ScoreProcessor {
 		Replaces grays in a range with another gray
 		@param image, must be 1 channel grayscale image
 	*/
-	void replace_range(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const lower,ImageUtils::Grayscale const upper,ImageUtils::Grayscale replacer);
+	void replace_range(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const lower,ImageUtils::Grayscale const upper=255,ImageUtils::Grayscale replacer=ImageUtils::WHITE_GRAYSCALE);
 	/*
 		Replaces certainly bright pixels with a color
 		@param image, must be 3 channel RGB
@@ -40,6 +40,12 @@ namespace ScoreProcessor {
 	*/
 	void replace_by_brightness(::cimg_library::CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness=255,ImageUtils::ColorRGB replacer=ImageUtils::WHITE_RGB);
 	/*
+		Copies a selection from the first image to the location of the second image
+		The two images should have the same number of channels
+	*/
+	template<typename T>
+	void copy_paste(::cimg_library::CImg<T> dest,::cimg_library::CImg<T> src,ImageUtils::Rectangle<unsigned int> selection,ImageUtils::Point<signed int> destloc);
+	/*
 		Shifts selection over while leaving rest unchanged
 		@param image
 		@param selection, the rectangle that will be shifted
@@ -47,22 +53,29 @@ namespace ScoreProcessor {
 		@param shiftx, the number of pixels the selection will be translated in the y direction
 	*/
 	template<typename T>
-	void copy_shift_selection(::cimg_library::CImg<T>& image,ImageUtils::RectangleUINT const& selection,int const shiftx,int const shifty);
+	void copy_shift_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> selection,int const shiftx,int const shifty);
 	/*
 		Fills selection with a certain color
 		@param image, must be 3 channel RGB
 		@param selection, the rectangle that will be filled
 		@param color, the color the selection will be filled with
 	*/
-	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::RectangleUINT const& selection,ImageUtils::ColorRGB const color);
+	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::ColorRGB const color);
 	/*
 		Fills selection with a certain color
 		@param image, must be 1 channel grayscale
 		@param selection, the rectangle that will be filled
 		@param gray, the gray the selection will be filled with
 	*/
-	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::RectangleUINT const& selection,ImageUtils::Grayscale const gray);
-
+	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::Grayscale const gray);
+	/*
+		Fills selection with values found at the pointer
+		@param image
+		@param selection, rectangle to be filled
+		@param values
+	*/
+	template<typename T>
+	void fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const& selection,T const* const values);
 	/*
 		Automatically centers the image horizontally
 		@param image
@@ -202,7 +215,7 @@ namespace ScoreProcessor {
 		@param image, must be 1 channel grayscale
 		@return where the selected rectangles go
 	*/
-	::std::vector<::std::unique_ptr<ImageUtils::RectangleUINT>> select_outside(::cimg_library::CImg<unsigned char> const& image);
+	::std::vector<::std::unique_ptr<ImageUtils::Rectangle<unsigned int>>> select_outside(::cimg_library::CImg<unsigned char> const& image);
 	/*
 		Cuts a specified score image into multiple smaller images
 		@param image
@@ -260,7 +273,7 @@ namespace ScoreProcessor {
 		@param ignoreWithinTolerance, whether selected pixels must be within tolerance
 		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	::std::vector<ImageUtils::RectangleUINT> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::ColorRGB const color,bool const ignoreWithinTolerance);
+	::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::ColorRGB const color,bool const ignoreWithinTolerance);
 	/*
 		Finds all pixels within or without certain tolerance of selected color
 		@param image, must be 1 channel grayscale
@@ -269,7 +282,7 @@ namespace ScoreProcessor {
 		@param ignoreWithinTolerance, whether selected pixels must be within tolerance
 		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	::std::vector<ImageUtils::RectangleUINT> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,bool const ignoreWithinTolerance);
+	::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,bool const ignoreWithinTolerance);
 
 	/*
 		Flood selects from point
@@ -279,7 +292,7 @@ namespace ScoreProcessor {
 		@param start, seed point of flood fill
 		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	::std::vector<ImageUtils::RectangleUINT> flood_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,ImageUtils::vec2_t<unsigned int> start);
+	::std::vector<ImageUtils::Rectangle<unsigned int>> flood_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,ImageUtils::Point<unsigned int> start);
 	/*
 	Paints over black clusters within certain size thresholds with white
 	@param image
@@ -316,7 +329,7 @@ namespace ScoreProcessor {
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);
 
-#include "ScoreProcessesT.cpp"
-}
 
+}
+#include "ScoreProcessesT.cpp"
 #endif // !1
