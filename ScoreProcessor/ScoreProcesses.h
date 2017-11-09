@@ -30,15 +30,23 @@ namespace ScoreProcessor {
 		Replaces grays in a range with another gray
 		@param image, must be 1 channel grayscale image
 	*/
-	void replace_range(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const lower,ImageUtils::Grayscale const upper=255,ImageUtils::Grayscale replacer=ImageUtils::WHITE_GRAYSCALE);
+	void replace_range(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const lower,ImageUtils::Grayscale const upper=255,ImageUtils::Grayscale replacer=ImageUtils::Grayscale::WHITE);
 	/*
 		Replaces certainly bright pixels with a color
 		@param image, must be 3 channel RGB
 		@param lowerBrightness
 		@param upperBrightness
-		@param replacers
+		@param replacer
 	*/
-	void replace_by_brightness(::cimg_library::CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness=255,ImageUtils::ColorRGB replacer=ImageUtils::WHITE_RGB);
+	void replace_by_brightness(::cimg_library::CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness=255,ImageUtils::ColorRGB replacer=ImageUtils::ColorRGB::WHITE);
+	/*
+		Replaces particularly chromatic pixels with a color
+		@param image, must be 3 channel RGB
+		@param lowerChroma
+		@param upperChroma
+		@param replacer
+	*/
+	void replace_by_chroma(::cimg_library::CImg<unsigned char>& image,unsigned char lowerChroma,unsigned char upperChroma=255,ImageUtils::ColorRGB replacer=ImageUtils::ColorRGB::WHITE);
 	/*
 		Copies a selection from the first image to the location of the second image
 		The two images should have the same number of channels

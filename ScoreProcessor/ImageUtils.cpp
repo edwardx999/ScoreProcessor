@@ -13,9 +13,6 @@ namespace ImageUtils {
 		ret.h=std::max({r,g,b})-std::min({r,g,b});
 		return ret;
 	}
-	unsigned char ColorRGB::brightness() const {
-		return ImageUtils::brightness(*this);
-	}
 	ColorRGB ColorHSV::toRGB() const {
 		ColorRGB ret;
 		return ret;
@@ -35,4 +32,11 @@ namespace ImageUtils {
 		float dif=(g1>g2?g1-g2:g2-g1);
 		return dif*dif/twofivefivesquared;
 	}
+
+	Grayscale const Grayscale::WHITE=255;
+	Grayscale const Grayscale::BLACK=0;
+	ColorHSV const ColorHSV::WHITE={0,0,255};
+	ColorHSV const ColorHSV::BLACK={0,0,0};
+	ColorRGB const ColorRGB::WHITE={255,255,255};
+	ColorRGB const ColorRGB::BLACK={0,0,0};
 }

@@ -39,9 +39,6 @@
     <ClInclude Include="moreAlgorithms.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ThreadPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ImageMath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -49,6 +46,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="shorthand.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FileProcesses.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

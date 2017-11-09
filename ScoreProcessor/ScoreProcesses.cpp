@@ -94,7 +94,22 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-
+	void replace_by_chroma(CImg<unsigned char>& image,unsigned char lowerChroma,unsigned char upperChroma,ColorRGB replacer) {
+		for(uint x=0;x<image._width;++x)
+		{
+			for(uint y=0;y<image._height;++y)
+			{
+				initializer_list<unsigned char> pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
+				unsigned char chroma=max(pixel)-min(pixel);
+				if(lowerChroma<=chroma&&chroma<=upperChroma)
+				{
+					image(x,y,0)=replacer.r;
+					image(x,y,1)=replacer.g;
+					image(x,y,2)=replacer.b;
+				}
+			}
+		}
+	}
 	int auto_center_horiz(CImg<unsigned char>& image) {
 		bool isRgb;
 		switch(image._spectrum)
@@ -112,13 +127,13 @@ namespace ScoreProcessor {
 		unsigned int tolerance=image._height>>4;
 		if(isRgb)
 		{
-			left=find_left(image,WHITE_RGB,tolerance);
-			right=find_right(image,WHITE_RGB,tolerance);
+			left=find_left(image,ColorRGB::WHITE,tolerance);
+			right=find_right(image,ColorRGB::WHITE,tolerance);
 		}
 		else
 		{
-			left=find_left(image,WHITE_GRAYSCALE,tolerance);
-			right=find_right(image,WHITE_GRAYSCALE,tolerance);
+			left=find_left(image,Grayscale::WHITE,tolerance);
+			right=find_right(image,Grayscale::WHITE,tolerance);
 		}
 		/*thread leftThread(findLeft,image,&left,WHITERGB,tolerance);
 		thread rightThread(findRight,image,&right,WHITERGB,tolerance);
@@ -145,11 +160,11 @@ namespace ScoreProcessor {
 		copy_shift_selection(image,toShift,shift,0);
 		if(isRgb)
 		{
-			fill_selection(image,toFill,WHITE_RGB);
+			fill_selection(image,toFill,ColorRGB::WHITE);
 		}
 		else
 		{
-			fill_selection(image,toFill,WHITE_GRAYSCALE);
+			fill_selection(image,toFill,Grayscale::WHITE);
 		}
 		return 0;
 	}
@@ -245,13 +260,13 @@ namespace ScoreProcessor {
 		unsigned int tolerance=image._height>>4;
 		if(isRgb)
 		{
-			top=find_top(image,WHITE_RGB,tolerance);
-			bottom=find_bottom(image,WHITE_RGB,tolerance);
+			top=find_top(image,ColorRGB::WHITE,tolerance);
+			bottom=find_bottom(image,ColorRGB::WHITE,tolerance);
 		}
 		else
 		{
-			top=find_top(image,WHITE_GRAYSCALE,tolerance);
-			bottom=find_bottom(image,WHITE_GRAYSCALE,tolerance);
+			top=find_top(image,Grayscale::WHITE,tolerance);
+			bottom=find_bottom(image,Grayscale::WHITE,tolerance);
 		}
 		/*thread topThread(findTop,image,&top,white,tolerance);
 		thread bottomThread(findBottom,image,&bottom,white,tolerance);
@@ -277,11 +292,11 @@ namespace ScoreProcessor {
 		copy_shift_selection(image,toShift,0,shift);
 		if(isRgb)
 		{
-			fill_selection(image,toFill,WHITE_RGB);
+			fill_selection(image,toFill,ColorRGB::WHITE);
 		}
 		else
 		{
-			fill_selection(image,toFill,WHITE_GRAYSCALE);
+			fill_selection(image,toFill,Grayscale::WHITE);
 		}
 		return 0;
 	}
@@ -525,7 +540,7 @@ namespace ScoreProcessor {
 			sleft=r.left;
 			safePoints(sleft,r.y)=true;
 			//scan right
-			for(sright=r.right;sright<image._width&&!safePoints(sright,r.y)&&grayDiff(WHITE_GRAYSCALE,image(sright,r.y))<=tolerance;++sright)
+			for(sright=r.right;sright<image._width&&!safePoints(sright,r.y)&&grayDiff(Grayscale::WHITE,image(sright,r.y))<=tolerance;++sright)
 			{
 				safePoints(sright,r.y)=true;
 			}
@@ -542,7 +557,7 @@ namespace ScoreProcessor {
 				{
 					for(;xL<sright;++xL)
 					{
-						if(!safePoints(xL,newy)&&grayDiff(WHITE_GRAYSCALE,image(xL,newy))<=tolerance)
+						if(!safePoints(xL,newy)&&grayDiff(Grayscale::WHITE,image(xL,newy))<=tolerance)
 						{
 							safePoints(xL,newy)=true;
 							rangeFound=true;
@@ -552,7 +567,7 @@ namespace ScoreProcessor {
 					}
 					for(;xL<sright;++xL)
 					{
-						if(safePoints(xL,newy)||grayDiff(WHITE_GRAYSCALE,image(xL,newy))>tolerance)
+						if(safePoints(xL,newy)||grayDiff(Grayscale::WHITE,image(xL,newy))>tolerance)
 						{
 							break;
 						}
@@ -575,7 +590,7 @@ namespace ScoreProcessor {
 				{
 					for(;xL<r.left;++xL)
 					{
-						if(!safePoints(xL,newy)&&grayDiff(WHITE_GRAYSCALE,image(xL,newy))<=tolerance)
+						if(!safePoints(xL,newy)&&grayDiff(Grayscale::WHITE,image(xL,newy))<=tolerance)
 						{
 							safePoints(xL,newy)=true;
 							rangeFound=true;
@@ -585,7 +600,7 @@ namespace ScoreProcessor {
 					}
 					for(;xL<r.left;++xL)
 					{
-						if(safePoints(xL,newy)||grayDiff(WHITE_GRAYSCALE,image(xL,newy))>tolerance)
+						if(safePoints(xL,newy)||grayDiff(Grayscale::WHITE,image(xL,newy))>tolerance)
 						{
 							break;
 						}
@@ -602,7 +617,7 @@ namespace ScoreProcessor {
 				{
 					for(;xL<sright;++xL)
 					{
-						if(!safePoints(xL,newy)&&grayDiff(WHITE_GRAYSCALE,image(xL,newy))<=tolerance)
+						if(!safePoints(xL,newy)&&grayDiff(Grayscale::WHITE,image(xL,newy))<=tolerance)
 						{
 							safePoints(xL,newy)=true;
 							rangeFound=true;
@@ -612,7 +627,7 @@ namespace ScoreProcessor {
 					}
 					for(;xL<sright;++xL)
 					{
-						if(safePoints(xL,newy)||grayDiff(WHITE_GRAYSCALE,image(xL,newy))>tolerance)
+						if(safePoints(xL,newy)||grayDiff(Grayscale::WHITE,image(xL,newy))>tolerance)
 						{
 							break;
 						}
@@ -645,7 +660,7 @@ namespace ScoreProcessor {
 
 		vector<vector<unsigned int>> paths;
 		{
-			unsigned int right=find_right(image,WHITE_GRAYSCALE,5);
+			unsigned int right=find_right(image,Grayscale::WHITE,5);
 			CImg<float> map=create_vertical_energy(image);
 			min_energy_to_right(map);
 			//map.display();
@@ -704,7 +719,7 @@ namespace ScoreProcessor {
 		//	//cout<<"Path "<<pt<<'\n';
 		//	for(auto nt=0U;nt<paths[pt].size();++nt) {
 		//		//cout<<'\t'<<nt<<','<<paths[pt][nt].y()<<'\n';
-		//		temp(nt,paths[pt][nt])=BLACK_GRAYSCALE;
+		//		temp(nt,paths[pt][nt])=Grayscale::BLACK;
 		//	}
 		//	/*if(pt==1) {
 		//	for(auto nt=1U;nt<paths[pt].size();++nt) {
@@ -741,7 +756,7 @@ namespace ScoreProcessor {
 			unsigned int height;
 			height=lowestInPath-bottomOfOld;
 			CImg<unsigned char> newImage(image._width,height);
-			//newImage.fill(WHITE_GRAYSCALE);
+			//newImage.fill(Grayscale::WHITE);
 			if(pathNum==0)
 			{
 				for(unsigned int x=0;x<newImage._width;++x)
@@ -750,7 +765,7 @@ namespace ScoreProcessor {
 					//unsigned int yStage1=paths[pathNum-1][x]-bottomOfOld;
 					unsigned int yStage2=paths[pathNum][x];
 					/*for(y=0;y<yStage1;++y) {
-					newImage(x,y)=WHITE_GRAYSCALE;
+					newImage(x,y)=Grayscale::WHITE;
 					}*/
 					for(;y<yStage2;++y)
 					{
@@ -758,7 +773,7 @@ namespace ScoreProcessor {
 					}
 					for(;y<newImage._height;++y)
 					{
-						newImage(x,y)=WHITE_GRAYSCALE;
+						newImage(x,y)=Grayscale::WHITE;
 					}
 				}
 			}
@@ -771,7 +786,7 @@ namespace ScoreProcessor {
 					unsigned int yStage2=paths[pathNum][x]-bottomOfOld;
 					for(;y<yStage1;++y)
 					{
-						newImage(x,y)=WHITE_GRAYSCALE;
+						newImage(x,y)=Grayscale::WHITE;
 					}
 					for(;y<yStage2;++y)
 					{
@@ -779,7 +794,7 @@ namespace ScoreProcessor {
 					}
 					for(;y<newImage._height;++y)
 					{
-						newImage(x,y)=WHITE_GRAYSCALE;
+						newImage(x,y)=Grayscale::WHITE;
 					}
 				}
 			}
@@ -787,7 +802,7 @@ namespace ScoreProcessor {
 			bottomOfOld=highestInPath;
 		}
 		CImg<unsigned char> newImage(image._width,image._height-bottomOfOld);
-		//newImage.fill(WHITE_GRAYSCALE);
+		//newImage.fill(Grayscale::WHITE);
 		unsigned int yMax=image._height-bottomOfOld;
 		for(unsigned int x=0;x<newImage._width;++x)
 		{
@@ -799,14 +814,14 @@ namespace ScoreProcessor {
 			//unsigned int yStage2=paths[pathNum][x]-bottomOfOld;
 			for(;y<yStage1;++y)
 			{
-				newImage(x,y)=WHITE_GRAYSCALE;
+				newImage(x,y)=Grayscale::WHITE;
 			}
 			for(;y<newImage._height;++y)
 			{
 				newImage(x,y)=image(x,y+bottomOfOld);
 			}
 			/*for(;y<newImage._height;++y) {
-				newImage(x,y)=WHITE_GRAYSCALE;
+				newImage(x,y)=Grayscale::WHITE;
 			}*/
 		}
 		newImage.save(filename,++numImages,3U);
@@ -830,10 +845,10 @@ namespace ScoreProcessor {
 		switch(image._spectrum)
 		{
 			case 1:
-				rightProfile=build_right_profile(image,WHITE_GRAYSCALE);
+				rightProfile=build_right_profile(image,Grayscale::WHITE);
 				break;
 			case 3:
-				rightProfile=build_right_profile(image,WHITE_RGB);
+				rightProfile=build_right_profile(image,ColorRGB::WHITE);
 				break;
 			default:
 				return {{0,0},{0,0}};
@@ -913,11 +928,11 @@ namespace ScoreProcessor {
 		vector<RectangleUINT> ranges;
 		if(isRgb)
 		{
-			ranges=global_select(image,tolerance,ignoreWithinTolerance?WHITE_RGB:BLACK_RGB,ignoreWithinTolerance);
+			ranges=global_select(image,tolerance,ignoreWithinTolerance?ColorRGB::WHITE:ColorRGB::BLACK,ignoreWithinTolerance);
 		}
 		else
 		{
-			ranges=global_select(image,tolerance,ignoreWithinTolerance?WHITE_GRAYSCALE:BLACK_GRAYSCALE,ignoreWithinTolerance);
+			ranges=global_select(image,tolerance,ignoreWithinTolerance?Grayscale::WHITE:Grayscale::BLACK,ignoreWithinTolerance);
 		}
 		vector<unique_ptr<Cluster>> clusters=
 			Cluster::cluster_ranges(ranges);
@@ -931,7 +946,7 @@ namespace ScoreProcessor {
 				{
 					for(unsigned int i=0;i<currentClusterToDraw.get_ranges().size();++i)
 					{
-						fill_selection(image,currentClusterToDraw.get_ranges()[i],WHITE_RGB);
+						fill_selection(image,currentClusterToDraw.get_ranges()[i],ColorRGB::WHITE);
 					}
 				}
 			#undef currentClusterToDraw
@@ -947,7 +962,7 @@ namespace ScoreProcessor {
 				{
 					for(unsigned int i=0;i<currentClusterToDraw.get_ranges().size();++i)
 					{
-						fill_selection(image,currentClusterToDraw.get_ranges()[i],WHITE_GRAYSCALE);
+						fill_selection(image,currentClusterToDraw.get_ranges()[i],Grayscale::WHITE);
 					}
 				}
 			#undef currentClusterToDraw
@@ -995,7 +1010,7 @@ namespace ScoreProcessor {
 				rangeFound=0;
 			}
 		}
-		ImageUtils::compressRectangles(container);
+		ImageUtils::compress_rectangles(container);
 		return container;
 	}
 	std::vector<RectangleUINT> flood_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const gray,Point<unsigned int> start) {
@@ -1177,7 +1192,7 @@ namespace ScoreProcessor {
 				rangeFound=0;
 			}
 		}
-		ImageUtils::compressRectangles(resultContainer);
+		ImageUtils::compress_rectangles(resultContainer);
 		return resultContainer;
 	}
 	float const _16by9=16.0f/9.0f;
@@ -1187,16 +1202,16 @@ namespace ScoreProcessor {
 		switch(image._spectrum)
 		{
 			case 1:
-				left=find_left(image,WHITE_GRAYSCALE,tolerance);
-				right=find_right(image,WHITE_GRAYSCALE,tolerance)+1;
-				top=find_top(image,WHITE_GRAYSCALE,tolerance);
-				bottom=find_bottom(image,WHITE_GRAYSCALE,tolerance)+1;
+				left=find_left(image,Grayscale::WHITE,tolerance);
+				right=find_right(image,Grayscale::WHITE,tolerance)+1;
+				top=find_top(image,Grayscale::WHITE,tolerance);
+				bottom=find_bottom(image,Grayscale::WHITE,tolerance)+1;
 				break;
 			case 2:
-				left=find_left(image,WHITE_RGB,tolerance);
-				right=find_right(image,WHITE_RGB,tolerance)+1;
-				top=find_top(image,WHITE_RGB,tolerance);
-				bottom=find_bottom(image,WHITE_RGB,tolerance)+1;
+				left=find_left(image,ColorRGB::WHITE,tolerance);
+				right=find_right(image,ColorRGB::WHITE,tolerance)+1;
+				top=find_top(image,ColorRGB::WHITE,tolerance);
+				bottom=find_bottom(image,ColorRGB::WHITE,tolerance)+1;
 			default:
 				return 2;
 		}
@@ -1212,38 +1227,38 @@ namespace ScoreProcessor {
 		{
 			if(prevLeftPadding<horizPaddingToUse)
 			{
-				fill_selection(image,{0,horizPaddingToUse-left,0,image._height},WHITE_GRAYSCALE);
+				fill_selection(image,{0,horizPaddingToUse-left,0,image._height},Grayscale::WHITE);
 			}
 			if(prevRightPadding<horizPaddingToUse)
 			{
-				fill_selection(image,{image._width+prevRightPadding-horizPaddingToUse,image._width,0,image._height},WHITE_GRAYSCALE);
+				fill_selection(image,{image._width+prevRightPadding-horizPaddingToUse,image._width,0,image._height},Grayscale::WHITE);
 			}
 			if(prevTopPadding<vertPadding)
 			{
-				fill_selection(image,{0,image._width,0,vertPadding-top},WHITE_GRAYSCALE);
+				fill_selection(image,{0,image._width,0,vertPadding-top},Grayscale::WHITE);
 			}
 			if(prevBottomPadding<vertPadding)
 			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-vertPadding,image._height},WHITE_GRAYSCALE);
+				fill_selection(image,{0,image._width,image._height+prevBottomPadding-vertPadding,image._height},Grayscale::WHITE);
 			}
 		}
 		else if(image._spectrum==3)
 		{
 			if(prevLeftPadding<vertPadding)
 			{
-				fill_selection(image,{0,horizPaddingToUse-left,0,image._height},WHITE_RGB);
+				fill_selection(image,{0,horizPaddingToUse-left,0,image._height},ColorRGB::WHITE);
 			}
 			if(prevRightPadding<horizPaddingToUse)
 			{
-				fill_selection(image,{image._width+prevRightPadding-horizPaddingToUse,image._width,0,image._height},WHITE_RGB);
+				fill_selection(image,{image._width+prevRightPadding-horizPaddingToUse,image._width,0,image._height},ColorRGB::WHITE);
 			}
 			if(prevTopPadding<vertPadding)
 			{
-				fill_selection(image,{0,image._width,0,vertPadding-top},WHITE_RGB);
+				fill_selection(image,{0,image._width,0,vertPadding-top},ColorRGB::WHITE);
 			}
 			if(prevBottomPadding<vertPadding)
 			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-vertPadding,image._height},WHITE_RGB);
+				fill_selection(image,{0,image._width,image._height+prevBottomPadding-vertPadding,image._height},ColorRGB::WHITE);
 			}
 		}
 		return 0;
@@ -1253,13 +1268,13 @@ namespace ScoreProcessor {
 		unsigned int left,right;
 		if(image._spectrum==1)
 		{
-			left=find_left(image,WHITE_GRAYSCALE,tolerance);
-			right=find_right(image,WHITE_GRAYSCALE,tolerance)+1;
+			left=find_left(image,Grayscale::WHITE,tolerance);
+			right=find_right(image,Grayscale::WHITE,tolerance)+1;
 		}
 		else if(image._spectrum==3)
 		{
-			left=find_left(image,WHITE_RGB,tolerance);
-			right=find_right(image,WHITE_RGB,tolerance)+1;
+			left=find_left(image,ColorRGB::WHITE,tolerance);
+			right=find_right(image,ColorRGB::WHITE,tolerance)+1;
 		}
 		else
 		{
@@ -1277,22 +1292,22 @@ namespace ScoreProcessor {
 		{
 			if(prevLeftPadding<paddingSize)
 			{
-				fill_selection(image,{0,paddingSize-left,0,image._height},WHITE_GRAYSCALE);
+				fill_selection(image,{0,paddingSize-left,0,image._height},Grayscale::WHITE);
 			}
 			if(prevRightPadding<paddingSize)
 			{
-				fill_selection(image,{image._width+prevRightPadding-paddingSize,image._width,0,image._height},WHITE_GRAYSCALE);
+				fill_selection(image,{image._width+prevRightPadding-paddingSize,image._width,0,image._height},Grayscale::WHITE);
 			}
 		}
 		else if(image._spectrum==3)
 		{
 			if(prevLeftPadding<paddingSize)
 			{
-				fill_selection(image,{0,paddingSize-left,0,image._height},WHITE_RGB);
+				fill_selection(image,{0,paddingSize-left,0,image._height},ColorRGB::WHITE);
 			}
 			if(prevRightPadding<paddingSize)
 			{
-				fill_selection(image,{image._width+prevRightPadding-paddingSize,image._width,0,image._height},WHITE_RGB);
+				fill_selection(image,{image._width+prevRightPadding-paddingSize,image._width,0,image._height},ColorRGB::WHITE);
 			}
 		}
 		return 0;
@@ -1303,12 +1318,12 @@ namespace ScoreProcessor {
 		switch(image._spectrum)
 		{
 			case 1:
-				top=find_top(image,WHITE_GRAYSCALE,tolerance);
-				bottom=find_bottom(image,WHITE_GRAYSCALE,tolerance)+1;
+				top=find_top(image,Grayscale::WHITE,tolerance);
+				bottom=find_bottom(image,Grayscale::WHITE,tolerance)+1;
 				break;
 			case 3:
-				top=find_top(image,WHITE_RGB,tolerance);
-				bottom=find_bottom(image,WHITE_RGB,tolerance)+1;
+				top=find_top(image,ColorRGB::WHITE,tolerance);
+				bottom=find_bottom(image,ColorRGB::WHITE,tolerance)+1;
 				break;
 			default:
 				return 2;
@@ -1325,22 +1340,22 @@ namespace ScoreProcessor {
 		{
 			if(prevTopPadding<paddingSize)
 			{
-				fill_selection(image,{0,image._width,0,paddingSize-top},WHITE_GRAYSCALE);
+				fill_selection(image,{0,image._width,0,paddingSize-top},Grayscale::WHITE);
 			}
 			if(prevBottomPadding<paddingSize)
 			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-paddingSize,image._height},WHITE_GRAYSCALE);
+				fill_selection(image,{0,image._width,image._height+prevBottomPadding-paddingSize,image._height},Grayscale::WHITE);
 			}
 		}
 		else if(image._spectrum==3)
 		{
 			if(prevTopPadding<paddingSize)
 			{
-				fill_selection(image,{0,image._width,0,paddingSize-top},WHITE_RGB);
+				fill_selection(image,{0,image._width,0,paddingSize-top},ColorRGB::WHITE);
 			}
 			if(prevBottomPadding<paddingSize)
 			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-paddingSize,image._height},WHITE_RGB);
+				fill_selection(image,{0,image._width,image._height+prevBottomPadding-paddingSize,image._height},ColorRGB::WHITE);
 			}
 		}
 		return 0;
@@ -1375,13 +1390,13 @@ namespace ScoreProcessor {
 				vector<unsigned int> topProf,botProf;
 				if(temp._spectrum==1)
 				{
-					topProf=build_top_profile(temp,WHITE_GRAYSCALE);
-					botProf=build_bottom_profile(temp,WHITE_GRAYSCALE);
+					topProf=build_top_profile(temp,Grayscale::WHITE);
+					botProf=build_bottom_profile(temp,Grayscale::WHITE);
 				}
 				else if(temp._spectrum==3)
 				{
-					topProf=build_top_profile(temp,WHITE_RGB);
-					botProf=build_bottom_profile(temp,WHITE_RGB);
+					topProf=build_top_profile(temp,ColorRGB::WHITE);
+					botProf=build_bottom_profile(temp,ColorRGB::WHITE);
 				}
 				else
 				{
@@ -1520,7 +1535,7 @@ namespace ScoreProcessor {
 			unsigned int y=0U;
 			unsigned int nodeStart;
 			bool nodeFound;
-		#define assign_nodeFound() (nodeFound=grayDiff(WHITE_GRAYSCALE,refImage(x,y))<.2f)
+		#define assign_nodeFound() (nodeFound=grayDiff(Grayscale::WHITE,refImage(x,y))<.2f)
 			if(assign_nodeFound())
 			{
 				nodeStart=0;
