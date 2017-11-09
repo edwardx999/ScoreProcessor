@@ -7,7 +7,7 @@
 #include <string>
 //#define cimg_use_jpeg
 #include "allAlgorithms.h"
-#include "ThreadPool.h"
+#include "threadpool/ThreadPool.h"
 #include "shorthand.h"
 using namespace cimg_library;
 using namespace std;
