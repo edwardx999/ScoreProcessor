@@ -7,7 +7,8 @@
 #include <string>
 //#define cimg_use_jpeg
 #include "allAlgorithms.h"
-#include "threadpool/ThreadPool.h"
+#include "lib/threadpool/ThreadPool.h"
+#include "exstring.h"
 #include "shorthand.h"
 using namespace cimg_library;
 using namespace std;
@@ -26,47 +27,72 @@ void test() {
 	public:
 		PageTask(string& filename):filename(filename) {}
 		void execute() {
-			try
+			string disp="Starting "+filename+"\n";
+			cout<<disp;
+			CImg<uchar> page;
+			page.load(filename.c_str());
+			if(page._spectrum==3)
 			{
-				CImg<unsigned char> page;
-				page.load(filename.c_str());
-			//if(static_cast<signed long>(filename.find("garbage"))>0) return;
-				string disp="Starting "+filename+"\n";
-				cout<<disp;
-				//page.display();
-				replace_by_brightness(page,180);
-				replace_by_chroma(page,50);
 				page=get_grayscale(page);
-				page.save(filename.c_str());
-				disp="Done with "+filename+"\n";
-				cout<<disp;
 			}
-			catch(CImgIOException&)
+			//remove_border(page,Grayscale::BLACK,0.95f);
+			//binarize(page,150);
+			//replace_range(page,0,60,0);
+			vert_padding(page,80);
+			/*if(page._height>3500)
 			{
-				return;
-			}
+				horiz_padding(page,300);
+			}*/
+			page.save(filename.c_str());
+			//cut_image(page,filename.c_str());
+			disp="Done with "+filename+"\n";
+			cout<<disp;
 		}
 	};
-	string temp="C:\\Users\\edwar\\Videos\\Score\\m3liturgies\\";
-	string end=".jpg";
-	/*for(unsigned int i=0;i<8;++i)
-	{
-		pool.add_task<PageTask>(temp+"garbage.jpg");
-	}*/
+	string path="C:\\Users\\edwar\\Videos\\Score\\moiseauxexotiques\\";
+	//string end=".jpg";
 	ThreadPool pool(8);
-	for(unsigned int i=0;i<230;++i)
+	HANDLE hFind;
+	WIN32_FIND_DATA fdata;
+	hFind=FindFirstFile(L"C:\\Users\\edwar\\Videos\\Score\\moiseauxexotiques\\*.*",&fdata);
+	if(hFind!=INVALID_HANDLE_VALUE)
 	{
-		if(i==52||i==53) continue;
-		pool.add_task<PageTask>(temp+to_string(i)+end);
+		do
+		{
+			wcout<<fdata.cFileName<<'\n';
+			if(*fdata.cFileName==L';')
+			{
+				string filename=exstring::string_cast<string>(wstring(fdata.cFileName));
+				string filepath=path+filename;
+				pool.add_task<PageTask>(filepath);
+			}
+		} while(FindNextFile(hFind,&fdata));
+	}
+	else
+	{
+		cout<<"Failed";
 	}
 	pool.start();
 }
 
 int main() {
-	//cimg::imagemagick_path("C:\\\"Program Files\"\\ImageMagick-7.0.6-Q16\\convert.exe");
-	//cout<<string("gawgarbage").find("garbage")<<'\n'<<static_cast<signed int>(string("gaw").find("e"));
-	//Sleep(1000000);
-	test();
+	cout<<"hi\n";
+	CImg<uchar> ct("cuttest.jpg");
+	if(ct._spectrum==3)
+	{
+		ct=get_grayscale(ct);
+	}
+	ct.display();
+	cout<<cut_image(ct,"ct.jpg")<<'\n';
+	//CImg<unsigned char> tp("C:\\Users\\edwar\\Videos\\Score\\mascension\\;_Page_19.jpg");
+	//if(tp._spectrum==3)
+	//{
+	//	tp=get_grayscale(tp);
+	//}
+	//remove_border(tp,Grayscale::BLACK,0.95f);
+	//clear_clusters(tp,rcast<ucharcpc>(&ColorRGB::BLACK),ColorRGB::color_diff,0.95f,false,0,200,rcast<ucharcpc>(&ColorRGB::WHITE));
+	//tp.display();
+	//test();
 	stop();
 	return 0;
 }

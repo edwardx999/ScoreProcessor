@@ -4,6 +4,7 @@
 #include "ImageUtils.h"
 #include <vector>
 #include <memory>
+#include "Cluster.h"
 namespace ScoreProcessor {
 	/*
 		Reduces colors to two colors
@@ -272,7 +273,13 @@ namespace ScoreProcessor {
 		@param image
 	*/
 	void undistort(::cimg_library::CImg<unsigned char>& image);
-
+	template<typename T>
+	::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(
+		::cimg_library::CImg<T>& image,
+		T const* const color,
+		float(*color_diff)(T const* const,T const* const),
+		float tolerance,
+		bool invert_selection);
 	/*
 		Finds all pixels within or without certain tolerance of selected color
 		@param image, must be 3 channel RGB
@@ -281,7 +288,7 @@ namespace ScoreProcessor {
 		@param ignoreWithinTolerance, whether selected pixels must be within tolerance
 		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::ColorRGB const color,bool const ignoreWithinTolerance);
+	//::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::ColorRGB const color,bool const ignoreWithinTolerance);
 	/*
 		Finds all pixels within or without certain tolerance of selected color
 		@param image, must be 1 channel grayscale
@@ -290,7 +297,7 @@ namespace ScoreProcessor {
 		@param ignoreWithinTolerance, whether selected pixels must be within tolerance
 		@return where the selected pixels will go as a vector of rectangles pointers
 	*/
-	::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,bool const ignoreWithinTolerance);
+	//::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,bool const ignoreWithinTolerance);
 
 	/*
 		Flood selects from point
@@ -302,15 +309,29 @@ namespace ScoreProcessor {
 	*/
 	::std::vector<ImageUtils::Rectangle<unsigned int>> flood_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,ImageUtils::Point<unsigned int> start);
 	/*
-	Paints over black clusters within certain size thresholds with white
-	@param image
-	@param lowerThreshold, clusters must be above this size to be cleared
-	@param upperThreshold, clusters must be below this size to be cleared
-	@param tolerance, the tolerance 0.0f-1.0f between colors
-	@param ignoreWithinTolerance, whether selected pixels must be within tolerance
-	@return 0 if worked, 2 if improper image
+		Clears clusters from the page
+		@param image
+		@param color, pointer to the color to replace, spectrum of image is used to determine size of color
+		@param color_diff, function used to differentiate colors
+		@param tolerance, the tolerance between 0.0f-1.0f between colors
+		@param min_size
+		@param max_size, clusters betwen these sizes will be erased
+		@param background, pointer to color to fill with
 	*/
-	int clear_clusters(::cimg_library::CImg<unsigned char>& image,unsigned int const lowerThreshold,unsigned int const upperThreshold,float const tolerance,bool const ignoreWithinTolerance);
+	template<typename T>
+	void clear_clusters(
+		::cimg_library::CImg<T>& image,
+		T const* const color,
+		float(*color_diff)(T const* const,T const* const),
+		float tolerance,
+		bool invert_selection,
+		unsigned int min_size,unsigned int max_size,
+		T const* const background);
+	/*
+	*/
+	void remove_border(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const color=ImageUtils::Grayscale::BLACK,float const tolerance=0.5);
+
+	void flood_fill(::cimg_library::CImg<unsigned char>& image,float const tolerance,ImageUtils::Grayscale const color,ImageUtils::Grayscale const replacer,ImageUtils::Point<unsigned int> start);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
@@ -332,7 +353,7 @@ namespace ScoreProcessor {
 		@return 0 if worked, 1 if already padded, 2 if improper image
 	*/
 	int vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const paddingSize);
-	unsigned int combine_scores(::std::vector<::std::unique_ptr<::std::string>>& filenames,unsigned int const horizPadding,unsigned int const minVertPadding,unsigned int const maxVertPadding,unsigned int const optimalHeight);
+	unsigned int combine_scores(::std::vector<char*> const& filenames,unsigned int const horizPadding,unsigned int const minVertPadding,unsigned int const maxVertPadding,unsigned int const optimalHeight);
 	void compress(::cimg_library::CImg<unsigned char>& image,unsigned int const minPadding,unsigned int const optimalHeight,float min_energy=0);
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);

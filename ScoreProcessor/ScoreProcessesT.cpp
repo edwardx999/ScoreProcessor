@@ -89,6 +89,101 @@ void ScoreProcessor::copy_paste(::cimg_library::CImg<T> dest,::cimg_library::CIm
 	if(destloc.x<0)
 	{
 		select.left-=destloc.x;
-		destloc=0;
+		destloc.x=0;
 	}
+	if(destloc.y<0)
+	{
+		select.top-=destloc.y;
+		destloc.y=0;
+	}
+	for(;destloc.x<dest._width&&select.left<select.right;++destloc.x,++select.left)
+	{
+		for(;destloc.y<dest._height&&select.top<select.bottom;++destloc.y,++select.top)
+		{
+			dest(destloc.x,destloc.y)=src(select.left,select.top);
+		}
+	}
+}
+template<typename T>
+void ScoreProcessor::clear_clusters(
+	::cimg_library::CImg<T>& image,
+	T const* const color,
+	float(*color_diff)(T const* const,T const* const),
+	float tolerance,
+	bool invert_selection,
+	unsigned int min_size,unsigned int max_size,
+	T const* const background) {
+	auto ranges=global_select(image,color,color_diff,tolerance,invert_selection);
+	auto clusters=ScoreProcessor::Cluster::cluster_ranges(ranges);
+	for(auto& cluster:clusters)
+	{
+		unsigned int size=cluster->size();
+		if(min_size<=size&&size<max_size)
+		{
+			auto const& rects=cluster->get_ranges();
+			for(auto const& rect:rects)
+			{
+				ScoreProcessor::fill_selection(image,rect,background);
+			}
+		}
+	}
+}
+template<typename T>
+::std::vector<ImageUtils::Rectangle<unsigned int>> ScoreProcessor::global_select(
+	::cimg_library::CImg<T>& image,
+	T const* const color,
+	float(*color_diff)(T const* const,T const* const),
+	float tolerance,
+	bool invert_selection) {
+	vector<RectangleUINT> container;
+	//std::unique_ptr<T[]> pixel_color=make_unique<T[]>(3);
+	T* pixel_color=new T[image._spectrum];
+
+	unsigned int rangeFound=0,rangeStart=0,rangeEnd=0;
+	for(unsigned int y=0;y<image._height;++y)
+	{
+		for(unsigned int x=0;x<image._width;++x)
+		{
+			switch(rangeFound)
+			{
+				case 0: {
+				#define load_color() for(unsigned int i=0;i<image._spectrum;++i) pixel_color[i]=image(x,y,i);
+					load_color();
+					if((color_diff(color,pixel_color)<=tolerance)^invert_selection)
+					{
+						rangeFound=1;
+						rangeStart=x;
+					}
+					break;
+				}
+				case 1: {
+					load_color();
+					if((color_diff(color,pixel_color)>tolerance)^invert_selection)
+					{
+						rangeFound=2;
+						rangeEnd=x;
+					}
+					else
+					{
+						break;
+					}
+				}
+					#undef load_color
+				case 2: {
+					container.push_back(RectangleUINT{rangeStart,rangeEnd,y,y+1});
+					rangeFound=0;
+					break;
+				}
+			}
+		}
+		if(1==rangeFound)
+		{
+			container.push_back(RectangleUINT{rangeStart,image._width,y,y+1});
+			rangeFound=0;
+		}
+	}
+
+	ImageUtils::compress_rectangles(container);
+	delete[] pixel_color;
+	return container;
 }

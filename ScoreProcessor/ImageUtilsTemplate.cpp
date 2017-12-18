@@ -13,41 +13,45 @@ namespace ImageUtils {
 		if(left<other.left) return false;
 		return top>other.top;
 	}
-	template<typename T>
-	T Rectangle<T>::area() const {
+	template<typename T> template<typename U>
+	U Rectangle<T>::area() const {
 		return (right-left)*(bottom-top);
 	}
-	template<typename T>
-	T Rectangle<T>::perimeter() const {
+	template<typename T> template<typename U>
+	U Rectangle<T>::perimeter() const {
 		return 2*(right-left+bottom-top);
 	}
-	template<typename T>
-	T Rectangle<T>::height() const {
+	template<typename T> template<typename U>
+	U Rectangle<T>::height() const {
 		return bottom-top;
 	}
-	template<typename T>
-	T Rectangle<T>::width() const {
+	template<typename T> template<typename U>
+	U Rectangle<T>::width() const {
 		return right-left;
 	}
-	template<typename T>
-	bool Rectangle<T>::isBorderingVert(Rectangle<T> const& other) const {
-		return (other.bottom==top||other.top==bottom)&&overlapsX(other);
+	template<typename T> template<typename U>
+	Point<U> Rectangle<T>::center() const {
+		return {U(left+right)/2,U(top+bottom)/2};
 	}
 	template<typename T>
-	bool Rectangle<T>::overlapsX(Rectangle<T> const& other) const {
+	bool Rectangle<T>::is_bordering_vert(Rectangle<T> const& other) const {
+		return (other.bottom==top||other.top==bottom)&&overlaps_x(other);
+	}
+	template<typename T>
+	bool Rectangle<T>::overlaps_x(Rectangle<T> const& other) const {
 		return !(left>other.right||right<other.left);
 	}
 	template<typename T>
-	bool Rectangle<T>::isBorderingHoriz(Rectangle<T> const& other) const {
-		return (other.left==right||other.right==left)&&overlapsY(other);
+	bool Rectangle<T>::is_bordering_horiz(Rectangle<T> const& other) const {
+		return (other.left==right||other.right==left)&&overlaps_y(other);
 	}
 	template<typename T>
-	bool Rectangle<T>::overlapsY(Rectangle<T> const& other) const {
+	bool Rectangle<T>::overlaps_y(Rectangle<T> const& other) const {
 		return !(top>other.bottom||bottom<other.top);
 	}
 	template<typename T>
 	bool Rectangle<T>::intersects(Rectangle<T> const& other) const {
-		return overlapsX(other)&&overlapsY(other);
+		return overlaps_x(other)&&overlaps_y(other);
 	}
 	template<typename T>
 	line<T> Rectangle<T>::diagonal() {
@@ -61,9 +65,9 @@ namespace ImageUtils {
 	std::ostream& operator<<(::std::ostream& os,line<U> const& aline) {
 		return os<<"[("<<aline.a.x<<','<<aline.a.y<<"),("<<aline.b.x<<','<<aline.b.y<<")]";
 	}
-	template<typename T>
-	void compress_rectangles(std::vector<Rectangle<T>,std::allocator<Rectangle<T>>>& container) {
-		sort(container.begin(),container.end(),[](Rectangle<T>& a,Rectangle<T>& b) {return a<b;});
+	template<typename T,typename alloc>
+	void compress_rectangles(std::vector<Rectangle<T>,alloc>& container) {
+		sort(container.begin(),container.end());
 		for(unsigned int i=1;i<container.size();++i) {
 			if(container[i].left==container[i-1].left&&
 				container[i].top==container[i-1].bottom&&
@@ -75,6 +79,15 @@ namespace ImageUtils {
 		}
 	}
 
+	/*template<typename T> template<typename U>
+	vec2_t<T>::vec2_t(vec2_t<U> const& other):x(other.x),y(other.y) {}
+	template<typename T> template<typename U>
+	vec2_t<T>& vec2_t<T>::operator=(vec2_t<U> const& other) {
+		x=other.x;
+		y=other.y;
+		return *this;
+	}
+	*/
 	template<typename T>
 	vec2_t<T> vec2_t<T>::operator+(vec2_t<T> const& other) {
 		return {x+other.x,y+other.y};

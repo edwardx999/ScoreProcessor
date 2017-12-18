@@ -190,7 +190,7 @@ namespace cimg_library {
 		{
 			unsigned int y=(startIndex==0?0:startIndex-1);
 			unsigned int yLim=(startIndex<energyMap._height-1?startIndex+1:startIndex);
-			minValue=energyMap(x,startIndex=y);
+			minValue=energyMap(x,startIndex=y++);
 			for(;y<=yLim;++y)
 			{
 				if(energyMap(x,y)<=minValue)
