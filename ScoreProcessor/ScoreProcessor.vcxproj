@@ -104,7 +104,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);lib/jpeg-9b/jpeg.lib;lib/libpng/libpng16.lib;lib/threadpool/ThreadPool.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);lib/jpeg-9b/jpeg.lib;lib/libpng/libpng16.lib;lib/threadpool/ThreadPool_x64.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -130,13 +130,13 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);cimg_use_jpeg;cimg_use_png</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);cimg_use_jpeg;cimg_use_png;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);lib/jpeg-9b/jpeg.lib;lib/libpng/libpng16.lib;lib/threadpool/ThreadPool.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);lib/jpeg-9b/jpeg.lib;lib/libpng/libpng16.lib;lib/threadpool/ThreadPool_x64.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -146,11 +146,14 @@
     <ClInclude Include="allAlgorithms.h" />
     <ClInclude Include="CImg.h" />
     <ClInclude Include="Cluster.h" />
+    <ClInclude Include="convert.h" />
     <ClInclude Include="exstring.h" />
     <ClInclude Include="FileProcesses.h" />
+    <ClInclude Include="imagefind.h" />
     <ClInclude Include="ImageMath.h" />
+    <ClInclude Include="ImageProcess.h" />
     <ClInclude Include="ImageUtils.h" />
-    <ClInclude Include="lib\ThreadPool.h" />
+    <ClInclude Include="lib\threadpool\ThreadPool.h" />
     <ClInclude Include="moreAlgorithms.h" />
     <ClInclude Include="ScoreProcesses.h" />
     <ClInclude Include="shorthand.h" />

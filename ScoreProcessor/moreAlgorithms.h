@@ -7,18 +7,23 @@
 #include "CImg.h"
 namespace misc_alg {
 
-	/*
-		Returns absolute difference of two numbers
-		Type returned is same as that of first parameter
-	*/
-	template<typename T1,typename T2> inline T1 abs_dif(T1 const x,T2 const y) { return (x>y?x-y:y-x); }
-	/*
-		Rounds number to nearest radix
-		@param x, the number to rounded
-		@param radix
-		@return the number round with same type as the radix
-	*/
-	template<typename T1,typename T2> inline T2 round_to_nearest(T1 const x,T2 const radix) {
+/*
+	Returns absolute difference of two numbers
+	Type returned is same as that of first parameter
+*/
+	template<typename T1,typename T2> inline auto abs_dif(T1 const& x,T2 const& y) ->
+		decltype(x-y)
+	{
+		return (x>y?x-y:y-x);
+	}
+/**
+	Rounds number to nearest radix
+	@param x, the number to be rounded
+	@param radix
+	@return the number round with same type as the radix
+*/
+	template<typename T1,typename T2> inline T2 round_to_nearest(T1 const x,T2 const radix)
+	{
 		return ::std::round(static_cast<double>(x)/radix)*radix;
 	}
 	template<typename T1,typename T2,typename T3> inline bool within_perc_tolerance(T1 const num1,T2 const num2,T3 const tolerance);
@@ -27,14 +32,16 @@ namespace misc_alg {
 		Returns the indices of the minimum n in a given vector
 	*/
 	template<typename T,typename alloc> ::std::vector<unsigned int> min_n_ind(::std::vector<T,alloc> const& values,size_t const num_values);
-	template<typename T1,typename T2,typename T3> inline bool within_perc_tolerance(T1 const num1,T2 const num2,T3 const tolerance) {
+	template<typename T1,typename T2,typename T3> inline bool within_perc_tolerance(T1 const num1,T2 const num2,T3 const tolerance)
+	{
 		return (abs_dif(num1,num2)/num1)<tolerance;
 	}
 	template<typename T,typename val>
 	/*
-	Greedy shortest path if you can only go from a node in one layer to a node in the next layer
+		Greedy shortest path if you can only go from a node in one layer to a node in the next layer
 	*/
-	int shortest_path_one_dir(::std::vector<T,::std::allocator<T>>& resultContainer,::std::vector<::std::vector<T,::std::allocator<T>>,::std::allocator<::std::vector<T,::std::allocator<T>>>>& nodes,val(*nodeDistance)(T&,T&)) {
+	int shortest_path_one_dir(::std::vector<T,::std::allocator<T>>& resultContainer,::std::vector<::std::vector<T,::std::allocator<T>>,::std::allocator<::std::vector<T,::std::allocator<T>>>>& nodes,val(*nodeDistance)(T&,T&))
+	{
 	#ifdef USESAFETYCHECKS
 		if(nodes.size()<1||nodes[0].size()<1)
 		{
@@ -77,7 +84,7 @@ namespace misc_alg {
 				dynamicPather[x][n].distance=minValue;
 				dynamicPather[x][n].prevNodeIndex=minIndex;
 			}
-		}
+}
 		val minDistance=dynamicPather.back()[0].distance;
 		unsigned int minIndex=0;
 		for(unsigned int i=1;i<dynamicPather.back().size();++i)
@@ -98,7 +105,8 @@ namespace misc_alg {
 		}
 		return 0;
 	}
-	template<typename T,typename alloc> ::std::vector<unsigned int> min_n_ind(::std::vector<T,alloc> const& values,size_t const num_values) {
+	template<typename T,typename alloc> ::std::vector<unsigned int> min_n_ind(::std::vector<T,alloc> const& values,size_t const num_values)
+	{
 		vector<unsigned int> mins;
 		if(values.size()==0)
 		{
@@ -129,12 +137,12 @@ namespace misc_alg {
 	}
 }
 namespace cimg_library {
-	/*
-		Traces a seam from right to left starting at y start_index
-		@param map, energy map
-		@param start_index, y coordinate to start seam
-		@return vector containing y coordinates of seams, starts at x=0
-	*/
+/*
+	Traces a seam from right to left starting at y start_index
+	@param map, energy map
+	@param start_index, y coordinate to start seam
+	@return vector containing y coordinates of seams, starts at x=0
+*/
 	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& map,unsigned int start_index);
 	template<typename T> ::std::vector<unsigned int> create_seam(CImg<T> const& map);
 	template<typename T> void mark_seam(CImg<T>& img,T const* const values,::std::vector<unsigned int> const& seam);
@@ -146,7 +154,8 @@ namespace cimg_library {
 	template<typename T> void sandpile(CImg<T>& sandPiles,T maxSize);
 
 	template<typename T>
-	::std::vector<unsigned int> create_seam(CImg<T> const& energyMap) {
+	::std::vector<unsigned int> create_seam(CImg<T> const& energyMap)
+	{
 		unsigned int x=energyMap._width-1;
 		T minValue=energyMap(x,0);
 		unsigned int index=0;
@@ -161,12 +170,14 @@ namespace cimg_library {
 		return trace_back_seam(energyMap,index);
 	}
 	template<typename T>
-	int min_energy_to_right(CImg<T>& energyGraph) {
+	int min_energy_to_right(CImg<T>& energyGraph)
+	{
 		ImageUtils::Rectangle<unsigned int> area={0,energyGraph._width,0,energyGraph._height};
 		return min_energy_to_right(energyGraph,area);
 	}
 	template<typename T>
-	int min_energy_to_right(CImg<T>& energyGraph,ImageUtils::Rectangle<unsigned int> const& area) {
+	int min_energy_to_right(CImg<T>& energyGraph,ImageUtils::Rectangle<unsigned int> const& area)
+	{
 	#ifdef USESAFETYCHECKS
 		if(map._height<3)
 			return 1;
@@ -181,8 +192,9 @@ namespace cimg_library {
 			energyGraph(x,area.bottom-1)+=::std::min({energyGraph(x-1,area.bottom-1),energyGraph(x-1,area.bottom-2)});
 		}
 		return 0;
-	}
-	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energyMap,unsigned int startIndex) {
+}
+	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energyMap,unsigned int startIndex)
+	{
 		::std::vector<unsigned int> resultPath(energyMap._width);
 		T minValue,pathValue=minValue=energyMap(energyMap._width-1,startIndex);
 		resultPath.back()=startIndex;
@@ -203,7 +215,8 @@ namespace cimg_library {
 		}
 		return resultPath;
 	}
-	template<typename T> void mark_seam(CImg<T>& img,T const* const values,::std::vector<unsigned int> const& seam) {
+	template<typename T> void mark_seam(CImg<T>& img,T const* const values,::std::vector<unsigned int> const& seam)
+	{
 		for(unsigned int x=0;x<seam.size();++x)
 		{
 			for(unsigned int l=0;l<img._spectrum;++l)
@@ -213,7 +226,8 @@ namespace cimg_library {
 		}
 	}
 	template<typename T>
-	void sandpile(CImg<T>& sandPiles,T maxSize) {
+	void sandpile(CImg<T>& sandPiles,T maxSize)
+	{
 		while(true)
 		{
 			bool allFallen=true;

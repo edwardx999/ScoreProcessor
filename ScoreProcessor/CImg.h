@@ -186,11 +186,7 @@
 
 // Look for C++11 features.
 #ifndef cimg_use_cpp11
-#if __cplusplus>201100
 #define cimg_use_cpp11 1
-#else
-#define cimg_use_cpp11 0
-#endif
 #endif
 #if cimg_use_cpp11==1
 #include <initializer_list>

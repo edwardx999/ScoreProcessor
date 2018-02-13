@@ -10,12 +10,15 @@
 #include "moreAlgorithms.h"
 #include "shorthand.h"
 #include <assert.h>
+#include <forward_list>
+#include "ImageMath.h"
 using namespace std;
 using namespace ImageUtils;
 using namespace cimg_library;
 using namespace misc_alg;
 namespace ScoreProcessor {
-	void binarize(CImg<unsigned char>& image,ColorRGB const middleColor,ColorRGB const lowColor,ColorRGB const highColor) {
+	void binarize(CImg<unsigned char>& image,ColorRGB const middleColor,ColorRGB const lowColor,ColorRGB const highColor)
+	{
 		assert(image._spectrum==3);
 		unsigned char midBrightness=middleColor.brightness();
 		for(unsigned int x=0;x<image._width;++x)
@@ -37,7 +40,8 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void binarize(CImg<unsigned char>& image,Grayscale const middleGray,Grayscale const lowGray,Grayscale const highGray) {
+	void binarize(CImg<unsigned char>& image,Grayscale const middleGray,Grayscale const lowGray,Grayscale const highGray)
+	{
 		assert(image._spectrum==1);
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -54,7 +58,8 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void binarize(CImg<unsigned char>& image,Grayscale const middleGray,float scale) {
+	void binarize(CImg<unsigned char>& image,Grayscale const middleGray,float scale)
+	{
 		assert(image._spectrum==1);
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -71,7 +76,8 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void replace_range(CImg<unsigned char>& image,Grayscale const lower,ImageUtils::Grayscale const upper,Grayscale replacer) {
+	void replace_range(CImg<unsigned char>& image,Grayscale const lower,ImageUtils::Grayscale const upper,Grayscale replacer)
+	{
 		assert(image._spectrum==1);
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -84,7 +90,8 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void replace_by_brightness(CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness,ColorRGB replacer) {
+	void replace_by_brightness(CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness,ColorRGB replacer)
+	{
 		assert(image._spectrum==3);
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -100,7 +107,8 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void replace_by_chroma(CImg<unsigned char>& image,unsigned char lowerChroma,unsigned char upperChroma,ColorRGB replacer) {
+	void replace_by_chroma(CImg<unsigned char>& image,unsigned char lowerChroma,unsigned char upperChroma,ColorRGB replacer)
+	{
 		assert(image._spectrum==3);
 		for(uint x=0;x<image._width;++x)
 		{
@@ -117,7 +125,8 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	int auto_center_horiz(CImg<unsigned char>& image) {
+	int auto_center_horiz(CImg<unsigned char>& image)
+	{
 		bool isRgb;
 		switch(image._spectrum)
 		{
@@ -167,11 +176,12 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	unsigned int find_left(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_left(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int x=0;x<image._width;++x)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int y=0;y<image._height;++y)
 			{
 				ColorRGB pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
@@ -189,11 +199,12 @@ namespace ScoreProcessor {
 		}
 		return image._width-1;
 	}
-	unsigned int find_left(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_left(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int x=0;x<image._width;++x)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int y=0;y<image._height;++y)
 			{
 				if(gray_diff(image(x,y),background)>.5f)
@@ -206,11 +217,12 @@ namespace ScoreProcessor {
 		}
 		return image._width-1;
 	}
-	unsigned int find_right(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_right(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int x=image._width-1;x<image._width;--x)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int y=0;y<image._height;++y)
 			{
 				ColorRGB pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
@@ -228,11 +240,12 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	unsigned int find_right(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_right(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int x=image._width-1;x<image._width;--x)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int y=0;y<image._height;++y)
 			{
 				if(gray_diff(image(x,y),background)>.5f)
@@ -246,7 +259,8 @@ namespace ScoreProcessor {
 		return 0;
 	}
 
-	int auto_center_vert(CImg<unsigned char>& image) {
+	int auto_center_vert(CImg<unsigned char>& image)
+	{
 		bool isRgb;
 		switch(image._spectrum)
 		{
@@ -303,11 +317,12 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	unsigned int find_top(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_top(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int y=0;y<image._height;++y)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int x=0;x<image._width;++x)
 			{
 				ColorRGB pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
@@ -325,11 +340,12 @@ namespace ScoreProcessor {
 		}
 		return image._height-1;
 	}
-	unsigned int find_top(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_top(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int y=0;y<image._height;++y)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int x=0;x<image._width;++x)
 			{
 				if(gray_diff(image(x,y),background)>.5f)
@@ -342,11 +358,12 @@ namespace ScoreProcessor {
 		}
 		return image._height-1;
 	}
-	unsigned int find_bottom(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_bottom(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int y=image._height-1;y<image._height;--y)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int x=0;x<image._width;++x)
 			{
 				ColorRGB pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
@@ -364,11 +381,12 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	unsigned int find_bottom(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance) {
-		unsigned int num;
+	unsigned int find_bottom(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance)
+	{
+		unsigned int num=0;
 		for(unsigned int y=image._height-1;y<image._height;--y)
 		{
-			num=0;
+			//num=0;
 			for(unsigned int x=0;x<image._width;++x)
 			{
 				if(gray_diff(image(x,y),background)>.5f)
@@ -381,9 +399,10 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,ColorRGB const background) {
+	vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	{
 		assert(image._spectrum==3);
-		unsigned int limit=image._width/3;
+		unsigned int limit=image._width/2;
 		vector<unsigned int> container(image._height);
 		for(unsigned int y=0;y<image._height;++y)
 		{
@@ -402,9 +421,10 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,Grayscale const background) {
+	vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,Grayscale const background)
+	{
 		assert(image._spectrum==1);
-		unsigned int limit=image._width/3;
+		unsigned int limit=image._width/2;
 		vector<unsigned int> container(image._height);
 		for(unsigned int y=0;y<image._height;++y)
 		{
@@ -420,9 +440,10 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,ColorRGB const background) {
+	vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	{
 		assert(image._spectrum==3);
-		unsigned int limit=image._width-image._width/2;
+		unsigned int limit=image._width/2;
 		vector<unsigned int> container(image._height);
 		container.resize(image._height);
 		for(unsigned int y=0;y<image._height;++y)
@@ -442,9 +463,10 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,Grayscale const background) {
+	vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,Grayscale const background)
+	{
 		assert(image._spectrum==1);
-		unsigned int limit=image._width-image._width/2;
+		unsigned int limit=image._width/2;
 		vector<unsigned int> container(image._height);
 		container.resize(image._height);
 		for(unsigned int y=0;y<image._height;++y)
@@ -461,10 +483,11 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,ColorRGB const background) {
+	vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	{
 		assert(image._spectrum==3);
 		vector<unsigned int> container(image._width);
-		unsigned int limit=image._height/3;
+		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
 			container[x]=limit;
@@ -482,10 +505,11 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,Grayscale const background) {
+	vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,Grayscale const background)
+	{
 		assert(image._spectrum==1);
 		vector<unsigned int> container(image._width);
-		unsigned int limit=image._height/3;
+		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
 			container[x]=limit;
@@ -500,10 +524,11 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,ColorRGB const background) {
+	vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	{
 		assert(image._spectrum==3);
 		vector<unsigned int> container(image._width);
-		unsigned int limit=image._height-image._height/3;
+		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
 			container[x]=limit;
@@ -521,10 +546,11 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,Grayscale const background) {
+	vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,Grayscale const background)
+	{
 		assert(image._spectrum==1);
 		vector<unsigned int> container(image._width);
-		unsigned int limit=image._height-image._height/3;
+		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
 			container[x]=limit;
@@ -540,7 +566,8 @@ namespace ScoreProcessor {
 		return container;
 	}
 	//basically a flood fill that can't go left, assumes top row is completely clear
-	vector<unique_ptr<RectangleUINT>> select_outside(CImg<unsigned char> const& image) {
+	vector<unique_ptr<RectangleUINT>> select_outside(CImg<unsigned char> const& image)
+	{
 		assert(image._spectrum==1);
 		vector<unique_ptr<RectangleUINT>> resultContainer;
 		CImg<bool> safePoints(image._width,image._height,1,1);
@@ -671,7 +698,8 @@ namespace ScoreProcessor {
 		}
 		return resultContainer;
 	}
-	unsigned int cut_image(CImg<unsigned char> const& image,char const* const filename) {
+	unsigned int cut_page(CImg<unsigned char> const& image,char const* const filename)
+	{
 		bool isRGB;
 		switch(image._spectrum)
 		{
@@ -694,29 +722,37 @@ namespace ScoreProcessor {
 			min_energy_to_right(map);
 			//map.display();
 			struct float_color {
-				static float diff(float const* const a,float const* const b) {
+				static float diff(float const* const a,float const* const b)
+				{
 					return static_cast<float>(*b!=INFINITY);
 				}
 			};
 			auto const selections=global_select(map,rcast<float*>(0),float_color::diff,0.5,false);
 			auto const clusters=Cluster::cluster_ranges(selections);
 			vector<line> boxes;
-			unsigned int threshold=(map._height*map._width)/15;
+			unsigned int threshold=
+				//(map._height*map._width)/20;
+				map._width/2;
 			for(size_t i=0;i<clusters.size();++i)
 			{
-				if(clusters[i]->size()>threshold)
+				//if(clusters[i]->size()>threshold)
+				if(clusters[i]->bounding_box().width()>threshold)
 				{
 					boxes.push_back(clusters[i]->right_side());
 				}
 			}
-			size_t limit=boxes.size()-1;
 			std::sort(boxes.begin(),boxes.end(),[](line& a,line&b) {return a.bottom<b.top;});
+			/*for(auto const& line:boxes)
+			{
+				cout<<line.top<<' '<<line.bottom<<'\n';
+			}*/
 			unsigned int last_row=map._width-1;
+			size_t limit=boxes.size()-1;
 			for(size_t i=0;i<limit;++i)
 			{
 				line const& current=boxes[i];
 				line const& next=boxes[i+1];
-				unsigned int y_min=current.bottom;
+				/*unsigned int y_min=current.bottom;
 				float min_val=map(last_row,y_min);
 				for(unsigned int y=y_min;y<next.top;++y)
 				{
@@ -726,139 +762,125 @@ namespace ScoreProcessor {
 						min_val=val;
 						y_min=y;
 					}
-				}
-				paths.emplace_back(trace_back_seam(map,y_min));
+				}*/
+				paths.emplace_back(trace_back_seam(map,(current.bottom+next.top)/2));
 			}
 		}
-		//cout<<paths.size()<<endl;
-		//CImg<unsigned char> temp=image;
-		//for(unsigned int pt=0;pt<paths.size();++pt) {
-		//	//cout<<"Path "<<pt<<'\n';
-		//	for(auto nt=0U;nt<paths[pt].size();++nt) {
-		//		//cout<<'\t'<<nt<<','<<paths[pt][nt].y()<<'\n';
-		//		temp(nt,paths[pt][nt])=Grayscale::BLACK;
-		//	}
-		//	/*if(pt==1) {
-		//	for(auto nt=1U;nt<paths[pt].size();++nt) {
-		//	cout<<EnergyNode::distance(paths[pt][nt],paths[pt][nt-1])<<'\n';
-		//	}
-		//	}*/
-		//}
-		//temp.display();
-		//temp.save("paths.jpg");
-		//return 0;
-		//images cut and saved
 		if(paths.size()==0)
 		{
 			image.save(filename,1,3U);
 			return 1;
 		}
-		unsigned int numImages=0;
-		unsigned int bottomOfOld=0;
-		for(unsigned int pathNum=0;pathNum<paths.size();++pathNum)
+		unsigned int num_images=0;
+		unsigned int bottom_of_old=0;
+		for(unsigned int path_num=0;path_num<paths.size();++path_num)
 		{
-			unsigned int lowestInPath=paths[pathNum][0],highestInPath=paths[pathNum][0];
-			for(unsigned int x=1;x<paths[pathNum].size();++x)
+			unsigned int lowest_in_path=paths[path_num][0],highest_in_path=paths[path_num][0];
+			for(unsigned int x=1;x<paths[path_num].size();++x)
 			{
-				unsigned int nodeY=paths[pathNum][x];
-				if(nodeY>lowestInPath)
+				unsigned int node_y=paths[path_num][x];
+				if(node_y>lowest_in_path)
 				{
-					lowestInPath=nodeY;
+					lowest_in_path=node_y;
 				}
-				else if(nodeY<highestInPath)
+				else if(node_y<highest_in_path)
 				{
-					highestInPath=nodeY;
+					highest_in_path=node_y;
 				}
 			}
 			unsigned int height;
-			height=lowestInPath-bottomOfOld;
+			height=lowest_in_path-bottom_of_old;
 			assert(height<image._height);
-			CImg<unsigned char> newImage(image._width,height);
+			CImg<unsigned char> new_image(image._width,height);
 			//newImage.fill(Grayscale::WHITE);
-			if(pathNum==0)
+			if(path_num==0)
 			{
-				for(unsigned int x=0;x<newImage._width;++x)
+				for(unsigned int x=0;x<new_image._width;++x)
 				{
 					unsigned int y=0;
 					//unsigned int yStage1=paths[pathNum-1][x]-bottomOfOld;
-					unsigned int yStage2=paths[pathNum][x];
+					unsigned int y_stage2=paths[path_num][x];
 					/*for(y=0;y<yStage1;++y) {
 					newImage(x,y)=Grayscale::WHITE;
 					}*/
-					for(;y<yStage2;++y)
+					for(;y<y_stage2;++y)
 					{
-						newImage(x,y)=image(x,y);
+						new_image(x,y)=image(x,y);
 					}
-					for(;y<newImage._height;++y)
+					for(;y<new_image._height;++y)
 					{
-						newImage(x,y)=Grayscale::WHITE;
+						new_image(x,y)=Grayscale::WHITE;
 					}
 				}
 			}
 			else
 			{
-				for(unsigned int x=0;x<newImage._width;++x)
+				for(unsigned int x=0;x<new_image._width;++x)
 				{
 					unsigned int y=0;
-					unsigned int yStage1=paths[pathNum-1][x]-bottomOfOld;
-					unsigned int yStage2=paths[pathNum][x]-bottomOfOld;
-					for(;y<yStage1;++y)
+					unsigned int y_stage1=paths[path_num-1][x]-bottom_of_old;
+					unsigned int y_stage2=paths[path_num][x]-bottom_of_old;
+					for(;y<y_stage1;++y)
 					{
-						newImage(x,y)=Grayscale::WHITE;
+						new_image(x,y)=Grayscale::WHITE;
 					}
-					for(;y<yStage2;++y)
+					for(;y<y_stage2;++y)
 					{
-						newImage(x,y)=image(x,y+bottomOfOld);
+						new_image(x,y)=image(x,y+bottom_of_old);
 					}
-					for(;y<newImage._height;++y)
+					for(;y<new_image._height;++y)
 					{
-						newImage(x,y)=Grayscale::WHITE;
+						new_image(x,y)=Grayscale::WHITE;
 					}
 				}
 			}
-			newImage.save(filename,++numImages,3U);
-			bottomOfOld=highestInPath;
+			new_image.save(filename,++num_images,3U);
+			bottom_of_old=highest_in_path;
 		}
-		CImg<unsigned char> newImage(image._width,image._height-bottomOfOld);
+		CImg<unsigned char> new_image(image._width,image._height-bottom_of_old);
 		//newImage.fill(Grayscale::WHITE);
-		unsigned int yMax=image._height-bottomOfOld;
-		for(unsigned int x=0;x<newImage._width;++x)
+		unsigned int y_max=image._height-bottom_of_old;
+		for(unsigned int x=0;x<new_image._width;++x)
 		{
 /*for(unsigned int y=paths.back()[x]-bottomOfOld;y<yMax;++y) {
 	newImage(x,y)=image(x,y+bottomOfOld);
 }*/
 			unsigned int y=0;
-			unsigned int yStage1=paths.back()[x]-bottomOfOld;
+			unsigned int y_stage1=paths.back()[x]-bottom_of_old;
 			//unsigned int yStage2=paths[pathNum][x]-bottomOfOld;
-			for(;y<yStage1;++y)
+			for(;y<y_stage1;++y)
 			{
-				newImage(x,y)=Grayscale::WHITE;
+				new_image(x,y)=Grayscale::WHITE;
 			}
-			for(;y<newImage._height;++y)
+			for(;y<new_image._height;++y)
 			{
-				newImage(x,y)=image(x,y+bottomOfOld);
+				new_image(x,y)=image(x,y+bottom_of_old);
 			}
 			/*for(;y<newImage._height;++y) {
 				newImage(x,y)=Grayscale::WHITE;
 			}*/
 		}
-		newImage.save(filename,++numImages,3U);
-		return numImages;
+		new_image.save(filename,++num_images,3U);
+		return num_images;
 	}
 
 	void auto_rotate(CImg<unsigned char>& image) {}
 
 	void auto_skew(CImg<unsigned char>& image) {}
-	line<unsigned int> find_top_line(CImg<unsigned char> const& image) {
+	line<unsigned int> find_top_line(CImg<unsigned char> const& image)
+	{
 		return {{0,0},{0,0}};
 	}
-	line<unsigned int> find_bottom_line(CImg<unsigned char> const& image) {
+	line<unsigned int> find_bottom_line(CImg<unsigned char> const& image)
+	{
 		return {{0,0},{0,0}};
 	}
-	line<unsigned int> find_left_line(CImg<unsigned char> const& image) {
+	line<unsigned int> find_left_line(CImg<unsigned char> const& image)
+	{
 		return {{0,0},{0,0}};
 	}
-	line<unsigned int> find_right_line(CImg<unsigned char> const& image) {
+	line<unsigned int> find_right_line(CImg<unsigned char> const& image)
+	{
 		vector<unsigned int> rightProfile;
 		switch(image._spectrum)
 		{
@@ -976,7 +998,8 @@ namespace ScoreProcessor {
 		return container;
 	}
 	*/
-	vector<ImageUtils::Rectangle<unsigned int>> flood_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const color,Point<unsigned int> start) {
+	vector<ImageUtils::Rectangle<unsigned int>> flood_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const color,Point<unsigned int> start)
+	{
 		assert(image._spectrum==1);
 		vector<ImageUtils::Rectangle<unsigned int>> result_container;
 		if(gray_diff(image(start.x,start.y),color)>tolerance)
@@ -1170,7 +1193,8 @@ namespace ScoreProcessor {
 	}
 	*/
 	float const _16by9=16.0f/9.0f;
-	int auto_padding(CImg<unsigned char>& image,unsigned int const vertPadding,unsigned int const horizPaddingIfTall,unsigned int const minHorizPadding) {
+	int auto_padding(CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const horizontal_padding_max,unsigned int const horizontal_padding_min,signed int horiz_offset,float optimal_ratio)
+	{
 		auto const tolerance=5U;
 		unsigned int left,right,top,bottom;
 		switch(image._spectrum)
@@ -1181,7 +1205,8 @@ namespace ScoreProcessor {
 				top=find_top(image,Grayscale::WHITE,tolerance);
 				bottom=find_bottom(image,Grayscale::WHITE,tolerance)+1;
 				break;
-			case 2:
+			case 3:
+			case 4:
 				left=find_left(image,ColorRGB::WHITE,tolerance);
 				right=find_right(image,ColorRGB::WHITE,tolerance)+1;
 				top=find_top(image,ColorRGB::WHITE,tolerance);
@@ -1190,55 +1215,35 @@ namespace ScoreProcessor {
 			default:
 				return 2;
 		}
-	#define prevLeftPadding (left)
-		unsigned int prevRightPadding=image._width-right;
-	#define prevTopPadding (top)
-		unsigned int prevBottomPadding=image._height-bottom;
-		float wholeAspectRatio=static_cast<float>(image._width)/static_cast<float>(image._height);
-		float actualAspectRatio=static_cast<float>(right-left)/static_cast<float>(bottom-top+2*vertPadding);
-		unsigned int horizPaddingToUse=actualAspectRatio<_16by9?horizPaddingIfTall:minHorizPadding;
-		image.crop(static_cast<signed int>(left-horizPaddingToUse),static_cast<signed int>(top-vertPadding),right+horizPaddingToUse-1,bottom+vertPadding-1);
-		if(image._spectrum==1)
+		unsigned int optimal_width=optimal_ratio*(bottom-top+2*vertical_padding);
+		unsigned int horizontal_padding;
+		unsigned int actual_width=right-left;
+		if(optimal_width>actual_width)
 		{
-			if(prevLeftPadding<horizPaddingToUse)
+			horizontal_padding=(optimal_width-actual_width)/2;
+			if(horizontal_padding>horizontal_padding_max)
 			{
-				fill_selection(image,{0,horizPaddingToUse-left,0,image._height},Grayscale::WHITE);
+				horizontal_padding=horizontal_padding_max;
 			}
-			if(prevRightPadding<horizPaddingToUse)
+			if(horizontal_padding<horizontal_padding_min)
 			{
-				fill_selection(image,{image._width+prevRightPadding-horizPaddingToUse,image._width,0,image._height},Grayscale::WHITE);
-			}
-			if(prevTopPadding<vertPadding)
-			{
-				fill_selection(image,{0,image._width,0,vertPadding-top},Grayscale::WHITE);
-			}
-			if(prevBottomPadding<vertPadding)
-			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-vertPadding,image._height},Grayscale::WHITE);
+				horizontal_padding=horizontal_padding_min;
 			}
 		}
-		else if(image._spectrum==3)
+		else
 		{
-			if(prevLeftPadding<vertPadding)
-			{
-				fill_selection(image,{0,horizPaddingToUse-left,0,image._height},ColorRGB::WHITE);
-			}
-			if(prevRightPadding<horizPaddingToUse)
-			{
-				fill_selection(image,{image._width+prevRightPadding-horizPaddingToUse,image._width,0,image._height},ColorRGB::WHITE);
-			}
-			if(prevTopPadding<vertPadding)
-			{
-				fill_selection(image,{0,image._width,0,vertPadding-top},ColorRGB::WHITE);
-			}
-			if(prevBottomPadding<vertPadding)
-			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-vertPadding,image._height},ColorRGB::WHITE);
-			}
+			horizontal_padding=horizontal_padding_min;
 		}
+		image.crop(
+			static_cast<signed int>(left-horizontal_padding),
+			static_cast<signed int>(top-vertical_padding),
+			right+horizontal_padding-1+horiz_offset,
+			bottom+vertical_padding-1,
+			1);
 		return 0;
 	}
-	int horiz_padding(CImg<unsigned char>& image,unsigned int const paddingSize) {
+	int horiz_padding(CImg<unsigned char>& image,unsigned int const paddingSize)
+	{
 		auto const tolerance=5U;
 		unsigned int left,right;
 		switch(image._spectrum)
@@ -1292,7 +1297,8 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	int vert_padding(CImg<unsigned char>& image,unsigned int const paddingSize) {
+	int vert_padding(CImg<unsigned char>& image,unsigned int const paddingSize)
+	{
 		auto const tolerance=5U;
 		unsigned int top,bottom;
 		switch(image._spectrum)
@@ -1340,153 +1346,205 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	unsigned int combine_scores(vector<char*> const& filenames,unsigned int const horizPadding,unsigned int const minVertPadding,unsigned int const maxVertPadding,unsigned int const optimalHeight) {
-		struct basicLine {
-			uint y;
-			uint x;//right to left, where the line ends
-		};
-		struct vert_profile {
-			vector<basicLine> top;
-			vector<basicLine> bottom;
-		};
-		struct boundary_desc {
-			uint top;
-			uint bottom;
-			uint right;
-			sint distNext;
-			uint inline height() const {
-				return bottom-top;
-			}
-		};
-		vector<boundary_desc> boundaries;
-		boundaries.reserve(filenames.size());
+
+	void fatten_profile_high(vector<unsigned int>&,unsigned int const horiz_padding);
+	void fatten_profile_low(vector<unsigned int>&,unsigned int const horiz_padding);
+	unsigned int splice_pages(vector<::std::string> const& filenames,unsigned int const horiz_padding,unsigned int const optimal_padding,unsigned int const allowable_deviance,unsigned int const optimal_height)
+	{
+		if(filenames.size()<2)
 		{
-			vector<vert_profile> profiles;
-			profiles.reserve(filenames.size());
+			return 0;
+		}
+		struct box {
+			unsigned int image_height;
+			unsigned int gap_top;
+			unsigned int gap_bottom;
+		};
+		struct page {
+			unsigned int glue;
+			box content;
+		};
+		//aim for closest to minimal padding?
+		vector<page> items(filenames.size());
+		CImg<unsigned char> above,below(filenames[0].c_str());
+		auto& first_page=below;
+		unsigned int touch_tolerance=first_page._width/1000+1;
+		switch(first_page._spectrum)
+		{
+			case 1:
+				items[0].content.gap_top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
+				break;
+			case 3:
+			case 4:
+				items[0].content.gap_top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
+				break;
+			default:
+				return 0;
+		}
+		{
+			size_t limit=filenames.size()-1;
 			//Creating Vertical profiles of each image
-			for(unsigned int i=0;i<filenames.size();++i)
+			CImg<unsigned char> below(filenames[1].c_str());
+			for(size_t i=0;i<limit;++i)
 			{
-				CImg<unsigned char> temp(filenames[i]);
-				vector<unsigned int> topProf,botProf;
-				if(temp._spectrum==1)
-				{
-					topProf=build_top_profile(temp,Grayscale::WHITE);
-					botProf=build_bottom_profile(temp,Grayscale::WHITE);
+				above=std::move(below);
+				below=CImg<unsigned char>(filenames[i+1].c_str());
+				items[i].content.image_height=above._height;
+				items[i].glue=optimal_padding;
+				vector<unsigned int> bottom_profile,top_profile;
+			#define get_profile(name,side)														\
+				switch(##name##._spectrum){														\
+					case 1:																		\
+						##side##_profile=build_##side##_profile(##name##,Grayscale::WHITE);		\
+						break;																	\
+					case 3:																		\
+					case 4:																		\
+						##side##_profile=build_##side##_profile(##name##,ColorRGB::WHITE);		\
+						break;																	\
+					default:																	\
+						return 0;																\
 				}
-				else if(temp._spectrum==3)
+				get_profile(above,bottom);
+				get_profile(below,top);
+			#undef get_profile
+				//fattening profiles horizontally (adding horizontal padding)
+				fatten_profile_low(bottom_profile,horiz_padding);
+				fatten_profile_high(top_profile,horiz_padding);
+				//finding smallest gap between pages
+				unsigned int lim=std::min(top_profile.size(),bottom_profile.size());
+				unsigned int smallest_gap=~0;
+				for(unsigned int x_off_right=1;x_off_right<=lim;++x_off_right)
 				{
-					topProf=build_top_profile(temp,ColorRGB::WHITE);
-					botProf=build_bottom_profile(temp,ColorRGB::WHITE);
-				}
-				else
-				{
-					return 0;
-				}
-				//fattening profiles horizontally
-				for(unsigned int x=0;x<topProf.size();++x)
-				{
-					unsigned int topVal=topProf[x];
-					unsigned int botVal=botProf[x];
-					unsigned int xMax=x+horizPadding+1;
-					if(xMax>topProf.size())
+					unsigned bottom_x=bottom_profile.size()-x_off_right,top_x=top_profile.size()-x_off_right;
+					unsigned int gap=
+						above._height-bottom_profile[bottom_x]+
+						top_profile[top_x];
+					if(gap<smallest_gap)
 					{
-						xMax=topProf.size();
-					}
-					unsigned int xMin=x-horizPadding;
-					if(xMin>x)
-					{
-						xMin=0;
-					}
-					for(unsigned int xOff=x+1;xOff<xMax;++xOff)
-					{
-						if(topProf[x]<topProf[xOff])
-						{
-							topProf[xOff]=topProf[x];
-						}
-						else
-						{
-							break;
-						}
-					}
-					for(unsigned int xOff=x+1;xOff<xMax;++xOff)
-					{
-						if(botProf[x]>botProf[xOff])
-						{
-							botProf[xOff]=botProf[x];
-						}
-						else
-						{
-							break;
-						}
-					}
-					for(unsigned int xOff=x;xOff-->xMin;)
-					{
-						if(topProf[x]<topProf[xOff])
-						{
-							topProf[xOff]=topProf[x];
-						}
-						else
-						{
-							break;
-						}
-					}
-					for(unsigned int xOff=x;xOff-->xMin;)
-					{
-						if(botProf[x]>botProf[xOff])
-						{
-							botProf[xOff]=botProf[x];
-						}
-						else
-						{
-							break;
-						}
+						smallest_gap=gap;
+						items[i].content.gap_bottom=bottom_profile[bottom_x];
+						items[i+1].content.gap_top=top_profile[top_x];
 					}
 				}
-				profiles.emplace_back();
-				//compresses profiles into basic lines and finds top and bottom
-				unsigned int top=~0,bottom=0;
-				for(unsigned int x=topProf.size()-1;x-->0;)
-				{
-					if(topProf[x]<top)
-					{
-						top=topProf[x];
-					}
-					if(topProf[x]!=topProf[x+1])
-					{
-						profiles.back().top.push_back({topProf[x+1],x});
-					}
-
-					if(botProf[x]>bottom)
-					{
-						bottom=botProf[x];
-					}
-					if(botProf[x]!=botProf[x+1])
-					{
-						profiles.back().bottom.push_back({botProf[x+1],x});
-					}
-				}
-				boundaries.push_back(boundary_desc{top,bottom,(profiles.back().top[0].x+profiles.back().bottom[0].x)/2});
-				profiles.back().top.push_back({topProf[0],0});
-				profiles.back().bottom.push_back({botProf[0],0});
 			}
+			items.back().content.image_height=below._height;
+			items.back().content.gap_bottom=find_bottom(below,Grayscale::WHITE,touch_tolerance);
+			items.back().glue=optimal_padding;
+		}
+		//do knuth glue algorithm
+		vector<vector<page>> spliced;
+		unsigned int numImages=0;
 
-			//find height and minimum kerning
-			//find min combined length
-			for(size_t i=0;++i<profiles.size();)
+		return numImages;
+	}
+	void fatten_profile_high(vector<unsigned int>& profile,unsigned int const horiz_padding)
+	{
+	#define fatten_base(op) \
+		for(unsigned int x=0;x<profile.size();++x)						\
+		{																\
+			unsigned int x_max=x+horiz_padding+1;						\
+			if(x_max>profile.size())									\
+			{															\
+				x_max=profile.size();									\
+			}															\
+			unsigned int x_min=x-horiz_padding;							\
+			if(x_min>x)													\
+			{															\
+				x_min=0;												\
+			}															\
+			for(unsigned int x_offset=x+1;x_offset<x_max;++x_offset)	\
+			{															\
+				if(profile[x] ## op ## profile[x_offset])				\
+				{														\
+					profile[x_offset]=profile[x];						\
+				}														\
+				else													\
+				{														\
+					break;												\
+				}														\
+			}															\
+			for(unsigned int x_offset=x;x_offset-->x_min;)				\
+			{															\
+				if(profile[x] ## op ## profile[x_offset])				\
+				{														\
+					profile[x_offset]=profile[x];						\
+				}														\
+				else													\
+				{														\
+					break;												\
+				}														\
+			}															\
+		}
+		fatten_base(<);
+	}
+	void fatten_profile_low(vector<unsigned int>& profile,unsigned int const horiz_padding)
+	{
+		fatten_base(>);
+	#undef fatten_base
+	}
+	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num);
+	unsigned int splice_pages_greedy(std::string const& output,::std::vector<::std::string> const& filenames,unsigned int optimal_height)
+	{
+		unsigned int current_height=0,old_height=0;
+		unsigned int num_pages=0;
+		std::vector<CImg<unsigned char>> fit;
+		for(size_t i=0;i<filenames.size();++i)
+		{
+			CImg<unsigned char> last(filenames[i].c_str());
+			if(last._spectrum==3)
 			{
-				uint bi=profiles[i-1].bottom.size()-1,
-					ti=profiles[i].top.size()-1;
-
-				for(;bi>0;--bi)
+				last=get_grayscale(last);
+			}
+			current_height+=last._height;
+			if(abs_dif(current_height,optimal_height)>=abs_dif(optimal_height,old_height))
+			{
+				combine_images(output,fit,num_pages);
+				fit.clear();
+				current_height=last._height;
+			}
+			old_height=current_height;
+			fit.emplace_back(std::move(last));
+		}
+		combine_images(output,fit,num_pages);
+		return num_pages;
+	}
+	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
+	{
+		if(pages.empty())
+		{
+			return;
+		}
+		unsigned int height=0;
+		unsigned int width=0;
+		for(auto const& page:pages)
+		{
+			if(page._width>width)
+			{
+				width=page._width;
+			}
+			height+=page._height;
+		}
+		CImg<unsigned char> new_image(width,height,1);
+		unsigned int y_abs=0;
+		for(auto const& page:pages)
+		{
+			for(unsigned int y=0;y<page._height;++y,++y_abs)
+			{
+				unsigned int x_off;
+				for(x_off=1;x_off<=page._width;++x_off)
 				{
-
+					new_image(width-x_off,y_abs)=page(page._width-x_off,y);
+				}
+				for(;x_off<=width;++x_off)
+				{
+					new_image(width-x_off,y_abs)=Grayscale::WHITE;
 				}
 			}
 		}
-		unsigned int numImages=0;
-		return numImages;
+		new_image.save(output.c_str(),++num,3);
 	}
-	void compress(CImg<unsigned char>& image,unsigned int const min_padding,unsigned int const optimal_height,float min_energy) {
+	void compress(CImg<unsigned char>& image,unsigned int const min_padding,unsigned int const optimal_height,float min_energy)
+	{
 		if(image._height<=optimal_height)
 		{
 			return;
@@ -1507,7 +1565,8 @@ namespace ScoreProcessor {
 		}
 	}
 	float const VERTICAL_ENERGY_CONSTANT=100.0f;
-	CImg<float> create_vertical_energy(CImg<unsigned char> const& refImage) {
+	CImg<float> create_vertical_energy(CImg<unsigned char> const& refImage)
+	{
 		CImg<float> map(refImage._width,refImage._height);
 		map.fill(INFINITY);
 		for(unsigned int x=0;x<map._width;++x)
@@ -1529,12 +1588,12 @@ namespace ScoreProcessor {
 					#define placeValues() \
 							unsigned int mid=(nodeStart+y)/2;\
 							unsigned int valueDivider=2U;\
-							unsigned int nodeY;\
-							for(nodeY=nodeStart;nodeY<mid;++nodeY) {\
-								map(x,nodeY)=VERTICAL_ENERGY_CONSTANT/(++valueDivider);\
+							unsigned int node_y;\
+							for(node_y=nodeStart;node_y<mid;++node_y) {\
+								map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(++valueDivider*valueDivider);\
 							}\
-							for(;nodeY<y;++nodeY) {\
-								map(x,nodeY)=VERTICAL_ENERGY_CONSTANT/(--valueDivider);\
+							for(;node_y<y;++node_y) {\
+								map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(--valueDivider*valueDivider);\
 							}
 						placeValues();
 					}
@@ -1557,7 +1616,8 @@ namespace ScoreProcessor {
 	#undef assign_nodeFound
 	}
 	float const HORIZONTAL_ENERGY_CONSTANT=1.0f;
-	CImg<float> create_compress_energy(CImg<unsigned char> const& refImage) {
+	CImg<float> create_compress_energy(CImg<unsigned char> const& refImage)
+	{
 		auto map=create_vertical_energy(refImage);
 		for(auto y=0U;y<map._height;++y)
 		{
@@ -1601,7 +1661,8 @@ namespace ScoreProcessor {
 	#undef placeValues
 	#undef assign_noteFound
 	}
-	void remove_border(CImg<unsigned char>& image,Grayscale const color,float const tolerance) {
+	void remove_border(CImg<unsigned char>& image,Grayscale const color,float const tolerance)
+	{
 		uint right=image._width-1;
 		uint bottom=image._height-1;
 		for(uint x=0;x<=right;++x)
@@ -1615,11 +1676,47 @@ namespace ScoreProcessor {
 			flood_fill(image,tolerance,color,Grayscale::WHITE,{right,y});
 		}
 	}
-	void flood_fill(CImg<unsigned char>& image,float const tolerance,Grayscale const color,Grayscale const replacer,Point<unsigned int> point) {
+	void flood_fill(CImg<unsigned char>& image,float const tolerance,Grayscale const color,Grayscale const replacer,Point<unsigned int> point)
+	{
 		auto rects=flood_select(image,tolerance,color,point);
 		for(auto const& rect:rects)
 		{
 			fill_selection(image,rect,replacer);
+		}
+	}
+	void rescale_colors(CImg<unsigned char>& img,unsigned char min,unsigned char mid,unsigned char max)
+	{
+		assert(min<mid);
+		assert(mid<max);
+		double scale_up=scast<double>(255-mid)/scast<double>(max-mid),
+			scale_down=scast<double>(mid)/scast<double>(mid-min);
+		for(uint x=0;x<img._width;++x)
+		{
+			for(uint y=0;y<img._height;++y)
+			{
+				unsigned char& pixel=img(x,y);
+				if(pixel<=min)
+				{
+					pixel=0;
+				}
+				else if(pixel>=max)
+				{
+					pixel=255;
+				}
+				else
+				{
+					if(pixel>mid)
+					{
+						pixel=mid+(pixel-mid)*scale_up;
+						assert(pixel>mid);
+					}
+					else
+					{
+						pixel=mid-(mid-pixel)*scale_down;
+						assert(pixel<=mid);
+					}
+				}
+			}
 		}
 	}
 }

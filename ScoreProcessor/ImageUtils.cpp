@@ -15,13 +15,21 @@ namespace ImageUtils {
 	ColorRGB::operator Grayscale() const {
 		return static_cast<Grayscale>((r*0.2126f+g*0.7152f+b*0.0722f));
 	}
-	float const max_dif_rgb=255.0f*255.0f*3.0f;
+
+	float ColorRGB::difference(ColorRGB other) {
+		float
+			rdif=misc_alg::abs_dif(r,other.r),
+			gdif=misc_alg::abs_dif(g,other.g),
+			bdif=misc_alg::abs_dif(b,other.b);
+		return (rdif*rdif+gdif*gdif+bdif*bdif)/(255.0f*255.0f*3.0f);
+	}
+
 	float ColorRGB::color_diff(unsigned char const* const c1,unsigned char const* const c2) {
 		float
 			rdif=misc_alg::abs_dif(c1[0],c2[0]),
 			gdif=misc_alg::abs_dif(c1[1],c2[1]),
 			bdif=misc_alg::abs_dif(c1[2],c2[2]);
-		return (rdif*rdif+gdif*gdif+bdif*bdif)/max_dif_rgb;
+		return (rdif*rdif+gdif*gdif+bdif*bdif)/(255.0f*255.0f*3.0f);
 	}
 	ColorRGB const ColorRGB::WHITE={255,255,255};
 	ColorRGB const ColorRGB::BLACK={0,0,0};
@@ -40,6 +48,10 @@ namespace ImageUtils {
 
 	Grayscale const Grayscale::WHITE=255;
 	Grayscale const Grayscale::BLACK=0;
+
+	float Grayscale::difference(Grayscale other) {
+		return static_cast<float>(misc_alg::abs_dif(*this,other))/255.0f;
+	}
 #pragma endregion
 	ColorRGB ColorRGBA::toRGB() const {
 		return ColorRGB{r,g,b};

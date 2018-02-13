@@ -52,7 +52,7 @@ namespace ScoreProcessor {
 			Given a vector of rectangles,
 			Returns a vector of pointers to clusters made from those rectangles
 		*/
-		static ::std::vector<::std::unique_ptr<Cluster>> cluster_ranges(::std::vector<ImageUtils::RectangleUINT> const& ranges);
+		static ::std::vector<::std::unique_ptr<Cluster>> cluster_ranges(::std::vector<ImageUtils::Rectangle<unsigned int>> const& ranges);
 	};
 }
 #endif // !CLUSTER_H

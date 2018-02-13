@@ -6,17 +6,17 @@
 #define M_PI_2	1.57079632679489661923
 namespace cimg_library {
 	/*
-	Returns an image that has the absolute vertical brightness gradient at each point
+	Returns an image that has the vertical brightness gradient at each point
 	*/
-	::cimg_library::CImg<unsigned char> get_vertical_gradient(::cimg_library::CImg<unsigned char> const&);
+	::cimg_library::CImg<signed char> get_vertical_gradient(::cimg_library::CImg<unsigned char> const&);
 	/*
 	Returns an image that has the absolute horizontal brightness gradient at each point
 	*/
-	::cimg_library::CImg<unsigned char> get_horizontal_gradient(::cimg_library::CImg<unsigned char> const&);
+	::cimg_library::CImg<signed char> get_horizontal_gradient(::cimg_library::CImg<unsigned char> const&);
 	/*
-	Returns an image that has the absolute brightness gradient at each point
+	Returns an image that has the absolute brightness gradient at each point, in 2 layers
 	*/
-	cimg_library::CImg<unsigned char> get_absolute_gradient(::cimg_library::CImg<unsigned char> const&);
+	cimg_library::CImg<signed char> get_absolute_gradient(::cimg_library::CImg<unsigned char> const&);
 	/*
 	Returns an image that has the absolute brightness gradient at each point
 	*/
@@ -60,6 +60,10 @@ namespace cimg_library {
 	@param image, must be 3 channel RGB
 	*/
 	::cimg_library::CImg<unsigned char> get_grayscale(::cimg_library::CImg<unsigned char> const& image);
+	/*
+	*/
+	::cimg_library::CImg<unsigned char> get_grayscale_simple(::cimg_library::CImg<unsigned char> const& image);
+	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer);
 	/*
 		Performs a HoughTransform
 		Add pi/2 to the hough theta to get the line horizontal theta

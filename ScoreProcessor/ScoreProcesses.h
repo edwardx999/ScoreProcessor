@@ -226,13 +226,13 @@ namespace ScoreProcessor {
 	*/
 	::std::vector<::std::unique_ptr<ImageUtils::Rectangle<unsigned int>>> select_outside(::cimg_library::CImg<unsigned char> const& image);
 	/*
-		Cuts a specified score image into multiple smaller images
+		Cuts a specified score page into multiple smaller images
 		@param image
 		@param filename, the start of the filename that the images will be saved as
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cut_image(::cimg_library::CImg<unsigned char> const& image,char const* const filename);
+	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* const filename);
 
 	/*
 		Finds the line that is the top of the score image
@@ -335,10 +335,13 @@ namespace ScoreProcessor {
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
-		@param paddingSize, size in pixels of padding
+		@param vertical_padding, size in pixels of padding on top and bottom
+		@param max_horizontal_padding
+		@param min_horizontal_padding
+		@param optimal_ratio
 		@return 0 if worked, 1 if already padded, 2 if improper image
 	*/
-	int auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertPadding,unsigned int const horizPaddingIfTall,unsigned int const minHorizPadding);
+	int auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const max_horizontal_padding,unsigned int const min_horizontal_padding,signed int horiz_offset,float optimal_ratio=16.0f/9.0f);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
@@ -353,12 +356,22 @@ namespace ScoreProcessor {
 		@return 0 if worked, 1 if already padded, 2 if improper image
 	*/
 	int vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const paddingSize);
-	unsigned int combine_scores(::std::vector<char*> const& filenames,unsigned int const horizPadding,unsigned int const minVertPadding,unsigned int const maxVertPadding,unsigned int const optimalHeight);
+	/*
+		Combines pages together to achieve optimal size for each page
+		Aligns right side of each image
+		@param filenames, vector of filenames of pages to be combined
+		@param horiz_padding, the padding size in pixels between content on the page
+		@param optimal_padding, half the optimal padding between pages
+		@param allowable_deviance, the maximum number of pixels that the padding can deviate from optimum
+		@param optimal_height, the optimal height for spliced pages
+	*/
+	unsigned int splice_pages(::std::vector<::std::string> const& filenames,unsigned int const horiz_padding,unsigned int const optimal_padding,unsigned int const allowable_deviance,unsigned int const optimal_height);
+	unsigned int splice_pages_greedy(std::string const& output,::std::vector<::std::string> const& filenames,unsigned int optimal_height);
 	void compress(::cimg_library::CImg<unsigned char>& image,unsigned int const minPadding,unsigned int const optimalHeight,float min_energy=0);
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);
 
-
+	void rescale_colors(::cimg_library::CImg<unsigned char>&,unsigned char min,unsigned char mid,unsigned char max=255);
 }
 #include "ScoreProcessesT.cpp"
 #endif // !1

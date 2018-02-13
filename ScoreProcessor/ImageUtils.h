@@ -84,7 +84,7 @@ namespace ImageUtils {
 		explicit operator ColorHSV() const;
 		explicit operator Grayscale() const;
 		unsigned char brightness() const;
-		//float color_diff(ColorRGB const other);
+		float difference(ColorRGB other);
 
 		static float color_diff(unsigned char const* const,unsigned char const* const);
 	};
@@ -113,6 +113,7 @@ namespace ImageUtils {
 		inline Grayscale& operator=(unsigned char const val) { value=val; return *this; }
 		static Grayscale const WHITE;
 		static Grayscale const BLACK;
+		float difference(Grayscale other);
 
 		static float color_diff(unsigned char const* const,unsigned char const* const);
 	};
@@ -126,12 +127,6 @@ namespace ImageUtils {
 	inline unsigned char ColorRGB::brightness() const {
 		return ImageUtils::brightness(*this);
 	}
-	/*
-	inline float ColorRGB::color_diff(ColorRGB const other) {
-		return ColorRGB::color_diff(reinterpret_cast<unsigned char const* const>(this),
-			reinterpret_cast<unsigned char const* const>(&other));
-	}
-	*/
 }
 #include "ImageUtilsTemplate.cpp"
 #endif
