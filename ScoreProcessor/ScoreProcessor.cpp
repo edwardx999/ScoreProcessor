@@ -290,28 +290,31 @@ void process(string const& path,vector<uptr<ImageProcess>>* pprocesses,unsigned 
 	}
 }
 int main()
-{
+{	
+	Grayscale mid=128;
+	CImg<uchar> test("ctest.jpg");
+	test=get_grayscale_simple(test);
+	clear_clusters(test,rcast<ucharcp>(&Grayscale::WHITE),Grayscale::color_diff,0.042,true,0,50,rcast<ucharcp>(&mid));
+	test.save("ctest_c.png");
+	return 0;
 	cout<<"hi\n";
-	//pad_vert();
-	//splice();
-	//Grayscale near_white=200;
-	//cout<<Grayscale::color_diff(rcast<ucharcpc>(&near_white),rcast<ucharcpc>(&Grayscale::BLACK))<<'\n';
-	string path="C:\\Users\\edwar\\Videos\\Score\\hbenimora\\";
+	string path="C:\\Users\\edwar\\Videos\\Score\\hbenimora\\cut\\";
 	//cut(path);
 	//path+=string("cut\\");
 	vector<uptr<ImageProcess>> ips;
 	ips.emplace_back(make_unique<RemoveTransparency>());
 	ips.emplace_back(make_unique<ChangeToGrayscale>());
-	ips.emplace_back(make_unique<PadAuto>(100,100,200,50));
+	ips.emplace_back(make_unique<PadAuto>(100,100,210,50));
+	//ips.emplace_back(make_unique<RescaleColors>(40,255));
 	//ips.emplace_back(make_unique<Resize>(0.5));
 	//ips.emplace_back(make_unique<FillSelection>(ImageUtils::Rectangle<unsigned int>{3385,3385+226,9337,9337+80}));
 	//ips.emplace_back(make_unique<FillSelection>(ImageUtils::Rectangle<unsigned int>{6395,6395+150,512,512+85}));
 
 	//ips.emplace_back(make_unique<FilterGray>(190));
-	//ips.emplace_back(make_unique<RescaleColors>(40,255));
+	
 	//ips.emplace_back(make_unique<Resize>(0.5));
 	//ips.emplace_back(make_unique<ClusterClear>(20'000'000,~0));
-	//2ips.emplace_back(make_unique<RemoveProcess>());
+	//ips.emplace_back(make_unique<RemoveProcess>());
 	//ips.emplace_back(make_unique<Resize>(2.0/3.0));
 	//ips.emplace_back(make_unique<PadHoriz>(200));
 	//ips.emplace_back(make_unique<PadVert>(200));

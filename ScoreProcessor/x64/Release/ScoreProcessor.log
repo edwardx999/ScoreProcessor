@@ -1,1 +1,15 @@
-﻿  ScoreProcessor.vcxproj -> C:\Users\edwar\documents\visual studio 2017\Projects\ScoreProcessor\x64\Release\ScoreProcessor.exe
+﻿  ScoreProcessor.cpp
+ScoreProcessor.cpp(113): warning C4305: 'argument': truncation from 'double' to 'float'
+ScoreProcessor.cpp(297): warning C4305: 'argument': truncation from 'double' to 'float'
+c:\users\edwar\documents\visual studio 2017\projects\scoreprocessor\scoreprocessor\lib/exstring/exstdstring.h(56): warning C4244: '=': conversion from 'const wchar_t' to 'char', possible loss of data
+  ScoreProcessor.cpp(218): note: see reference to function template instantiation 'stype_dest exlib::string_cast<std::string,wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t>>(const std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t>> &)' being compiled
+          with
+          [
+              stype_dest=std::string
+          ]
+  Generating code
+  103 of 2622 functions ( 3.9%) were compiled, the rest were copied from previous compilation.
+    27 functions were new in current compilation
+    120 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  ScoreProcessor.vcxproj -> C:\Users\edwar\documents\visual studio 2017\Projects\ScoreProcessor\x64\Release\ScoreProcessor.exe

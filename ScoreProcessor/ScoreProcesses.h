@@ -365,7 +365,7 @@ namespace ScoreProcessor {
 		@param allowable_deviance, the maximum number of pixels that the padding can deviate from optimum
 		@param optimal_height, the optimal height for spliced pages
 	*/
-	unsigned int splice_pages(::std::vector<::std::string> const& filenames,unsigned int const horiz_padding,unsigned int const optimal_padding,unsigned int const allowable_deviance,unsigned int const optimal_height);
+	unsigned int splice_pages(::std::vector<::std::string> const& filenames,unsigned int const horiz_padding,unsigned int const optimal_padding,unsigned int const min_padding,unsigned int const optimal_height);
 	unsigned int splice_pages_greedy(std::string const& output,::std::vector<::std::string> const& filenames,unsigned int optimal_height);
 	void compress(::cimg_library::CImg<unsigned char>& image,unsigned int const minPadding,unsigned int const optimalHeight,float min_energy=0);
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);

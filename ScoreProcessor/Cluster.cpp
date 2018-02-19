@@ -6,7 +6,8 @@ using namespace std;
 namespace ScoreProcessor {
 	Cluster::Cluster():ranges() {}
 	Cluster::~Cluster() {}
-	unsigned int Cluster::size() const {
+	unsigned int Cluster::size() const
+	{
 		unsigned int size=0;
 		for(unsigned int i=0;i<ranges.size();++i)
 		{
@@ -14,10 +15,12 @@ namespace ScoreProcessor {
 		}
 		return size;
 	}
-	vector<ImageUtils::RectangleUINT> const& Cluster::get_ranges() const {
+	vector<ImageUtils::RectangleUINT> const& Cluster::get_ranges() const
+	{
 		return ranges;
 	}
-	ImageUtils::Rectangle<unsigned int> Cluster::bounding_box() const {
+	ImageUtils::Rectangle<unsigned int> Cluster::bounding_box() const
+	{
 		ImageUtils::Rectangle<unsigned int> box={~0,0,~0,0};
 		for(auto const& rect:ranges)
 		{
@@ -40,7 +43,8 @@ namespace ScoreProcessor {
 		}
 		return box;
 	}
-	ImageUtils::Point<unsigned int> Cluster::center() const {
+	ImageUtils::Point<unsigned int> Cluster::center() const
+	{
 		ImageUtils::Point<double> center={0.0,0.0};
 		double denom=0.0;
 		for(auto const& rect:ranges)
@@ -66,20 +70,25 @@ namespace ScoreProcessor {
 	} \
 	return point
 
-	ImageUtils::Point<unsigned int> Cluster::right_top() const {
+	ImageUtils::Point<unsigned int> Cluster::right_top() const
+	{
 		xfirst_point_finder(0,right,>,~0,top,<);
 	}
-	ImageUtils::Point<unsigned int> Cluster::right_bottom() const {
+	ImageUtils::Point<unsigned int> Cluster::right_bottom() const
+	{
 		xfirst_point_finder(0,right,>,0,bottom,>);
 	}
-	ImageUtils::Point<unsigned int> Cluster::left_top() const {
+	ImageUtils::Point<unsigned int> Cluster::left_top() const
+	{
 		xfirst_point_finder(~0,left,<,~0,top,<);
 	}
-	ImageUtils::Point<unsigned int> Cluster::left_bottom() const {
+	ImageUtils::Point<unsigned int> Cluster::left_bottom() const
+	{
 		xfirst_point_finder(~0,left,<,0,bottom,>);
 	}
 #undef xfirst_point_finder
-	ImageUtils::vertical_line<unsigned int> Cluster::right_side() const {
+	ImageUtils::vertical_line<unsigned int> Cluster::right_side() const
+	{
 		ImageUtils::vertical_line<> line={0,~0,0};
 		for(auto const& rect:ranges)
 		{
@@ -103,39 +112,45 @@ namespace ScoreProcessor {
 		}
 		return line;
 	}
-	vector<unique_ptr<Cluster>> Cluster::cluster_ranges(vector<ImageUtils::Rectangle<unsigned int>> const& ranges) {
+	vector<unique_ptr<Cluster>> Cluster::cluster_ranges(vector<ImageUtils::Rectangle<unsigned int>> const& ranges)
+	{
 		vector<unique_ptr<Cluster>> cluster_container;
 		struct ClusterPart {
 			Cluster* cluster;
-			ImageUtils::Rectangle<unsigned int> const* const rect;
-			ClusterPart(ImageUtils::Rectangle<unsigned int> const* const rect):cluster(nullptr),rect(rect) {}
+			ImageUtils::Rectangle<unsigned int> const* rect;
+			ClusterPart(ImageUtils::Rectangle<unsigned int> const* rect):cluster(nullptr),rect(rect) {}
 		};
 		struct ClusterTestNode {
 			ClusterPart* parent;
 			bool _is_top;
 			unsigned int y;
-			bool operator<(ClusterTestNode const& other) const {
+			bool operator<(ClusterTestNode const& other) const
+			{
+				if(y==other.y)
+				{
+					return _is_top<other._is_top;
+				}
 				return y<other.y;
 			}
-			inline bool is_top() const {
+			inline bool is_top() const
+			{
 				return _is_top;
 			}
-			inline bool is_bottom() const {
+			inline bool is_bottom() const
+			{
 				return !_is_top;
 			}
 			ClusterTestNode(ClusterPart* parent,bool is_top):
 				parent(parent),
 				_is_top(is_top),
-				y(is_top?parent->rect->top:parent->rect->bottom) {}
+				y(is_top?parent->rect->top:parent->rect->bottom)
+			{}
 		};
-		vector<ClusterPart> parts;
-		vector<ClusterTestNode> tests;
+		vector<ClusterPart> parts;parts.reserve(ranges.size());
+		vector<ClusterTestNode> tests;tests.reserve(ranges.size()*2);
 		for(unsigned int i=0;i<ranges.size();++i)
 		{
 			parts.emplace_back(ranges.data()+i);
-		}
-		for(unsigned int i=0;i<parts.size();++i)
-		{
 			tests.emplace_back(parts.data()+i,true);
 			tests.emplace_back(parts.data()+i,false);
 		}
@@ -145,8 +160,8 @@ namespace ScoreProcessor {
 		for(unsigned int i=max-1;i<max;--i)
 		{
 			ClusterTestNode const& current_node=tests[i];
-			if(current_node.is_top()) continue;
-			if(!current_node.parent->cluster)
+			if(current_node.is_top()) { continue; }
+			if(current_node.parent->cluster==nullptr)
 			{
 				unique_ptr<Cluster> current_cluster=make_unique<Cluster>();
 				search_stack.push(i);
@@ -155,14 +170,14 @@ namespace ScoreProcessor {
 					unsigned int search_index=search_stack.top();
 					search_stack.pop();
 					ClusterTestNode const& search_node=tests[search_index];
+					if(search_node.parent->cluster!=nullptr)
+					{
+						continue;
+					}
 					search_node.parent->cluster=current_cluster.get();
 					current_cluster->ranges.push_back(*search_node.parent->rect);
 					for(unsigned int s=search_index-1;s<max;--s)
 					{
-						if(tests[s].parent->cluster)
-						{
-							continue;
-						}
 						if(tests[s].is_bottom())
 						{
 							if(tests[s].y<search_node.parent->rect->top)
@@ -179,17 +194,13 @@ namespace ScoreProcessor {
 					}
 					for(unsigned int s=search_index+1;s<max;++s)
 					{
-						if(tests[s].parent->cluster)
-						{
-							continue;
-						}
 						if(tests[s].is_top())
 						{
-							if(tests[s].parent->rect->top>search_node.parent->rect->bottom)
+							if(tests[s].y>search_node.parent->rect->bottom)
 							{
 								break;
 							}
-							if(tests[s].parent->rect->top==search_node.parent->rect->bottom
+							if(tests[s].y==search_node.parent->rect->bottom
 								&&tests[s].parent->rect->overlaps_x(*search_node.parent->rect))
 							{
 								search_stack.push(s);

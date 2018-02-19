@@ -730,18 +730,20 @@ namespace ScoreProcessor {
 			auto const selections=global_select(map,rcast<float*>(0),float_color::diff,0.5,false);
 			auto const clusters=Cluster::cluster_ranges(selections);
 			vector<line> boxes;
-			unsigned int threshold=
+			unsigned int threshold_width=map._width/2,
+				threshold_height=map._height/13;
 				//(map._height*map._width)/20;
-				map._width/2;
+
 			for(size_t i=0;i<clusters.size();++i)
 			{
 				//if(clusters[i]->size()>threshold)
-				if(clusters[i]->bounding_box().width()>threshold)
+				auto box=clusters[i]->bounding_box();
+				if(box.width()>threshold_width&&box.height()>threshold_height)
 				{
 					boxes.push_back(clusters[i]->right_side());
 				}
 			}
-			std::sort(boxes.begin(),boxes.end(),[](line& a,line&b) {return a.bottom<b.top;});
+			std::sort(boxes.begin(),boxes.end(),[](line& a,line&b) { return a.bottom<b.top; });
 			/*for(auto const& line:boxes)
 			{
 				cout<<line.top<<' '<<line.bottom<<'\n';
@@ -1347,97 +1349,142 @@ namespace ScoreProcessor {
 		return 0;
 	}
 
-	void fatten_profile_high(vector<unsigned int>&,unsigned int const horiz_padding);
-	void fatten_profile_low(vector<unsigned int>&,unsigned int const horiz_padding);
-	unsigned int splice_pages(vector<::std::string> const& filenames,unsigned int const horiz_padding,unsigned int const optimal_padding,unsigned int const allowable_deviance,unsigned int const optimal_height)
+	void fatten_profile_high(vector<unsigned int>&,unsigned int horiz_padding);
+	void fatten_profile_low(vector<unsigned int>&,unsigned int horiz_padding);
+	struct page {
+		CImg<uchar> img;
+		uint top;
+		uint bottom;
+		uint height() const
+		{
+			return bottom-top;
+		}
+	};
+	void splice_images(page const* imgs,size_t num,unsigned int padding,char* filename,unsigned int page_num);
+	unsigned int splice_pages(
+		vector<::std::string> const& filenames,
+		unsigned int const horiz_padding,
+		unsigned int const optimal_padding,
+		unsigned int const min_padding,
+		unsigned int const optimal_height)
 	{
 		if(filenames.size()<2)
 		{
 			return 0;
 		}
-		struct box {
-			unsigned int image_height;
-			unsigned int gap_top;
-			unsigned int gap_bottom;
+		class Splice: public vector<page> {
+		public:
+			uint height;
+			uint padding;
 		};
-		struct page {
-			unsigned int glue;
-			box content;
+		struct cost_pad {
+			float cost;
+			uint padding;
 		};
-		//aim for closest to minimal padding?
-		vector<page> items(filenames.size());
-		CImg<unsigned char> above,below(filenames[0].c_str());
-		auto& first_page=below;
+		function<cost_pad(page const*,size_t)> cost_splice=
+			[optimal_padding,min_padding,optimal_height](page const* page,size_t num)
+		{
+			uint height=0;
+			for(size_t i=0;i<num;++i)
+			{
+				height+=page[i].height();
+			}
+			uint padding;
+			if(height>optimal_height)
+			{
+				padding=min_padding;
+				height+=min_padding*(num+1);
+			}
+			else
+			{
+				padding=(optimal_height-height)/(num+1);
+				if(padding<min_padding)
+				{
+					padding=min_padding;
+					height+=min_padding*(num+1);
+				}
+				else
+				{
+					height=optimal_height;
+				}
+			}
+			return cost_pad
+			{
+				sqrtf(abs_dif(padding,optimal_padding))+sqrtf(abs_dif(height,optimal_height)),
+				padding
+			};
+		};
+		float cost_prev,cost;
+		Splice items;
+		items.push_back({CImg<uchar>(filenames[0].c_str())});
+		auto const& first_page=items[0].img;
 		unsigned int touch_tolerance=first_page._width/1000+1;
 		switch(first_page._spectrum)
 		{
 			case 1:
-				items[0].content.gap_top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
+				items[0].top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
 				break;
 			case 3:
 			case 4:
-				items[0].content.gap_top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
+				items[0].top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
 				break;
 			default:
 				return 0;
 		}
-		{
-			size_t limit=filenames.size()-1;
-			//Creating Vertical profiles of each image
-			CImg<unsigned char> below(filenames[1].c_str());
-			for(size_t i=0;i<limit;++i)
-			{
-				above=std::move(below);
-				below=CImg<unsigned char>(filenames[i+1].c_str());
-				items[i].content.image_height=above._height;
-				items[i].glue=optimal_padding;
-				vector<unsigned int> bottom_profile,top_profile;
-			#define get_profile(name,side)														\
-				switch(##name##._spectrum){														\
-					case 1:																		\
-						##side##_profile=build_##side##_profile(##name##,Grayscale::WHITE);		\
-						break;																	\
-					case 3:																		\
-					case 4:																		\
-						##side##_profile=build_##side##_profile(##name##,ColorRGB::WHITE);		\
-						break;																	\
-					default:																	\
-						return 0;																\
-				}
-				get_profile(above,bottom);
-				get_profile(below,top);
-			#undef get_profile
-				//fattening profiles horizontally (adding horizontal padding)
-				fatten_profile_low(bottom_profile,horiz_padding);
-				fatten_profile_high(top_profile,horiz_padding);
-				//finding smallest gap between pages
-				unsigned int lim=std::min(top_profile.size(),bottom_profile.size());
-				unsigned int smallest_gap=~0;
-				for(unsigned int x_off_right=1;x_off_right<=lim;++x_off_right)
-				{
-					unsigned bottom_x=bottom_profile.size()-x_off_right,top_x=top_profile.size()-x_off_right;
-					unsigned int gap=
-						above._height-bottom_profile[bottom_x]+
-						top_profile[top_x];
-					if(gap<smallest_gap)
-					{
-						smallest_gap=gap;
-						items[i].content.gap_bottom=bottom_profile[bottom_x];
-						items[i+1].content.gap_top=top_profile[top_x];
-					}
-				}
-			}
-			items.back().content.image_height=below._height;
-			items.back().content.gap_bottom=find_bottom(below,Grayscale::WHITE,touch_tolerance);
-			items.back().glue=optimal_padding;
-		}
+		//size_t limit=filenames.size()-1;
+		////Creating Vertical profiles of each image
+		//for(size_t i=0;i<limit;++i)
+		//{
+		//	items.push_back({CImg<uchar>(filenames[i+1].c_str())});
+		//	auto& above=items[i].img;
+		//	auto& below=items[i+1].img;
+		//	vector<unsigned int> bottom_profile,top_profile;
+		//#define get_profile(name,side)														\
+		//		switch(##name##._spectrum){														\
+		//			case 1:																		\
+		//				##side##_profile=build_##side##_profile(##name##,Grayscale::WHITE);		\
+		//				break;																	\
+		//			case 3:																		\
+		//			case 4:																		\
+		//				##side##_profile=build_##side##_profile(##name##,ColorRGB::WHITE);		\
+		//				break;																	\
+		//			default:																	\
+		//				return 0;																\
+		//		}
+		//	get_profile(above,bottom);
+		//	get_profile(below,top);
+		//#undef get_profile
+		//	//fattening profiles horizontally (adding horizontal padding)
+		//	fatten_profile_low(bottom_profile,horiz_padding);
+		//	fatten_profile_high(top_profile,horiz_padding);
+		//	//finding smallest gap between pages
+		//	unsigned int lim=std::min(top_profile.size(),bottom_profile.size());
+		//	unsigned int smallest_gap=~0;
+		//	for(unsigned int x_off_right=1;x_off_right<=lim;++x_off_right)
+		//	{
+		//		unsigned bottom_x=bottom_profile.size()-x_off_right,top_x=top_profile.size()-x_off_right;
+		//		unsigned int gap=
+		//			above._height-bottom_profile[bottom_x]+
+		//			top_profile[top_x];
+		//		if(gap<smallest_gap)
+		//		{
+		//			smallest_gap=gap;
+		//			items[i].content.gap_bottom=bottom_profile[bottom_x];
+		//			items[i+1].content.gap_top=top_profile[top_x];
+		//		}
+		//	}
+		//}
+		//items.back().content.image_height=below._height;
+		//items.back().content.gap_bottom=find_bottom(below,Grayscale::WHITE,touch_tolerance);
+		//items.back().glue=optimal_padding;
+
 		//do knuth glue algorithm
 		vector<vector<page>> spliced;
 		unsigned int numImages=0;
 
 		return numImages;
 	}
-	void fatten_profile_high(vector<unsigned int>& profile,unsigned int const horiz_padding)
+	void fatten_profile_high(vector<unsigned int>& profile,unsigned int horiz_padding)
 	{
 	#define fatten_base(op) \
 		for(unsigned int x=0;x<profile.size();++x)						\
@@ -1477,7 +1524,7 @@ namespace ScoreProcessor {
 		}
 		fatten_base(<);
 	}
-	void fatten_profile_low(vector<unsigned int>& profile,unsigned int const horiz_padding)
+	void fatten_profile_low(vector<unsigned int>& profile,unsigned int horiz_padding)
 	{
 		fatten_base(>);
 	#undef fatten_base
