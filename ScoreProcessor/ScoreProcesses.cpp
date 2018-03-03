@@ -1,3 +1,19 @@
+/*
+Copyright(C) 2017-2018 Edward Xie
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
 #include "stdafx.h"
 #include "ScoreProcesses.h"
 #include <thread>
@@ -1514,8 +1530,10 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			items.emplace_back(it->c_str());
 			auto& above=*(items.end()-2);
 			auto& below=items.back();
+
 			below_top_profile=get_top_profile(below);
 			below_bottom_profile=get_bottom_profile(below);
+			
 			//fattening profiles horizontally (adding horizontal padding)
 			above_bottom_profile=fattened_profile_low(above_bottom_profile,horiz_padding);
 			below_top_profile=fattened_profile_high(below_top_profile,horiz_padding);

@@ -1,3 +1,19 @@
+/*
+Copyright(C) 2017-2018 Edward Xie
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
 #ifndef IMAGE_PROCESS_H
 #define IMAGE_PROCESS_H
 #include "CImg.h"
@@ -20,44 +36,6 @@ namespace ScoreProcessor {
 		{};
 		virtual void process(Img&)=0;
 	};
-	/*
-	template<typename T=unsigned char>
-	class SaveProcess:public ImageProcess<T> {
-		char* filename;
-	public:
-		template<typename String>
-		SaveProcess(String& path)
-		{
-			filename=new char[path.size()+1];
-			size_t i;
-			for(i=0;i<path.size();++i)
-			{
-				filename[i]=path[i];
-			}
-			filename[i]='\0';
-		}
-		SaveProcess(char const* path)
-		{
-			size_t s=strlen(path);
-			filename=new char[s+1];
-			filename[s]='\0';
-			--s;
-			do
-			{
-				filename[s]=path[s];
-				--s;
-			} while(s>0);
-		}
-		void process(Img& img) override
-		{
-			img.save(filename);
-		}
-		~SaveProcess()
-		{
-			delete[] filename;
-		}
-	};
-	*/
 	class Log {
 	public:
 		virtual ~Log()=default;
@@ -404,7 +382,7 @@ namespace ScoreProcessor {
 			{
 				if(*it=='\\'||*it=='/')
 				{
-					return it;
+					return it+1;
 				}
 				if(it==(&(*in.cbegin())))
 				{

@@ -1,5 +1,19 @@
-// ScoreProcessor.cpp : Defines the entry point for the console application.
-//
+/*
+Copyright(C) 2017-2018 Edward Xie
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
 #include "stdafx.h"
 #include <vector>
 #include <memory>
@@ -9,7 +23,6 @@
 #include "allAlgorithms.h"
 #include "lib/threadpool/ThreadPool.h"
 #include "lib/exstring/exfiles.h"
-#include "convert.h"
 #include "shorthand.h"
 #include "ImageProcess.h"
 #include <algorithm>
@@ -183,6 +196,22 @@ public:
 };
 char const* const CommandMaker::mci="Multi command incompatibility";;
 class FilterGrayMaker:public CommandMaker {
+	static char const* assign_val(iter arg,int* hold)
+	{
+		try
+		{
+			*hold=std::stoi(*arg);
+			if(*hold<0||*hold>255)
+			{
+				return "Values must be in range [0,255] for Filter Gray";
+			}
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid parameter given for Filter Gray";
+		}
+		return nullptr;
+	}
 public:
 	char const* help_message() const override
 	{
@@ -197,41 +226,24 @@ public:
 
 		if(argb==end)
 		{
-			return "Invalid number of parameters for Filter Gray";
+			return "Too few parameters for Filter Gray";
 		}
-		int min=std::stoi(*argb);
-	#define check(val)\
-		if(val<0||val>255)\
-		{\
-			return "Values must be in range [0,255]";\
-		}
-		check(min);
-		++argb;
-		int max;
-		if(argb<end)
+		int params[3];
+		size_t i;
+		for(i=0;argb+i!=end;++i)
 		{
-			max=std::stoi(argb[1]);
-			check(max);
+			if(auto res=assign_val(argb+i,params+i))
+			{
+				return res;
+			}
 		}
-		else
+		for(;i<3;++i)
 		{
-			max=255;
+			params[i]=255;
 		}
-		++argb;
-		int replacer;
-		if(argb<end)
-		{
-			replacer=std::stoi(argb[2]);
-			check(replacer);
-		}
-		else
-		{
-			replacer=255;
-		}
-		del.pl.add_process<FilterGray>(min,max,Grayscale(replacer));
+		del.pl.add_process<FilterGray>(*params,params[1],Grayscale(params[2]));
 		del.flag=delivery::do_single;
 		return nullptr;
-	#undef check
 	}
 };
 
@@ -268,16 +280,38 @@ public:
 	#define check_args()\
 		if(begin==end)\
 		{\
-			return "Too few arguments";\
+			return "Too few arguments for Cluster Clear";\
 		}
-		uint min_size,max_size;
+		int min_size,max_size;
 		Grayscale background=255;
 		float tolerance=0.042;
 		check_args();
-		min_size=std::stoi(*begin);
+		try
+		{
+			min_size=std::stoi(*begin);
+			if(min_size<0)
+			{
+				return "Minimum cluster size must be non-negative";
+			}
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid input for minimum size of cluster clear";
+		}
 		++begin;
 		check_args();
-		max_size=std::stol(*begin);
+		try
+		{
+			max_size=std::stoi(*begin);
+			if(max_size<0)
+			{
+				return "Maximum cluster size must be non-negative";
+			}
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid input for maximum size of cluster clear";
+		}
 		if(max_size<min_size)
 		{
 			return "Max size must be greater than min size";
@@ -290,15 +324,15 @@ public:
 		try
 		{
 			int bg=std::stoi(*begin);
-			if(bg>255)
+			if(bg>255||bg<0)
 			{
-				return "Invalid background color";
+				return "Background color for Cluster Clear must be in range [0,255]";
 			}
 			background=bg;
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for background color";
+			return "Invalid input for background color for Cluster Clear";
 		}
 		++begin;
 		if(begin==end)
@@ -310,12 +344,12 @@ public:
 			tolerance=std::stof(*begin);
 			if(tolerance<0||tolerance>1)
 			{
-				return "Tolerance must be between 0 and 1";
+				return "Tolerance for Cluster Clear must be between 0 and 1";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for tolerance";
+			return "Invalid input for tolerance for Cluster Clear";
 		}
 	end:
 		del.flag=delivery::do_single;
@@ -343,6 +377,10 @@ public:
 		try
 		{
 			int amount=std::stoi(*begin);
+			if(amount<0)
+			{
+				return "Value for horizontal padding must be non-negative";
+			}
 			del.flag=delivery::do_single;
 			del.pl.add_process<PadHoriz>(amount);
 			return nullptr;
@@ -373,6 +411,10 @@ public:
 		try
 		{
 			int amount=std::stoi(*begin);
+			if(amount<0)
+			{
+				return "Value for vertical padding must be non-negative";
+			}
 			del.flag=delivery::do_single;
 			del.pl.add_process<PadVert>(amount);
 			return 0;
@@ -432,8 +474,7 @@ public:
 		{
 			return mci;
 		}
-		//PadAuto e=PadAuto(vert,minh,maxh,hoff,opt_rat);
-		if(std::distance(begin,end)<4)
+		if(std::distance(begin,end)<3)
 		{
 			return "Too few arguments for Auto Padding";
 		}
@@ -482,17 +523,25 @@ public:
 			return "Invalid argument given for max horizontal padding";
 		}
 		++begin;
-		try
+		if(begin!=end)
 		{
-			hoff=std::stoi(*begin);
-			if(hoff<0&&-hoff>minh)
+			try
 			{
-				return "Negative horizontal offset must be less than minimum horizontal padding";
+				hoff=std::stoi(*begin);
+				if(hoff<0&&-hoff>minh)
+				{
+					return "Negative horizontal offset must be less than minimum horizontal padding";
+				}
+			}
+			catch(std::exception const&)
+			{
+				return "Invalid argument given for horizontal offset";
 			}
 		}
-		catch(std::exception const&)
+		else
 		{
-			return "Invalid argument given for horizontal offset";
+			hoff=0;
+			goto end;
 		}
 		++begin;
 		if(begin!=end)
@@ -514,6 +563,7 @@ public:
 		{
 			opt_rat=16.0f/9.0f;
 		}
+	end:
 		del.flag=delivery::do_single;
 		del.pl.add_process<PadAuto>(vert,minh,maxh,hoff,opt_rat);
 		return nullptr;
@@ -619,6 +669,41 @@ public:
 		return nullptr;
 	}
 };
+
+class BlurMaker:public CommandMaker {
+public:
+	char const* help_message() const override
+	{
+		return "Does a Gaussian blur of given standard deviation";
+	}
+	char const* make_command(iter begin,iter end,delivery& del) const override
+	{
+		if(del.flag>1)
+		{
+			return mci;
+		}
+		if(begin==end)
+		{
+			return "Too few arguments for blur";
+		}
+		float radius;
+		try
+		{
+			radius=std::stof(*begin);
+			if(radius<0)
+			{
+				return "Blur radius must be non-negative";
+			}
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid arguments given for blur";
+		}
+		del.flag=del.do_single;
+		del.pl.add_process<Blur>(radius);
+		return nullptr;
+	}
+};
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 {
 	std::unordered_map<std::string,std::unique_ptr<CommandMaker>> commands;
@@ -631,6 +716,7 @@ std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 	commands.emplace("-ap",make_unique<AutoPaddingMaker>());
 	commands.emplace("-cut",make_unique<CutMaker>());
 	commands.emplace("-spl",make_unique<SpliceMaker>());
+	commands.emplace("-bl",make_unique<BlurMaker>());
 	return commands;
 }
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> const commands=init_commands();
@@ -700,15 +786,16 @@ int main(int argc,char** argv)
 			"    Cluster Clear Grayscale:  -ccg min_size max_size background_color=255 tolerance=0.042\n"
 			"    Horizontal Padding:       -hp amount\n"
 			"    Vertical Padding:         -vp amount\n"
-			"    Auto Padding:             -ap vert_padding max_horiz_padding min_horiz_padding horiz_offset optimal_ratio=16/9\n"
+			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777777\n"
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
+			"    Blur:                     -bl radius\n"
 			"  Multi Page Operations:\n"
-			"    Cut:                      -cut output=(same folder)\n"
+			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horizontal_padding optimal_padding minimum_vertical_padding optimal_height\n"
 			"Options\n"
 			"  Output: -o format\n"
-			"Any parameters given beyond the number requested are ignored\n"
-			"Multiple Single Page Operations can be given. They are performed in the order they are given.\n"
+			"Any parameters given beyond the number requested are ignored.\n"
+			"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
 			"A Multi Page Operation can not be done with other operations.\n"
 			;
 		return 0;
@@ -758,15 +845,14 @@ int main(int argc,char** argv)
 			arg_start=it;
 		}
 	}
-	if(del.flag==del.do_nothing)
-	{
-		std::cout<<"No commands given";
-		return 0;
-	}
 
 	if(output.empty())
 	{
-		std::cout<<"Using default save pattern";
+		if(del.flag==del.do_nothing)
+		{
+			std::cout<<"No commands given";
+			return 0;
+		}
 		output.assign("%c");
 	}
 	unsigned int num_threads=std::thread::hardware_concurrency();
@@ -776,16 +862,12 @@ int main(int argc,char** argv)
 	}
 	switch(del.flag)
 	{
+		case del.do_nothing:
 		case del.do_single:
 		{
 			if(is_folder)
 			{
 				auto files=images_in_path(arg1);
-				std::cout<<"Found files:";
-				for(auto const& f:files)
-				{
-					std::cout<<"\n  "<<f;
-				}
 				try
 				{
 					processes.process(files,&output,num_threads);

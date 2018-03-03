@@ -51,15 +51,6 @@
     <ClInclude Include="shorthand.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="exstring.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\threadpool\ThreadPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="convert.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ImageProcess.h">
       <Filter>Header Files</Filter>
     </ClInclude>

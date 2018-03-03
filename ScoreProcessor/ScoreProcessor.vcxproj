@@ -148,13 +148,10 @@
     <ClInclude Include="allAlgorithms.h" />
     <ClInclude Include="CImg.h" />
     <ClInclude Include="Cluster.h" />
-    <ClInclude Include="convert.h" />
-    <ClInclude Include="exstring.h" />
     <ClInclude Include="imagefind.h" />
     <ClInclude Include="ImageMath.h" />
     <ClInclude Include="ImageProcess.h" />
     <ClInclude Include="ImageUtils.h" />
-    <ClInclude Include="lib\threadpool\ThreadPool.h" />
     <ClInclude Include="moreAlgorithms.h" />
     <ClInclude Include="old.txt" />
     <ClInclude Include="ScoreProcesses.h" />
