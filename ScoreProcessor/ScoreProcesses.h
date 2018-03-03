@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "Cluster.h"
+#include <assert.h>
 namespace ScoreProcessor {
 	/*
 		Reduces colors to two colors
@@ -84,7 +85,7 @@ namespace ScoreProcessor {
 		@param values
 	*/
 	template<typename T>
-	void fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const& selection,T const* const values);
+	void fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const& selection,T const* values);
 	/*
 		Automatically centers the image horizontally
 		@param image
@@ -232,7 +233,7 @@ namespace ScoreProcessor {
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* const filename);
+	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename);
 
 	/*
 		Finds the line that is the top of the score image
@@ -276,8 +277,8 @@ namespace ScoreProcessor {
 	template<typename T>
 	::std::vector<ImageUtils::Rectangle<unsigned int>> global_select(
 		::cimg_library::CImg<T>& image,
-		T const* const color,
-		float(*color_diff)(T const* const,T const* const),
+		T const* color,
+		float(*color_diff)(T const*,T const*),
 		float tolerance,
 		bool invert_selection);
 	/*
@@ -321,12 +322,21 @@ namespace ScoreProcessor {
 	template<typename T>
 	void clear_clusters(
 		::cimg_library::CImg<T>& image,
-		T const* const color,
-		float(*color_diff)(T const* const,T const* const),
+		T const* color,
+		float(*color_diff)(T const*,T const*),
 		float tolerance,
 		bool invert_selection,
 		unsigned int min_size,unsigned int max_size,
-		T const* const background);
+		T const* background);
+	template<typename T,typename U>
+	void clear_clusters(
+		::cimg_library::CImg<T>& img,
+		U color,
+		float tolerance,
+		bool invert_selection,
+		unsigned int min_size,
+		unsigned int max_size,
+		U background);
 	/*
 	*/
 	void remove_border(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const color=ImageUtils::Grayscale::BLACK,float const tolerance=0.5);
@@ -365,13 +375,311 @@ namespace ScoreProcessor {
 		@param allowable_deviance, the maximum number of pixels that the padding can deviate from optimum
 		@param optimal_height, the optimal height for spliced pages
 	*/
-	unsigned int splice_pages(::std::vector<::std::string> const& filenames,unsigned int const horiz_padding,unsigned int const optimal_padding,unsigned int const min_padding,unsigned int const optimal_height);
+	unsigned int splice_pages(
+		::std::vector<::std::string> const& filenames,
+		unsigned int horiz_padding,
+		unsigned int optimal_padding,
+		unsigned int min_padding,
+		unsigned int optimal_height,
+		char const* output);
 	unsigned int splice_pages_greedy(std::string const& output,::std::vector<::std::string> const& filenames,unsigned int optimal_height);
 	void compress(::cimg_library::CImg<unsigned char>& image,unsigned int const minPadding,unsigned int const optimalHeight,float min_energy=0);
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);
 
 	void rescale_colors(::cimg_library::CImg<unsigned char>&,unsigned char min,unsigned char mid,unsigned char max=255);
+	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const&,unsigned int horiz_padding);
+	std::vector<unsigned int> fattened_profile_low(std::vector<unsigned int> const&,unsigned int horiz_padding);
 }
-#include "ScoreProcessesT.cpp"
+template<typename T>
+void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> selection,int const shiftx,int const shifty)
+{
+	if(shiftx==0&&shifty==0) return;
+	selection.left=selection.left+shiftx;if(selection.left>image._width) selection.left=0;
+	selection.right=selection.right+shiftx;if(selection.right>image._width) selection.right=image._width;
+	selection.top=selection.top+shifty;if(selection.top>image._height) selection.top=0;
+	selection.bottom=selection.bottom+shifty;if(selection.bottom>image._height) selection.bottom=image._height;
+	unsigned int numChannels=image._spectrum;
+	if(shiftx>0)
+	{
+		if(shifty>0) //shiftx>0 and shifty>0
+		{
+			for(unsigned int x=selection.right;x-->selection.left;)
+			{
+				for(unsigned int y=selection.bottom;y-->selection.top;)
+				{
+					for(unsigned int s=0;s<numChannels;++s)
+					{
+						image(x,y,s)=image(x-shiftx,y-shifty,s);
+					}
+				}
+			}
+		}
+		else //shiftx>0 and shifty<=0
+		{
+			for(unsigned int x=selection.right;x-->selection.left;)
+			{
+				for(unsigned int y=selection.top;y<selection.bottom;++y)
+				{
+					for(unsigned int s=0;s<numChannels;++s)
+					{
+						image(x,y,s)=image(x-shiftx,y-shifty,s);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if(shifty>0) //shiftx<=0 and shifty>0
+		{
+			for(unsigned int x=selection.left;x<selection.right;++x)
+			{
+				for(unsigned int y=selection.bottom;y-->selection.top;)
+				{
+					for(unsigned int s=0;s<numChannels;++s)
+					{
+						image(x,y,s)=image(x-shiftx,y-shifty,s);
+					}
+				}
+			}
+		}
+		else //shiftx<=0 and shifty<=0
+		{
+			for(unsigned int x=selection.left;x<selection.right;++x)
+			{
+				for(unsigned int y=selection.top;y<selection.bottom;++y)
+				{
+					for(unsigned int s=0;s<numChannels;++s)
+					{
+						image(x,y,s)=image(x-shiftx,y-shifty,s);
+					}
+				}
+			}
+		}
+	}
+}
+template<typename T>
+void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const& selection,T const* values)
+{
+	for(unsigned int x=selection.left;x<selection.right;++x)
+	{
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			for(unsigned int s=0;s<image._spectrum;++s)
+			{
+				image(x,y,s)=values[s];
+			}
+		}
+	}
+}
+inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::ColorRGB const color)
+{
+	ScoreProcessor::fill_selection(image,selection,reinterpret_cast<unsigned char const*>(&color));
+}
+inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::Grayscale const gray)
+{
+	ScoreProcessor::fill_selection(image,selection,reinterpret_cast<unsigned char const*>(&gray));
+}
+template<typename T>
+void ScoreProcessor::copy_paste(::cimg_library::CImg<T> dest,::cimg_library::CImg<T> src,ImageUtils::Rectangle<unsigned int> selection,ImageUtils::Point<signed int> destloc)
+{
+	if(destloc.x<0)
+	{
+		select.left-=destloc.x;
+		destloc.x=0;
+	}
+	if(destloc.y<0)
+	{
+		select.top-=destloc.y;
+		destloc.y=0;
+	}
+	for(;destloc.x<dest._width&&select.left<select.right;++destloc.x,++select.left)
+	{
+		for(;destloc.y<dest._height&&select.top<select.bottom;++destloc.y,++select.top)
+		{
+			dest(destloc.x,destloc.y)=src(select.left,select.top);
+		}
+	}
+}
+template<typename T>
+void ScoreProcessor::clear_clusters(
+	::cimg_library::CImg<T>& image,
+	T const* color,
+	float(*color_diff)(T const*,T const*),
+	float tolerance,
+	bool invert_selection,
+	unsigned int min_size,unsigned int max_size,
+	T const* background)
+{
+	auto ranges=global_select(image,color,color_diff,tolerance,invert_selection);
+	auto clusters=ScoreProcessor::Cluster::cluster_ranges(ranges);
+	for(auto const& cluster:clusters)
+	{
+		unsigned int size=cluster->size();
+		if(min_size<=size&&size<max_size)
+		{
+			auto const& rects=cluster->get_ranges();
+			for(auto const& rect:rects)
+			{
+				ScoreProcessor::fill_selection(image,rect,background);
+			}
+		}
+	}
+}
+namespace ScoreProcessor {
+	inline void clear_clusters(
+		::cimg_library::CImg<unsigned char>& img,
+		ImageUtils::Grayscale color,
+		float tolerance,
+		bool invert_selection,
+		unsigned int min_size,
+		unsigned int max_size,
+		ImageUtils::Grayscale background)
+	{
+		assert(img._spectrum==1);
+		ScoreProcessor::clear_clusters(
+			img,
+			reinterpret_cast<unsigned char const*>(&color),
+			ImageUtils::Grayscale::color_diff,
+			tolerance,
+			invert_selection,
+			min_size,
+			max_size,
+			reinterpret_cast<unsigned char const*>(&background));
+	}
+}
+template<>
+inline void ScoreProcessor::clear_clusters<unsigned char,ImageUtils::ColorRGB>(
+	::cimg_library::CImg<unsigned char>& img,
+	ImageUtils::ColorRGB color,
+	float tolerance,
+	bool invert_selection,
+	unsigned int min_size,
+	unsigned int max_size,
+	ImageUtils::ColorRGB background)
+{
+	assert(img._spectrum==3||img._spectrum==4);
+	ScoreProcessor::clear_clusters(
+		img,
+		reinterpret_cast<unsigned char const*>(&color),
+		ImageUtils::ColorRGB::color_diff,
+		tolerance,invert_selection,
+		min_size,
+		max_size,
+		reinterpret_cast<unsigned char const*>(&background));
+}
+template<typename T>
+::std::vector<ImageUtils::Rectangle<unsigned int>> ScoreProcessor::global_select(
+	::cimg_library::CImg<T>& image,
+	T const* color,
+	float(*color_diff)(T const*,T const*),
+	float tolerance,
+	bool invert_selection)
+{
+	vector<ImageUtils::Rectangle<unsigned int>> container;
+	//std::unique_ptr<T[]> pixel_color=make_unique<T[]>(3);
+	unique_ptr<T[]> pixel_color(new T[image._spectrum]);
+	unsigned int rangeFound=0,rangeStart=0,rangeEnd=0;
+	for(unsigned int y=0;y<image._height;++y)
+	{
+		for(unsigned int x=0;x<image._width;++x)
+		{
+			switch(rangeFound)
+			{
+				case 0: {
+				#define load_color() for(unsigned int i=0;i<image._spectrum;++i) pixel_color[i]=image(x,y,i);
+					load_color();
+					if((color_diff(color,pixel_color.get())<=tolerance)^invert_selection)
+					{
+						rangeFound=1;
+						rangeStart=x;
+					}
+					break;
+				}
+				case 1: {
+					load_color();
+					if((color_diff(color,pixel_color.get())>tolerance)^invert_selection)
+					{
+						rangeFound=2;
+						rangeEnd=x;
+					}
+					else
+					{
+						break;
+					}
+				}
+					#undef load_color
+				case 2: {
+					container.push_back(RectangleUINT{rangeStart,rangeEnd,y,y+1});
+					rangeFound=0;
+					break;
+				}
+			}
+		}
+		if(1==rangeFound)
+		{
+			container.push_back(RectangleUINT{rangeStart,image._width,y,y+1});
+			rangeFound=0;
+		}
+	}
+	ImageUtils::compress_rectangles(container);
+	return container;
+}
+/*
+template<typename T,typename Color>
+::std::vector<ImageUtils::Rectangle<unsigned int>> ScoreProcessor::global_select(
+::cimg_library::CImg<T>& image,
+Color color,
+float tolerance,
+bool invert_selection) {
+vector<ImageUtils::Rectangle<unsigned int>> container;
+Color pixel_color;
+unsigned int rangeFound=0,rangeStart=0,rangeEnd=0;
+for(unsigned int y=0;y<image._height;++y)
+{
+for(unsigned int x=0;x<image._width;++x)
+{
+switch(rangeFound)
+{
+case 0: {
+#define load_color() for(unsigned int i=0;i<image._spectrum;++i) reinterpret_cast<T*>(&pixel_color)[i]=image(x,y,i);
+load_color();
+if((color.difference(pixel_color)<=tolerance)^invert_selection)
+{
+rangeFound=1;
+rangeStart=x;
+}
+break;
+}
+case 1: {
+load_color();
+if((color.difference(pixel_color)>tolerance)^invert_selection)
+{
+rangeFound=2;
+rangeEnd=x;
+}
+else
+{
+break;
+}
+}
+#undef load_color
+case 2: {
+container.push_back(RectangleUINT{rangeStart,rangeEnd,y,y+1});
+rangeFound=0;
+break;
+}
+}
+}
+if(1==rangeFound)
+{
+container.push_back(RectangleUINT{rangeStart,image._width,y,y+1});
+rangeFound=0;
+}
+}
+ImageUtils::compress_rectangles(container);
+return container;
+}
+*/
 #endif // !1

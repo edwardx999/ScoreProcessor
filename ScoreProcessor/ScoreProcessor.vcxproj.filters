@@ -51,9 +51,6 @@
     <ClInclude Include="shorthand.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FileProcesses.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="exstring.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -68,6 +65,9 @@
     </ClInclude>
     <ClInclude Include="imagefind.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="old.txt">
+      <Filter>Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -87,9 +87,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ImageMath.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ScoreProcessesT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

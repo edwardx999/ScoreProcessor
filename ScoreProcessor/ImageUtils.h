@@ -86,15 +86,15 @@ namespace ImageUtils {
 		unsigned char brightness() const;
 		float difference(ColorRGB other);
 
-		static float color_diff(unsigned char const* const,unsigned char const* const);
+		static float color_diff(unsigned char const*,unsigned char const*);
 	};
 
 	struct ColorHSV {
 		unsigned char h,s,v;
 
-		explicit operator ColorRGBA() const;
-		explicit operator ColorRGB() const;
-		explicit operator Grayscale() const;
+		operator ColorRGBA() const;
+		operator ColorRGB() const;
+		operator Grayscale() const;
 		static ColorHSV const WHITE;
 		static ColorHSV const BLACK;
 	};
@@ -115,7 +115,7 @@ namespace ImageUtils {
 		static Grayscale const BLACK;
 		float difference(Grayscale other);
 
-		static float color_diff(unsigned char const* const,unsigned char const* const);
+		static float color_diff(unsigned char const*,unsigned char const*);
 	};
 
 	float gray_diff(Grayscale g1,Grayscale g2);

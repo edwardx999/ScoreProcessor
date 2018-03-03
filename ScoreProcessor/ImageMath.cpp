@@ -7,21 +7,23 @@
 #include <cmath>
 #include "shorthand.h"
 #include <assert.h>
+#include <functional>
 using namespace ImageUtils;
 using namespace std;
 using namespace misc_alg;
 namespace cimg_library {
 
-	::cimg_library::CImg<signed char> get_vertical_gradient(::cimg_library::CImg<unsigned char> const& img)
+	CImg<signed char> get_vertical_gradient(::cimg_library::CImg<unsigned char> const& img)
 	{
-		assert(img._height>1);
+		assert(img._height>2);
 		CImg<signed char> grad_img(img._width,img._height);
 		for(uint x=0;x<img._width;++x)
 		{
 			grad_img(x,0)=scast<schar>((img(x,1)/2-img(x,0)/2));
 		}
-		uint y;uint limit=img._height-1;
-		for(uint y=1;y<limit;++y)
+		uint y;
+		uint limit=img._height-1;
+		for(y=1;y<limit;++y)
 		{
 			for(uint x=0;x<img._width;++x)
 			{
@@ -35,7 +37,7 @@ namespace cimg_library {
 		return grad_img;
 	}
 
-	::cimg_library::CImg<signed char> get_horizontal_gradient(::cimg_library::CImg<unsigned char> const& img)
+	CImg<signed char> get_horizontal_gradient(::cimg_library::CImg<unsigned char> const& img)
 	{
 		assert(img._width>1);
 		CImg<signed char> grad_img(img._width,img._height);
@@ -57,7 +59,7 @@ namespace cimg_library {
 		}
 		return grad_img;
 	}
-	cimg_library::CImg<signed char> get_absolute_gradient(::cimg_library::CImg<unsigned char> const& img)
+	CImg<signed char> get_absolute_gradient(::cimg_library::CImg<unsigned char> const& img)
 	{
 		CImg<signed char> grad_img(img._width,img._height,2);
 		//vertical
@@ -96,7 +98,7 @@ namespace cimg_library {
 			grad_img(x,y)=scast<schar>(img(x,y)/2-img(x-1,y)/2);
 		}
 	}
-	cimg_library::CImg<unsigned char> get_brightness_spectrum(cimg_library::CImg<unsigned char> const& refImage)
+	CImg<unsigned char> get_brightness_spectrum(cimg_library::CImg<unsigned char> const& refImage)
 	{
 		CImg<unsigned char> image(refImage._width,refImage._height);
 		for(unsigned int x=0;x<image._width;++x)
@@ -128,7 +130,7 @@ namespace cimg_library {
 	{
 		return get_absolute_gradient(refImage);
 	}
-	ColorRGB averageColor(cimg_library::CImg<unsigned char> const& image)
+	ColorRGB average_color(cimg_library::CImg<unsigned char> const& image)
 	{
 		UINT64 r=0,g=0,b=0;
 		UINT64 numpixels=image._width*image._height;
@@ -146,10 +148,10 @@ namespace cimg_library {
 		b/=numpixels;
 		return{static_cast<unsigned char>(r),static_cast<unsigned char>(g),static_cast<unsigned char>(b)};
 	}
-	Grayscale averageGray(cimg_library::CImg<unsigned char> const& image)
+	Grayscale average_gray(cimg_library::CImg<unsigned char> const& image)
 	{
-		UINT64 gray=0;
-		UINT64 numpixels=image._width*image._height;
+		unsigned long long gray=0;
+		unsigned long long numpixels=image._width*image._height;
 		for(unsigned int x=0;x<image._width;++x)
 		{
 			for(unsigned int y=0;y<image._height;++y)
@@ -159,7 +161,7 @@ namespace cimg_library {
 		}
 		return gray/numpixels;
 	}
-	ColorRGB darkestColor(cimg_library::CImg<unsigned char> const& image)
+	ColorRGB darkest_color(cimg_library::CImg<unsigned char> const& image)
 	{
 		ColorRGB darkness,currcolo;
 		unsigned char darkest=255,currbrig;
@@ -177,7 +179,7 @@ namespace cimg_library {
 		}
 		return darkness;
 	}
-	Grayscale darkestGray(cimg_library::CImg<unsigned char> const& image)
+	Grayscale darkest_gray(cimg_library::CImg<unsigned char> const& image)
 	{
 		Grayscale darkest=255;
 		for(unsigned int x=0;x<image._width;++x)
@@ -192,7 +194,7 @@ namespace cimg_library {
 		}
 		return darkest;
 	}
-	ColorRGB brightestColor(cimg_library::CImg<unsigned char> const& image)
+	ColorRGB brightest_color(cimg_library::CImg<unsigned char> const& image)
 	{
 		ColorRGB light,currcolo;
 		unsigned char lightest=0,currbrig;
@@ -210,7 +212,7 @@ namespace cimg_library {
 		}
 		return light;
 	}
-	Grayscale brightestGray(cimg_library::CImg<unsigned char> const& image)
+	Grayscale brightest_gray(cimg_library::CImg<unsigned char> const& image)
 	{
 		Grayscale lightest=0;
 		for(unsigned int x=0;x<image._width;++x)
@@ -249,94 +251,6 @@ namespace cimg_library {
 		}
 		return ret;
 	}
-	::cimg_library::CImg<unsigned int> get_hough(::cimg_library::CImg<unsigned char> const& gradImage,float lowerAngle,float upperAngle,float angleStep,unsigned int precision)
-	{
-		CImg<unsigned int> hough(static_cast<unsigned int>((upperAngle-lowerAngle)/angleStep)+1,static_cast<unsigned int>(hypot(gradImage._height,gradImage._width))/precision+1);
-		hough.fill(0U);
-		//cout<<hough._width<<'\t'<<hough._height<<endl;
-		for(unsigned int x=0;x<gradImage._width;++x)
-		{
-			for(unsigned int y=0;y<gradImage._height;++y)
-			{
-				if(gradImage(x,y)>128)
-				{
-					for(unsigned int f=0;f<hough._width;++f)
-					{
-						float theta=f*angleStep+lowerAngle;
-						unsigned int r=std::abs(x*std::cos(theta)+y*std::sin(theta))/precision;
-						/*if(r<0||r>=hough._height) {
-							cout<<f<<'\t'<<r<<'\t'<<x<<'\t'<<y<<endl;
-						}
-						else*/
-						++hough(f,r);
-					}
-				}
-			}
-		}
-		return hough;
-	}
-	float findHoughAngle(::cimg_library::CImg<unsigned int>& hough,float lowerAngle,float angleStep,unsigned int avgHowMany)
-	{
-		vector<PointUINT> topLines;
-		topLines.reserve(avgHowMany);
-		unsigned int f,r;
-		topLines.push_back({0,0});
-		for(f=0;f<hough._width;++f)
-		{
-			for(r=0;r<hough._height;++r)
-			{
-				if(topLines.size()<avgHowMany)
-				{
-					if(hough(f,r)>hough(topLines.back().x,topLines.back().y))
-					{
-						for(unsigned int i=topLines.size()-2;i<topLines.size();--i)
-						{
-							if(hough(f,r)<hough(topLines[i].x,topLines[i].y))
-							{
-								topLines.insert(topLines.begin()+i+1,{f,r});
-								break;
-							}
-						}
-					}
-				}
-				else
-				{
-					++r;
-					break;
-				}
-			}
-		}
-		for(;r<hough._height;++r)
-		{
-		#define placeInPosition()\
-			if(hough(f,r)>hough(topLines.back().x,topLines.back().y)) {\
-				topLines.pop_back();\
-				for(unsigned int i=avgHowMany-2;i<avgHowMany;--i) {\
-					if(hough(f,r)<hough(topLines[i].x,topLines[i].y)) {\
-						topLines.insert(topLines.begin()+i+1,{f,r});\
-						break;\
-					}\
-				}\
-			}
-			placeInPosition();
-		}
-		for(;f<hough._width;++f)
-		{
-			for(;r<hough._height;++r)
-			{
-				placeInPosition();
-			}
-		}
-	#undef placeInPosition()
-		unsigned int numVotes=0;
-		float averageAngle=0;
-		for(unsigned int i=0;i<topLines.size();++i)
-		{
-			averageAngle+=(topLines[i].x*angleStep+lowerAngle)*hough(topLines[i].x,topLines[i].y);
-			numVotes+=hough(topLines[i].x,topLines[i].y);
-		}
-		return averageAngle/numVotes+M_PI_2;
-	}
 
 	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer)
 	{
@@ -352,5 +266,62 @@ namespace cimg_library {
 				}
 			}
 		}
+	}
+
+	HoughArray::HoughArray(
+		CImg<signed char> const& gradient,
+		float lower_angle,float upper_angle,
+		unsigned int num_steps,
+		float precision,
+		signed char threshold)
+		:
+		rmax(hypot(gradient._width,gradient._height)),
+		angle_steps(num_steps),
+		CImg(angle_steps+1,rmax/precision),
+		theta_min(lower_angle),
+		angle_dif(upper_angle-lower_angle),
+		precision(precision)
+	{
+		threshold=std::abs(threshold);
+		fill(0);
+		for(uint x=0;x<gradient._width;++x)
+		{
+			for(uint y=0;y<gradient._height;++y)
+			{
+				if(std::abs(gradient(x,y))>threshold)
+				{
+					
+					for(uint f=0;f<=angle_steps;++f)
+					{
+						float theta=angle_dif*f/angle_steps+theta_min;
+						float r=x*std::cos(theta)+y*std::sin(theta);
+						++operator()(theta,r);
+					}
+				}
+			}
+		}
+	}
+	unsigned int& HoughArray::operator()(float theta,float r)
+	{
+		unsigned int x=(theta-theta_min)/angle_dif*angle_steps;
+		unsigned int y=((r+rmax)/(2*rmax))/precision;
+		printf("%u\t%u\n",x,y);
+		return CImg<unsigned int>::operator()(x,y);
+	}
+	float HoughArray::angle() const
+	{
+		if(empty())
+		{
+			return 0;
+		}
+		auto max_it=begin();
+		for(auto it=max_it+1;it!=end();++it)
+		{
+			if(*it>*max_it)
+			{
+				max_it=it;
+			}
+		}
+		return std::distance(max_it,begin())%_width*angle_dif/angle_steps+theta_min;
 	}
 }

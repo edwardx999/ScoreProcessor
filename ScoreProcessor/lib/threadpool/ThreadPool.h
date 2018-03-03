@@ -27,9 +27,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <atomic>
 #include <utility>
 namespace exlib {
-/*
-Overload void execute() to use this as a task in ThreadPool
-*/
+	/*
+	Overload void execute() to use this as a task in ThreadPool
+	*/
 	class ThreadTask {
 	private:
 	protected:
@@ -89,6 +89,11 @@ Overload void execute() to use this as a task in ThreadPool
 		Calling wait on a pool that is not started will result in undefined behavior
 		*/
 		THREADPOOL_API void wait();
+
+		inline void join()
+		{
+			wait();
+		}
 	};
 
 	template<typename Task,typename... Args>
@@ -106,5 +111,42 @@ Overload void execute() to use this as a task in ThreadPool
 	{
 		return running;
 	}
+
+	template<typename Output>
+	class Logger {
+		std::mutex locker;
+		Output* output;
+	public:
+		Logger(Output& out):output(&out)
+		{}
+		/*
+		Logs to the output with a mutex lock. Do not call if your thread is holding onto the lock from get_lock().
+		*/
+		template<typename T>
+		void log(T const& in)
+		{
+			std::lock_guard<std::mutex> guard(locker);
+			(*output)<<in;
+		}
+		/*
+		Logs to the output without a mutex lock. Call if your thread is holding onto the lock from get_lock().
+		*/
+		template<typename T>
+		void log_unsafe(T const& in)
+		{
+			(*output)<<in;
+		}
+		/*
+		Returns a lock on this logger.
+		*/
+		std::unique_lock<std::mutex> get_lock()
+		{
+			return std::unique_lock<std::mutex>(locker);
+		}
+	};
+
+	typedef Logger<std::ofstream> FileLogger;
+	typedef Logger<std::ostream> OstreamLogger;
+	typedef Logger<std::wostream> WostreamLogger;
 }
 #endif // !THREAD_POOL_H

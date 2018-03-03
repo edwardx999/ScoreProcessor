@@ -82,6 +82,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);lib</IncludePath>
+    <TargetName>sproc</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -130,7 +131,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);cimg_use_jpeg;cimg_use_png;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);cimg_use_jpeg;cimg_use_png;_WINDOWS;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,13 +150,13 @@
     <ClInclude Include="Cluster.h" />
     <ClInclude Include="convert.h" />
     <ClInclude Include="exstring.h" />
-    <ClInclude Include="FileProcesses.h" />
     <ClInclude Include="imagefind.h" />
     <ClInclude Include="ImageMath.h" />
     <ClInclude Include="ImageProcess.h" />
     <ClInclude Include="ImageUtils.h" />
     <ClInclude Include="lib\threadpool\ThreadPool.h" />
     <ClInclude Include="moreAlgorithms.h" />
+    <ClInclude Include="old.txt" />
     <ClInclude Include="ScoreProcesses.h" />
     <ClInclude Include="shorthand.h" />
     <ClInclude Include="stdafx.h" />
@@ -168,10 +169,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ScoreProcesses.cpp" />
-    <ClCompile Include="ScoreProcessesT.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="ScoreProcessor.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

@@ -9,7 +9,6 @@ namespace misc_alg {
 
 /*
 	Returns absolute difference of two numbers
-	Type returned is same as that of first parameter
 */
 	template<typename T1,typename T2> inline auto abs_dif(T1 const& x,T2 const& y) ->
 		decltype(x-y)
@@ -26,7 +25,7 @@ namespace misc_alg {
 	{
 		return ::std::round(static_cast<double>(x)/radix)*radix;
 	}
-	template<typename T1,typename T2,typename T3> inline bool within_perc_tolerance(T1 const num1,T2 const num2,T3 const tolerance);
+	template<typename T1,typename T2,typename T3> bool within_perc_tolerance(T1 const num1,T2 const num2,T3 const tolerance);
 	template<typename T,typename val> int shortest_path_one_dir(::std::vector<T,::std::allocator<T>>& resultContainer,::std::vector<::std::vector<T,::std::allocator<T>>,::std::allocator<::std::vector<T,::std::allocator<T>>>>& nodes,val(*nodeDistance)(T&,T&));
 	/*
 		Returns the indices of the minimum n in a given vector
@@ -51,7 +50,7 @@ namespace misc_alg {
 		struct DynamicNode {
 			val distance;
 			unsigned int prevNodeIndex;
-		};
+	};
 		::std::vector<::std::vector<DynamicNode>> dynamicPather;
 		dynamicPather.resize(nodes.size());
 		dynamicPather[0].resize(nodes[0].size());
@@ -84,7 +83,7 @@ namespace misc_alg {
 				dynamicPather[x][n].distance=minValue;
 				dynamicPather[x][n].prevNodeIndex=minIndex;
 			}
-}
+		}
 		val minDistance=dynamicPather.back()[0].distance;
 		unsigned int minIndex=0;
 		for(unsigned int i=1;i<dynamicPather.back().size();++i)
@@ -104,7 +103,7 @@ namespace misc_alg {
 			nextIndex=dynamicPather[x][nextIndex].prevNodeIndex;
 		}
 		return 0;
-	}
+}
 	template<typename T,typename alloc> ::std::vector<unsigned int> min_n_ind(::std::vector<T,alloc> const& values,size_t const num_values)
 	{
 		vector<unsigned int> mins;
@@ -145,7 +144,7 @@ namespace cimg_library {
 */
 	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& map,unsigned int start_index);
 	template<typename T> ::std::vector<unsigned int> create_seam(CImg<T> const& map);
-	template<typename T> void mark_seam(CImg<T>& img,T const* const values,::std::vector<unsigned int> const& seam);
+	template<typename T> void mark_seam(CImg<T>& img,T const* values,::std::vector<unsigned int> const& seam);
 	/*
 		MAP IS MODIFIED
 	*/
@@ -192,7 +191,7 @@ namespace cimg_library {
 			energyGraph(x,area.bottom-1)+=::std::min({energyGraph(x-1,area.bottom-1),energyGraph(x-1,area.bottom-2)});
 		}
 		return 0;
-}
+	}
 	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energyMap,unsigned int startIndex)
 	{
 		::std::vector<unsigned int> resultPath(energyMap._width);
@@ -215,7 +214,7 @@ namespace cimg_library {
 		}
 		return resultPath;
 	}
-	template<typename T> void mark_seam(CImg<T>& img,T const* const values,::std::vector<unsigned int> const& seam)
+	template<typename T> void mark_seam(CImg<T>& img,T const* values,::std::vector<unsigned int> const& seam)
 	{
 		for(unsigned int x=0;x<seam.size();++x)
 		{

@@ -4,6 +4,8 @@
 #include "ImageUtils.h"
 #define M_PI	3.14159265358979323846
 #define M_PI_2	1.57079632679489661923
+#define M_PI_4	0.78539816339744830962
+#define M_PI_6	0.52359877559829887308
 namespace cimg_library {
 	/*
 	Returns an image that has the vertical brightness gradient at each point
@@ -29,32 +31,32 @@ namespace cimg_library {
 	Returns the average RGB color of the image
 	@param image, must be 3 channel RGB
 	*/
-	ImageUtils::ColorRGB averageColor(::cimg_library::CImg<unsigned char const>& image);
+	ImageUtils::ColorRGB average_color(::cimg_library::CImg<unsigned char const>& image);
 	/*
 	Returns the average grayness of the image
 	@param image, must be 1 channel grayscale
 	*/
-	ImageUtils::Grayscale averageGray(::cimg_library::CImg<unsigned char> const& image);
+	ImageUtils::Grayscale average_gray(::cimg_library::CImg<unsigned char> const& image);
 	/*
 	Returns the darkest color in the image
 	@param image, must be 3 channel RGB
 	*/
-	ImageUtils::ColorRGB darkestColor(::cimg_library::CImg<unsigned char> const& image);
+	ImageUtils::ColorRGB darkest_color(::cimg_library::CImg<unsigned char> const& image);
 	/*
 	Returns the darkest gray in the image
 	@param image, must be 1 channel grayscale
 	*/
-	ImageUtils::Grayscale darkestGray(::cimg_library::CImg<unsigned char> const& image);
+	ImageUtils::Grayscale darkest_gray(::cimg_library::CImg<unsigned char> const& image);
 	/*
 	Returns the brightest color in the image
 	@param image, must be 3 channel RGB
 	*/
-	ImageUtils::ColorRGB brightestColor(::cimg_library::CImg<unsigned char> const& image);
+	ImageUtils::ColorRGB brightest_color(::cimg_library::CImg<unsigned char> const& image);
 	/*
 	Returns the brightest gray in the image
 	@param image, must be 1 channel grayscale
 	*/
-	ImageUtils::Grayscale brightestGray(::cimg_library::CImg<unsigned char> const& image);
+	ImageUtils::Grayscale brightest_gray(::cimg_library::CImg<unsigned char> const& image);
 	/*
 	Converts image to a 1 channel grayscale image
 	@param image, must be 3 channel RGB
@@ -64,12 +66,28 @@ namespace cimg_library {
 	*/
 	::cimg_library::CImg<unsigned char> get_grayscale_simple(::cimg_library::CImg<unsigned char> const& image);
 	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer);
-	/*
-		Performs a HoughTransform
-		Add pi/2 to the hough theta to get the line horizontal theta
-		By default, 1 pixel precision, tests vertical lines from angle ~-pi/4 to ~pi/4
-	*/
-	::cimg_library::CImg<unsigned int> get_hough(::cimg_library::CImg<unsigned char> const& gradImage,float lowerAngle=-0.8f,float upperAngle=0.8f,float angleStep=0.05f,unsigned int precision=1U);
-	float findHoughAngle(::cimg_library::CImg<unsigned int>& hough,float lowerAngle,float angleStep,unsigned int avgHowMany=10U);
+
+	class HoughArray:public CImg<unsigned int> {
+	private:
+		float rmax;
+		float theta_min;
+		float angle_dif;
+		unsigned int angle_steps;
+		float precision;
+	public:
+		struct line {
+			float theta;
+			float r;
+		};
+		HoughArray(
+			CImg<signed char> const& gradient,
+			float lower_angle=2*M_PI_6,float upper_angle=4*M_PI_6,
+			unsigned int num_steps=100,
+			float precision=1.0f,
+			signed char threshold=64);
+		unsigned int& operator()(float theta,float r);
+		float angle() const;
+		std::vector<line> top_lines(size_t num);
+	};
 }
 #endif // !IMAGE_MATH_H

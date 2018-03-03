@@ -57,26 +57,26 @@ typedef signed short const* sshortcp;
 typedef signed char const* scharcp;
 typedef signed long long const* slonglongcp;
 
-typedef unsigned int* const uintpc;
-typedef unsigned long* const ulongpc;
-typedef unsigned short* const ushortpc;
-typedef unsigned char* const ucharpc;
-typedef unsigned long long* const ulonglongpc;
-typedef unsigned int const* const uintcpc;
-typedef unsigned long const* const ulongcpc;
-typedef unsigned short const* const ushortcpc;
-typedef unsigned char const* const ucharcpc;
-typedef unsigned long long const* const ulonglongcpc;
-typedef signed int* const sintpc;
-typedef signed long* const slongpc;
-typedef signed short* const sshortpc;
-typedef signed char* const scharpc;
-typedef signed long long* const slonglongpc;
-typedef signed int const* const sintcpc;
-typedef signed long const* const slongcpc;
-typedef signed short const* const sshortcpc;
-typedef signed char const* const scharcpc;
-typedef signed long long const* const slonglongcpc;
+typedef unsigned int* uintpc;
+typedef unsigned long* ulongpc;
+typedef unsigned short* ushortpc;
+typedef unsigned char* ucharpc;
+typedef unsigned long long* ulonglongpc;
+typedef unsigned int const* uintcpc;
+typedef unsigned long const* ulongcpc;
+typedef unsigned short const* ushortcpc;
+typedef unsigned char const* ucharcpc;
+typedef unsigned long long const* ulonglongcpc;
+typedef signed int* sintpc;
+typedef signed long* slongpc;
+typedef signed short* sshortpc;
+typedef signed char* scharpc;
+typedef signed long long* slonglongpc;
+typedef signed int const* sintcpc;
+typedef signed long const* slongcpc;
+typedef signed short const* sshortcpc;
+typedef signed char const* scharcpc;
+typedef signed long long const* slonglongcpc;
 #endif //signed_SHORTHAND
 
 #ifndef CAST_SHORTHAND

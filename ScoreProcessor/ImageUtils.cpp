@@ -24,7 +24,7 @@ namespace ImageUtils {
 		return (rdif*rdif+gdif*gdif+bdif*bdif)/(255.0f*255.0f*3.0f);
 	}
 
-	float ColorRGB::color_diff(unsigned char const* const c1,unsigned char const* const c2) {
+	float ColorRGB::color_diff(unsigned char const* c1,unsigned char const* c2) {
 		float
 			rdif=misc_alg::abs_dif(c1[0],c2[0]),
 			gdif=misc_alg::abs_dif(c1[1],c2[1]),
@@ -36,7 +36,7 @@ namespace ImageUtils {
 #pragma endregion
 #pragma region Grayscale
 	float const max_dif_gs=255.0f;
-	float Grayscale::color_diff(unsigned char const* const c1,unsigned char const* const c2) {
+	float Grayscale::color_diff(unsigned char const* c1,unsigned char const* c2) {
 		float dif=misc_alg::abs_dif(*c1,*c2);
 		return dif/max_dif_gs;
 	}

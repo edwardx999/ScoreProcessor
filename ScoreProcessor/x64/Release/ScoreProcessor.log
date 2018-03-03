@@ -1,15 +1,22 @@
-﻿  ScoreProcessor.cpp
-ScoreProcessor.cpp(113): warning C4305: 'argument': truncation from 'double' to 'float'
-ScoreProcessor.cpp(297): warning C4305: 'argument': truncation from 'double' to 'float'
-c:\users\edwar\documents\visual studio 2017\projects\scoreprocessor\scoreprocessor\lib/exstring/exstdstring.h(56): warning C4244: '=': conversion from 'const wchar_t' to 'char', possible loss of data
-  ScoreProcessor.cpp(218): note: see reference to function template instantiation 'stype_dest exlib::string_cast<std::string,wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t>>(const std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t>> &)' being compiled
-          with
-          [
-              stype_dest=std::string
-          ]
+﻿  ScoreProcesses.cpp
+ScoreProcesses.cpp(70): warning C4244: '=': conversion from 'float' to 'unsigned char', possible loss of data
+ScoreProcesses.cpp(74): warning C4244: '/=': conversion from 'float' to 'unsigned char', possible loss of data
+ScoreProcesses.cpp(948): warning C4267: '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+ScoreProcesses.cpp(1232): warning C4244: 'initializing': conversion from 'float' to 'unsigned int', possible loss of data
+ScoreProcesses.cpp(1391): warning C4267: '+=': conversion from 'size_t' to 'uint', possible loss of data
+ScoreProcesses.cpp(1470): warning C4267: '=': conversion from 'size_t' to 'uint', possible loss of data
+ScoreProcesses.cpp(1476): warning C4267: '+=': conversion from 'size_t' to 'uint', possible loss of data
+ScoreProcesses.cpp(1477): warning C4244: 'initializing': conversion from 'uint' to 'float', possible loss of data
+ScoreProcesses.cpp(1478): warning C4305: 'argument': truncation from 'double' to 'float'
+ScoreProcesses.cpp(1479): warning C4244: 'initializing': conversion from 'uint' to 'float', possible loss of data
+ScoreProcesses.cpp(1480): warning C4305: 'argument': truncation from 'double' to 'float'
+ScoreProcesses.cpp(1833): warning C4244: '=': conversion from 'double' to 'unsigned char', possible loss of data
+ScoreProcesses.cpp(1838): warning C4244: '=': conversion from 'double' to 'unsigned char', possible loss of data
   Generating code
-  103 of 2622 functions ( 3.9%) were compiled, the rest were copied from previous compilation.
-    27 functions were new in current compilation
-    120 functions had inline decision re-evaluated but remain unchanged
+  134 of 3764 functions ( 3.6%) were compiled, the rest were copied from previous compilation.
+    59 functions were new in current compilation
+    105 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
-  ScoreProcessor.vcxproj -> C:\Users\edwar\documents\visual studio 2017\Projects\ScoreProcessor\x64\Release\ScoreProcessor.exe
+ThreadPool_x64.lib(ThreadPool.obj) : warning LNK4099: PDB 'ThreadPool.pdb' was not found with 'ThreadPool_x64.lib(ThreadPool.obj)' or at 'C:\Users\edwar\documents\visual studio 2017\Projects\ScoreProcessor\x64\Release\ThreadPool.pdb'; linking object as if no debug info
+ThreadPool_x64.lib(stdafx.obj) : warning LNK4099: PDB 'ThreadPool.pdb' was not found with 'ThreadPool_x64.lib(stdafx.obj)' or at 'C:\Users\edwar\documents\visual studio 2017\Projects\ScoreProcessor\x64\Release\ThreadPool.pdb'; linking object as if no debug info
+  ScoreProcessor.vcxproj -> C:\Users\edwar\documents\visual studio 2017\Projects\ScoreProcessor\x64\Release\sproc.exe
