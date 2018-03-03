@@ -466,7 +466,7 @@ public:
 			"Attempts to make the image fit the desired ratio.\n"
 			"Top and bottom are padded by vertical padding.\n"
 			"Left is padded by somewhere between min padding and max padding.\n"
-			"Right is padded by left padding plus horizontal offset.\n";
+			"Right is padded by left padding plus horizontal offset.";
 	}
 	char const* make_command(iter begin,iter end,delivery& del) const override
 	{
