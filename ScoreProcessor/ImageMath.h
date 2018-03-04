@@ -75,10 +75,11 @@ namespace cimg_library {
 	ImageUtils::Grayscale brightest_gray(::cimg_library::CImg<unsigned char> const& image);
 	/*
 	Converts image to a 1 channel grayscale image
-	@param image, must be 3 channel RGB
+	@param image, must be 3 or 4 channel RGB
 	*/
 	::cimg_library::CImg<unsigned char> get_grayscale(::cimg_library::CImg<unsigned char> const& image);
 	/*
+	Converts image to a 1 channel grayscale image, just takes average of 3.
 	*/
 	::cimg_library::CImg<unsigned char> get_grayscale_simple(::cimg_library::CImg<unsigned char> const& image);
 	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer);

@@ -20,14 +20,23 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include <iostream>
 namespace ImageUtils {
+	/*
+		A cartesian vertical line.
+	*/
 	template<typename T=unsigned int>
 	struct vertical_line {
 		T x,top,bottom;
 	};
+	/*
+		A cartesian horizontal line.
+	*/
 	template<typename T=unsigned int>
 	struct horizontal_line {
 		T y,left,right;
 	};
+	/*
+		A 2 dimensional vector.
+	*/
 	template<typename T=unsigned int>
 	struct vec2_t {
 		T x,y;
@@ -43,43 +52,104 @@ namespace ImageUtils {
 	template<typename T>
 	using Point=vec2_t<T>;
 	using PointUINT=Point<unsigned int>;
+	/*
+		A cartesian line in 2 dimensions.
+	*/
 	template<typename T=unsigned int>
 	struct line {
 		Point<T> a,b;
 		template<typename U>
 		friend ::std::ostream& operator<<(::std::ostream& os,line<U> const& aline);
 	};
+	/*
+		A polar line in 2 dimensions.
+	*/
 	template<typename T=float>
 	struct line_norm {
 		T theta;//the normal has this angle with the x-axis
 		T r;//the line is r away from the origin
 	};
+	/*
+		A rectangle.
+	*/
 	template<typename T=unsigned int>
 	struct Rectangle {
 		T left,right,top,bottom;
+		/*
+			Compares value of left side.
+			If equal, value of tops.
+		*/
 		bool operator<(Rectangle<T> const& other) const;
+		/*
+			Compares value of left side.
+			If equal, value of tops.
+		*/
 		bool operator>(Rectangle<T> const& other) const;
+		/*
+			Calculates the area.
+		*/
 		template<typename U=T>
 		U area() const;
+		/*
+			Calculates the perimeter.
+		*/
 		template<typename U=T>
 		U perimeter() const;
+		/*
+			Returns the height.
+		*/
 		template<typename U=T>
 		U height() const;
+		/*
+			Returns the width.
+		*/
 		template<typename U=T>
 		U width() const;
 		template<typename U=T>
+		/*
+			Returns the center of the rectangle.
+		*/
 		Point<U> center() const;
+		/*
+			Returns true if this rectangle is bordering the top or bottom of the other.
+		*/
 		bool is_bordering_vert(Rectangle<T> const& other) const;
+		/*
+			Returns true if the x-coordinates overlap.
+		*/
 		bool overlaps_x(Rectangle<T> const& other) const;
+		/*
+			Returns true if this rectangle is bordering the left or right of the other.
+		*/
 		bool is_bordering_horiz(Rectangle<T> const& other) const;
+		/*
+			Returns true if the y-coordinates overlap.
+		*/
 		bool overlaps_y(Rectangle<T> const& other) const;
+		/*
+			Returns true if the rectangles intersect.
+		*/
 		bool intersects(Rectangle<T> const& other) const;
+		/*
+			Returns the diagonal of this rectangle.
+		*/
 		line<T> diagonal();
+		/*
+			Console output
+		*/
 		template<typename U>
 		friend ::std::ostream& operator<<(::std::ostream& os,Rectangle<U> const& rect);
 	};
+
+	/*
 	template<typename T>
 	void split_horiz(Rectangle<T>* orig,Rectangle<T>* buffer,unsigned int numRects);
+	*/
+
+	/*
+		Converts rectangles that can be represented together as one rectangle into one rectangle.
+		Also sorts the container.
+	*/
 	template<typename T,typename alloc>
 	void compress_rectangles(::std::vector<Rectangle<T>,alloc>& container);
 	using RectangleUINT=Rectangle<unsigned int>;
@@ -121,11 +191,19 @@ namespace ImageUtils {
 
 	struct Grayscale {
 		unsigned char value;
-		inline operator unsigned char() const { return value; }
-		Grayscale(unsigned char const val):value(val) {}
-		Grayscale():Grayscale(0) {}
+		inline operator unsigned char() const
+		{
+			return value;
+		}
+		Grayscale(unsigned char const val):value(val)
+		{}
+		Grayscale():Grayscale(0)
+		{}
 
-		inline Grayscale& operator=(unsigned char const val) { value=val; return *this; }
+		inline Grayscale& operator=(unsigned char const val)
+		{
+			value=val; return *this;
+		}
 		static Grayscale const WHITE;
 		static Grayscale const BLACK;
 		float difference(Grayscale other);
@@ -135,7 +213,10 @@ namespace ImageUtils {
 
 	float gray_diff(Grayscale g1,Grayscale g2);
 
-	inline unsigned char brightness(Grayscale g) { return g; }
+	inline unsigned char brightness(Grayscale g)
+	{
+		return g;
+	}
 	inline unsigned char brightness(ColorRGB color)
 	{
 		return static_cast<unsigned char>(color.r*0.2126f+color.g*0.7152f+color.b*0.0722f);
@@ -277,6 +358,7 @@ namespace ImageUtils {
 		y-=other.y;
 		return *this;
 	}
+	/*
 	template<typename T>
 	void split_horiz(Rectangle<T>* orig,Rectangle<T>* buffer,unsigned int numRects)
 	{
@@ -288,5 +370,6 @@ namespace ImageUtils {
 		}
 		buffer[numRects]={orig->left,orig->right,orig->top+height*numRects,orig->bottom};
 	}
+	*/
 }
 #endif

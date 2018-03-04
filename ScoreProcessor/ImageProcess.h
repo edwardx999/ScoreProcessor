@@ -29,6 +29,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "lib\exstring\exmath.h"
 namespace ScoreProcessor {
 	template<typename T=unsigned char>
+	/*
+		Represents processes done to an image.
+	*/
 	class ImageProcess {
 	public:
 		typedef cimg_library::CImg<T> Img;
@@ -36,11 +39,17 @@ namespace ScoreProcessor {
 		{};
 		virtual void process(Img&)=0;
 	};
+	/*
+		Logs to some output.
+	*/
 	class Log {
 	public:
 		virtual ~Log()=default;
 		virtual void log(char const*)=0;
 	};
+	/*
+		Logs to the standard console output.
+	*/
 	class CoutLog:public Log {
 	public:
 		void log(char const* out) override
@@ -48,6 +57,9 @@ namespace ScoreProcessor {
 			std::cout<<out;
 		}
 	};
+	/*
+		Template for creating an output name based on an input name.
+	*/
 	class SaveRules {
 	private:
 		enum template_symbol:unsigned int {
@@ -77,30 +89,45 @@ namespace ScoreProcessor {
 		};
 		std::vector<part> parts;
 	public:
+		/*
+			Makes a string out of the input, based on the current template.
+		*/
 		template<typename String>
 		exlib::string make_filename(String const& input,unsigned int index=0) const;
 
 		exlib::string make_filename(char const* input,unsigned int index=0) const;
 		/*
-		%f to match filename
-		%x to match extension
-		%p to match path
-		%c to match entirety of input
-		%0 for index, with any number 0-9 for amount of padding
-		empty string, equivalent to %f alone
+			%f to match filename
+			%x to match extension
+			%p to match path
+			%c to match entirety of input
+			%0 for index, with any number 0-9 for amount of padding
 		*/
 		template<typename String>
 		SaveRules(String const& tmplt);
 		SaveRules(char const* tmplt);
 		SaveRules();
 
+		/*
+			%f to match filename
+			%x to match extension
+			%p to match path
+			%c to match entirety of input
+			%0 for index, with any number 0-9 for amount of padding
+		*/
 		template<typename String>
 		void assign(String const& tmplt);
 		void assign(char const* tmplt);
 
+		/*
+			Whether the current template is empty.
+		*/
 		bool empty() const;
 	};
 
+	/*
+		A series of processes to done onto an image.
+	*/
 	template<typename T=unsigned char>
 	class ProcessList:public std::vector<std::unique_ptr<ImageProcess<T>>> {
 	private:
@@ -142,29 +169,62 @@ namespace ScoreProcessor {
 			}
 		};
 	public:
+		/*
+			Adds a process to the list.
+		*/
 		template<typename U,typename... Args>
 		void add_process(Args&&... args);
 
+		/*
+			Processes an image.
+		*/
 		void process(cimg_library::CImg<T>& img) const;
+		/*
+			Processes an image and saves it to the output.
+		*/
 		void process(cimg_library::CImg<T>& img,char const* output) const;
+		/*
+			Processes an image and saves it to the output, based on the SaveRules.
+			As this method has no information about the input, it passes an empty string to the SaveRules.
+		*/
 		void process(cimg_library::CImg<T>& img,SaveRules const* psr,unsigned int index=0) const;
 
+		/*
+			Processes an image at the given filename, and saves it in place.
+		*/
 		void process(char const* filename) const;
+		/*
+			Processes an image at the given filename, and saves it to the output.
+		*/
 		void process(char const* filename,char const* output) const;
+		/*
+			Processes an image at the given filename, and saves it based on the SaveRules.
+			Pass nullptr to SaveRules if you do not want it saved (useless, but ok).
+		*/
 		void process(char const* filename,SaveRules const* psr,unsigned int index=0) const;
 
 		/*
+			Processes all the images in the vector.
 			Pass nullptr to psr if you do not want the imgs to be saved.
+			Might add iterator version one day.
 		*/
 		void process(std::vector<cimg_library::CImg<T>>& files,
 			SaveRules const* psr,
 			unsigned int num_threads=std::thread::hardware_concurrency()) const;
 
+		/*
+			Processes all the images in the vector.
+			Might add iterator version one day.
+		*/
 		template<typename String>
 		void process(std::vector<String> const& filenames,
 			SaveRules const* psr,
 			unsigned int num_threads=std::thread::hardware_concurrency()) const;
 
+		/*
+			Processes all the images in the vector.
+			Might add iterator version one day.
+		*/
 		void process(std::vector<char*> const& filenames,
 			SaveRules const* psr,
 			unsigned int num_threads=std::thread::hardware_concurrency()) const;

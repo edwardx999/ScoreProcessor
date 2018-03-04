@@ -354,9 +354,13 @@ namespace ScoreProcessor {
 		unsigned int max_size,
 		U background);
 	/*
+		Removes border of the image.
 	*/
 	void remove_border(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const color=ImageUtils::Grayscale::BLACK,float const tolerance=0.5);
 
+	/*
+		Does a flood fill.
+	*/
 	void flood_fill(::cimg_library::CImg<unsigned char>& image,float const tolerance,ImageUtils::Grayscale const color,ImageUtils::Grayscale const replacer,ImageUtils::Point<unsigned int> start);
 	/*
 		Adds or removes paddings from all sides of the image
@@ -402,6 +406,9 @@ namespace ScoreProcessor {
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);
 
+	/*
+		
+	*/
 	void rescale_colors(::cimg_library::CImg<unsigned char>&,unsigned char min,unsigned char mid,unsigned char max=255);
 	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const&,unsigned int horiz_padding);
 	std::vector<unsigned int> fattened_profile_low(std::vector<unsigned int> const&,unsigned int horiz_padding);
