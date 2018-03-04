@@ -1468,6 +1468,27 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		public:
 			cost_pad pad_info;
 		};
+
+		Splice items;
+		items.emplace_back(filenames[0].c_str());
+		auto const& first_page=items[0];
+		unsigned int touch_tolerance=first_page._width/1000+1;
+		switch(first_page._spectrum)
+		{
+			case 1:
+				items[0].top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
+				break;
+			case 3:
+			case 4:
+				items[0].top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
+				break;
+			default:
+				throw std::invalid_argument("Invalid number of layers");
+		}
+		if(optimal_height=-1)
+		{
+			optimal_height=first_page._width*4/7;
+		}
 		function<cost_pad(page const*,size_t)> cost_splice=
 			[optimal_padding,min_padding,optimal_height](page const* page,size_t num)
 		{
@@ -1500,22 +1521,6 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				padding
 			};
 		};
-		Splice items;
-		items.emplace_back(filenames[0].c_str());
-		auto const& first_page=items[0];
-		unsigned int touch_tolerance=first_page._width/1000+1;
-		switch(first_page._spectrum)
-		{
-			case 1:
-				items[0].top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
-				break;
-			case 3:
-			case 4:
-				items[0].top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
-				break;
-			default:
-				throw std::invalid_argument("Invalid number of layers");
-		}
 		unsigned int num_pages=0;
 		//Creating Vertical profiles of each image
 		vector<uint> above_bottom_profile,below_top_profile,below_bottom_profile;
@@ -1533,7 +1538,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 
 			below_top_profile=get_top_profile(below);
 			below_bottom_profile=get_bottom_profile(below);
-			
+
 			//fattening profiles horizontally (adding horizontal padding)
 			above_bottom_profile=fattened_profile_low(above_bottom_profile,horiz_padding);
 			below_top_profile=fattened_profile_high(below_top_profile,horiz_padding);

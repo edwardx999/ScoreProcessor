@@ -388,8 +388,7 @@ namespace ScoreProcessor {
 		@param filenames, vector of filenames of pages to be combined
 		@param horiz_padding, the padding size in pixels between content on the page
 		@param optimal_padding, half the optimal padding between pages
-		@param allowable_deviance, the maximum number of pixels that the padding can deviate from optimum
-		@param optimal_height, the optimal height for spliced pages
+		@param optimal_height, the optimal height for spliced pages, if -1, is 4/7 the width of the first page
 	*/
 	unsigned int splice_pages(
 		::std::vector<::std::string> const& filenames,

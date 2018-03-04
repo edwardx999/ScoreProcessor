@@ -605,7 +605,7 @@ public:
 			return "Splice can not be done along with other commands";
 		}
 		del.flag=delivery::do_splice;
-		if(std::distance(begin,end)<4)
+		if(std::distance(begin,end)<3)
 		{
 			return "Too few arguments for splice";
 		}
@@ -649,17 +649,24 @@ public:
 			return "Invalid input for minimum padding of splice";
 		}
 		++begin;
-		try
+		if(begin==end)
 		{
-			oheight=std::stoi(*begin);
-			if(oheight<0)
-			{
-				return "Optimal height of splice must be non-negative";
-			}
+			oheight=-1;
 		}
-		catch(std::exception const&)
+		else
 		{
-			return "Invalid input for optimal height of splice";
+			try
+			{
+				oheight=std::stoi(*begin);
+				if(oheight<0)
+				{
+					return "Optimal height of splice must be non-negative";
+				}
+			}
+			catch(std::exception const&)
+			{
+				return "Invalid input for optimal height of splice";
+			}
 		}
 		del.flag=delivery::do_splice;
 		del.splice_args.horiz_padding=hpadding;
@@ -791,7 +798,7 @@ int main(int argc,char** argv)
 			"    Blur:                     -bl radius\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
-			"    Splice:                   -spl horizontal_padding optimal_padding minimum_vertical_padding optimal_height\n"
+			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(4/7 width of first page)\n"
 			"Options\n"
 			"  Output: -o format\n"
 			"Any parameters given beyond the number requested are ignored.\n"
