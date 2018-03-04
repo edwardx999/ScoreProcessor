@@ -199,6 +199,7 @@ void stop()
 
 class CommandMaker {
 public:
+	typedef std::vector<std::string>::const_iterator iter;
 	struct delivery {
 		SaveRules sr;
 		ProcessList<unsigned char> pl;
@@ -216,14 +217,63 @@ public:
 			unsigned int optimal_height;
 		} splice_args;
 	};
+private:
+	unsigned int min_args;
+	unsigned int max_args;
+	char const* _help_message;
+	char const* _name;
+protected:
+	CommandMaker(unsigned int min_args,unsigned int max_args,char const* hm,char const* nm)
+		:min_args(min_args),max_args(max_args),_help_message(hm),_name(nm)
+	{}
+	virtual char const* parse_command(iter begin,size_t num_args,delivery&) const=0;
+public:
 	static char const* const mci;
-	typedef std::vector<std::string>::const_iterator iter;
 	virtual ~CommandMaker()=default;
-	virtual char const* help_message() const=0;
-	virtual char const* make_command(iter args,iter end,delivery&) const=0;
+	char const* help_message() const
+	{
+		return _help_message;
+	}
+	char const* name() const
+	{
+		return _name;
+	}
+	char const* make_command(iter begin,iter end,delivery& del) const
+	{
+		size_t n=std::distance(begin,end);
+		if(n<min_args)
+		{
+			return "Too few parameters";
+		}
+		if(n>max_args)
+		{
+			return "Too many parameters";
+		}
+		return parse_command(begin,n,del);
+	}
+
 };
-char const* const CommandMaker::mci="Multi command incompatibility";;
-class FilterGrayMaker:public CommandMaker {
+
+class SingleCommandMaker:public CommandMaker {
+protected:
+	virtual char const* parse_command_h(iter begin,size_t num_args,delivery&) const=0;
+	SingleCommandMaker(unsigned int min_args,unsigned int max_args,char const* hm,char const* nm)
+		:CommandMaker(min_args,max_args,hm,nm)
+	{}
+public:
+	char const* const mci="Single Command cannot be done with a Multi Command";
+	char const* parse_command(iter begin,size_t num_args,delivery& del) const override final
+	{
+		if(del.flag>1)
+		{
+			return mci;
+		}
+		del.flag=del.do_single;
+		return parse_command_h(begin,num_args,del);
+	}
+};
+
+class FilterGrayMaker:public SingleCommandMaker {
 	static char const* assign_val(iter arg,int* hold)
 	{
 		try
@@ -231,38 +281,23 @@ class FilterGrayMaker:public CommandMaker {
 			*hold=std::stoi(*arg);
 			if(*hold<0||*hold>255)
 			{
-				return "Values must be in range [0,255] for Filter Gray";
+				return "Values must be in range [0,255]";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid parameter given for Filter Gray";
+			return "Invalid parameter given";
 		}
 		return nullptr;
 	}
 public:
-	char const* help_message() const override
+	FilterGrayMaker():SingleCommandMaker(1,3,"Replaces all values between min and max value inclusive with replacer","Filter Gray")
+	{}
+	char const* parse_command_h(iter argb,size_t n,delivery& del) const override
 	{
-		return "Replaces all values between min_value and max_value inclusive with replacer";
-	}
-	char const* make_command(iter argb,iter end,delivery& del) const override
-	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-
-		if(argb==end)
-		{
-			return "Too few parameters for Filter Gray";
-		}
-		if(std::distance(argb,end)>3)
-		{
-			return "Too many parameters for Filter Gray";
-		}
 		int params[3];
 		size_t i;
-		for(i=0;argb+i!=end;++i)
+		for(i=0;i<n;++i)
 		{
 			if(auto res=assign_val(argb+i,params+i))
 			{
@@ -274,59 +309,37 @@ public:
 			params[i]=255;
 		}
 		del.pl.add_process<FilterGray>(params[0],params[1],Grayscale(params[2]));
-		del.flag=delivery::do_single;
 		return nullptr;
 	}
 };
 
-class ConvertGrayMaker:public CommandMaker {
+class ConvertGrayMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
+	ConvertGrayMaker():SingleCommandMaker(0,0,"Converts given image to Grayscale","Convert Gray")
+	{}
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		return "Converts given image to Grayscale";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
-	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(begin!=end)
-		{
-			return "Too many parameters for Convert Gray";
-		}
-		del.flag=delivery::do_single;
 		del.pl.add_process<ChangeToGrayscale>();
 		return nullptr;
 	}
 };
 
-class ClusterClearMaker:public CommandMaker {
+class ClusterClearMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
+	ClusterClearMaker()
+		:SingleCommandMaker(1,4,
+			"All clusters of pixels that are outside of tolerance of background color\n"
+			"and between min and max size are replaced by the background color",
+			"Cluster Clear Grayscale")
+	{}
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		return "All clusters of pixels that are outside of tolerance of background color and between min and max size are replaced by the background color";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
-	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(begin==end)
-		{
-			return "Too few parameters for Cluster Clear";
-		}
-		if(std::distance(begin,end)>4)
-		{
-			return "Too many parameters for Cluster Clear";
-		}
 		int max_size,min_size=0;
 		Grayscale background=255;
 		float tolerance=0.042;
 		try
 		{
-			max_size=std::stoi(*begin);
+			max_size=std::stoi(begin[0]);
 			if(min_size<0)
 			{
 				return "Maximum cluster size must be non-negative";
@@ -334,16 +347,15 @@ public:
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for maximum size of cluster clear";
+			return "Invalid input for maximum size";
 		}
-		++begin;
-		if(begin==end)
+		if(n<2)
 		{
 			goto end;
 		}
 		try
 		{
-			min_size=std::stoi(*begin);
+			min_size=std::stoi(begin[1]);
 			if(min_size<0)
 			{
 				return "Minimum cluster size must be non-negative";
@@ -351,195 +363,152 @@ public:
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for minimum size of cluster clear";
+			return "Invalid input for minimum size";
 		}
 		if(max_size<min_size)
 		{
 			return "Max size must be greater than min size";
 		}
-		++begin;
-		if(begin==end)
+		if(n<3)
 		{
 			goto end;
 		}
 		try
 		{
-			int bg=std::stoi(*begin);
+			int bg=std::stoi(begin[2]);
 			if(bg>255||bg<0)
 			{
-				return "Background color for Cluster Clear must be in range [0,255]";
+				return "Background color must be in range [0,255]";
 			}
 			background=bg;
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for background color for Cluster Clear";
+			return "Invalid input for background color";
 		}
-		++begin;
-		if(begin==end)
+		if(n<4)
 		{
 			goto end;
 		}
 		try
 		{
-			tolerance=std::stof(*begin);
+			tolerance=std::stof(begin[3]);
 			if(tolerance<0||tolerance>1)
 			{
-				return "Tolerance for Cluster Clear must be between 0 and 1";
+				return "Tolerance must be between 0 and 1";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for tolerance for Cluster Clear";
+			return "Invalid input for tolerance";
 		}
 	end:
-		del.flag=delivery::do_single;
 		del.pl.add_process<ClusterClearGray>(min_size,max_size,Grayscale(background),tolerance);
 		return nullptr;
 	}
 };
 
-class HorizontalPaddingMaker:public CommandMaker {
+class HorizontalPaddingMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
+	HorizontalPaddingMaker():
+		SingleCommandMaker(1,1,"Pads the left and right sides of the image with given number of pixels","Horizontal Padding")
+	{}
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		return "Pads the left and right sides of the image with given number of pixels";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
-	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(begin==end)
-		{
-			return "Too few parameters for Horizontal Padding";
-		}
-		if(std::distance(begin,end)>1)
-		{
-			return "Too many parameters for Horizontal Padding";
-		}
 		try
 		{
 			int amount=std::stoi(*begin);
 			if(amount<0)
 			{
-				return "Value for horizontal padding must be non-negative";
+				return "Padding must be non-negative";
 			}
-			del.flag=delivery::do_single;
 			del.pl.add_process<PadHoriz>(amount);
 			return nullptr;
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for padding amount";
+			return "Invalid input";
 		}
 	}
 };
 
-class VerticalPaddingMaker:public CommandMaker {
+class VerticalPaddingMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
+	VerticalPaddingMaker()
+		:SingleCommandMaker(1,1,"Pads the top and bottom of the image with given number of pixels","Vertical Padding")
+	{}
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		return "Pads the top and bottom of the image with given number of pixels";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
-	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(begin==end)
-		{
-			return "Too few parameters for Vertical Padding";
-		}
-		if(std::distance(begin,end)>1)
-		{
-			return "Too many parameters for Vertical Padding";
-		}
 		try
 		{
 			int amount=std::stoi(*begin);
 			if(amount<0)
 			{
-				return "Value for Vertical Padding must be non-negative";
+				return "Amount must be non-negative";
 			}
-			del.flag=delivery::do_single;
 			del.pl.add_process<PadVert>(amount);
 			return 0;
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for padding amount";
+			return "Invalid input";
 		}
 	}
 };
 
 class OutputMaker:public CommandMaker {
 public:
-	char const* help_message() const override
-	{
-		return
+	OutputMaker():
+		CommandMaker(
+			1,1,
 			"Assign output pattern:\n"
 			" %c copy whole filename\n"
 			" %p copy path\n"
 			" %x copy extension\n"
 			" %f copy filename\n"
 			" %0 any number from 0-9, index of file with specified number of padding\n"
-			" %% literal percent";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
+			" %% literal percent",
+			"Output Pattern")
+	{}
+	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
-
-		if(begin==end)
+		if(del.sr.empty())
 		{
-			return "Too few parameters for output pattern";
+			try
+			{
+				del.sr.assign(*begin);
+			}
+			catch(std::exception const&)
+			{
+				return "Invalid filename template";
+			}
 		}
-		if(std::distance(begin,end)>1)
+		else
 		{
-			return "Too many parameters for output pattern";
-		}
-		try
-		{
-			del.sr.assign(*begin);
-		}
-		catch(std::exception const&)
-		{
-			return "Invalid filename template";
+			return "Filename template already given";
 		}
 		return nullptr;
 	}
 };
 
-class AutoPaddingMaker:public CommandMaker {
+class AutoPaddingMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
-	{
-		return
+	AutoPaddingMaker()
+		:SingleCommandMaker(
+			3,5,
 			"Attempts to make the image fit the desired ratio.\n"
 			"Top and bottom are padded by vertical padding.\n"
 			"Left is padded by somewhere between min padding and max padding.\n"
-			"Right is padded by left padding plus horizontal offset.";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
+			"Right is padded by left padding plus horizontal offset.",
+			"Auto Padding")
+	{}
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(std::distance(begin,end)<3)
-		{
-			return "Too few parameters for Auto Padding";
-		}
-		if(std::distance(begin,end)>5)
-		{
-			return "Too many parameters for Auto Padding";
-		}
 		int vert,minh,maxh,hoff;
 		float opt_rat;
 		try
 		{
-			vert=std::stoul(*begin);
+			vert=std::stoul(begin[0]);
 			if(vert<0)
 			{
 				return "Vertical padding must be non-negative";
@@ -549,10 +518,9 @@ public:
 		{
 			return "Invalid argument given for vertical padding";
 		}
-		++begin;
 		try
 		{
-			minh=std::stoi(*begin);
+			minh=std::stoi(begin[1]);
 			if(minh<0)
 			{
 				return "Minimum horizontal padding must be non-negative";
@@ -562,10 +530,9 @@ public:
 		{
 			return "Invalid input for minimum horizontal padding";
 		}
-		++begin;
 		try
 		{
-			maxh=std::stoi(*begin);
+			maxh=std::stoi(begin[2]);
 			if(maxh<0)
 			{
 				return "Maximum horizontal padding must be non-negative";
@@ -579,12 +546,11 @@ public:
 		{
 			return "Invalid argument given for max horizontal padding";
 		}
-		++begin;
-		if(begin!=end)
+		if(n>3)
 		{
 			try
 			{
-				hoff=std::stoi(*begin);
+				hoff=std::stoi(begin[3]);
 				if(hoff<0&&-hoff>minh)
 				{
 					return "Negative horizontal offset must be less than minimum horizontal padding";
@@ -600,12 +566,11 @@ public:
 			hoff=0;
 			goto end;
 		}
-		++begin;
-		if(begin!=end)
+		if(n>4)
 		{
 			try
 			{
-				opt_rat=std::stof(*begin);
+				opt_rat=std::stof(begin[4]);
 				if(opt_rat<0)
 				{
 					return "Optimal ratio must be non-negative";
@@ -621,39 +586,26 @@ public:
 			opt_rat=16.0f/9.0f;
 		}
 	end:
-		del.flag=delivery::do_single;
 		del.pl.add_process<PadAuto>(vert,minh,maxh,hoff,opt_rat);
 		return nullptr;
 	}
 };
 
-class RescaleGrayMaker:public CommandMaker {
+class RescaleGrayMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
-	{
-		return
+	RescaleGrayMaker()
+		:SingleCommandMaker(3,3,
 			"Colors are scaled such that values less than or equal to min become 0,\n"
 			"and values greater than or equal to max becomes 255.\n"
-			"They are scaled based on their distance from mid.";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
+			"They are scaled based on their distance from mid.",
+			"Rescale Gray")
+	{}
+	char const* parse_command_h(iter begin,size_t,delivery& del) const override
 	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(std::distance(begin,end)<3)
-		{
-			return "Too few parameters for Rescale Gray";
-		}
-		if(std::distance(begin,end)>3)
-		{
-			return "Too many parameters for Rescale Gray";
-		}
 		char const* const errors[]=
-		{"Invalid argument for min value of Rescale Gray",
-			"Invalid argument for mid value of Rescale Gray",
-			"Invalid argument for max value of Rescale Gray"};
+		{"Invalid argument for min value",
+			"Invalid argument for mid value",
+			"Invalid argument for max value"};
 		int params[3];
 		for(size_t i=0;i<3;++i)
 		{
@@ -662,7 +614,7 @@ public:
 				params[i]=std::stoi(begin[i]);
 				if(params[i]<0||params[i]>255)
 				{
-					return "Values for Rescale Gray must be in range [0,255]";
+					return "Values must be in range [0,255]";
 				}
 			}
 			catch(std::exception const&)
@@ -672,13 +624,12 @@ public:
 		}
 		if(params[0]>params[1])
 		{
-			return "Min value of Rescale Gray must be less than or equal to mid value";
+			return "Min value must be less than or equal to mid value";
 		}
 		if(params[1]>params[2])
 		{
-			return "Mid value of Rescale Gray must be less than or equal to max value";
+			return "Mid value must be less than or equal to max value";
 		}
-		del.flag=del.do_single;
 		del.pl.add_process<RescaleGray>(params[0],params[1],params[2]);
 		return nullptr;
 	}
@@ -686,92 +637,76 @@ public:
 
 class CutMaker:public CommandMaker {
 public:
-	char const* help_message() const override
-	{
-		return "Cuts the image into separate systems";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
+	CutMaker()
+		:CommandMaker(0,0,"Cuts the image into separate systems","Cut")
+	{}
+	char const* parse_command(iter begin,size_t,delivery& del) const override
 	{
 		if(del.flag)
 		{
 			return "Cut can not be done along with other commands";
 		}
-		if(begin!=end)
-		{
-			return "Too many parameters for Cut";
-		}
 		del.flag=delivery::do_cut;
-		return 0;
+		return nullptr;
 	}
 };
 
 class SpliceMaker:public CommandMaker {
 public:
-	char const* help_message() const override
-	{
-		return
+	SpliceMaker():
+		CommandMaker(
+			3,4,
 			"Splices the pages together assuming right alignment.\n"
 			"Greedy algorithm that tries to minimize deviation from optimal height and optimal padding.\n"
 			"Horizontal padding is the padding placed between elements of the page horizontally.\n"
-			"Min padding is the minimal vertical padding between pages."
-			;
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
+			"Min padding is the minimal vertical padding between pages.",
+			"Splice")
+	{}
+	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
 		if(del.flag)
 		{
 			return "Splice can not be done along with other commands";
 		}
-		if(std::distance(begin,end)<3)
-		{
-			return "Too few parameters for Splice";
-		}
-		if(std::distance(begin,end)>4)
-		{
-			return "Too many parameters for Splice";
-		}
 		del.flag=del.do_splice;
 		int hpadding,opadding,mpadding,oheight;
 		try
 		{
-			hpadding=std::stoi(*begin);
+			hpadding=std::stoi(begin[0]);
 			if(hpadding<0)
 			{
-				return "Horizontal padding of Splice must be non-negative";
+				return "Horizontal padding must be non-negative";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for horizontal padding of Splice";
+			return "Invalid input for horizontal padding";
 		}
-		++begin;
 		try
 		{
-			opadding=std::stoi(*begin);
+			opadding=std::stoi(begin[1]);
 			if(opadding<0)
 			{
-				return "Optimal padding of Splice must be non-negative";
+				return "Optimal padding must be non-negative";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for optimal padding of Splice";
+			return "Invalid input for optimal padding";
 		}
-		++begin;
 		try
 		{
-			mpadding=std::stoi(*begin);
+			mpadding=std::stoi(begin[2]);
 			if(mpadding<0)
 			{
-				return "Minimum padding of Splice must be non-negative";
+				return "Minimum padding must be non-negative";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for minimum padding of Splice";
+			return "Invalid input for minimum padding";
 		}
-		++begin;
-		if(begin==end)
+		if(n<4)
 		{
 			oheight=-1;
 		}
@@ -782,12 +717,12 @@ public:
 				oheight=std::stoi(*begin);
 				if(oheight<0)
 				{
-					return "Optimal height of splice must be non-negative";
+					return "Optimal height must be non-negative";
 				}
 			}
 			catch(std::exception const&)
 			{
-				return "Invalid input for optimal height of splice";
+				return "Invalid input for optimal height";
 			}
 		}
 		del.flag=delivery::do_splice;
@@ -799,26 +734,13 @@ public:
 	}
 };
 
-class BlurMaker:public CommandMaker {
+class BlurMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
+	BlurMaker()
+		:SingleCommandMaker(1,1,"Gaussian blur of given standard deviation","Blur")
+	{}
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		return "Does a Gaussian blur of given standard deviation";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
-	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(begin==end)
-		{
-			return "Too few parameters for Blur";
-		}
-		if(std::distance(begin,end)>1)
-		{
-			return "Too many parameters for Blur";
-		}
 		float radius;
 		try
 		{
@@ -832,29 +754,18 @@ public:
 		{
 			return "Invalid arguments given for blur";
 		}
-		del.flag=del.do_single;
 		del.pl.add_process<Blur>(radius);
 		return nullptr;
 	}
 };
 
-class RemoveBorderMaker:public CommandMaker {
+class RemoveBorderMaker:public SingleCommandMaker {
 public:
-	char const* help_message() const override
+	RemoveBorderMaker()
+		:SingleCommandMaker(0,0,"Removes border of image (SUPER BETA VERSION)","Remove Border")
+	{}
+	char const* parse_command_h(iter begin,size_t,delivery& del) const override
 	{
-		return "Removes border of image (SUPER BETA VERSION)";
-	}
-	char const* make_command(iter begin,iter end,delivery& del) const override
-	{
-		if(del.flag>1)
-		{
-			return mci;
-		}
-		if(begin!=end)
-		{
-			return "Too many parameters for Remove Border";
-		}
-		del.flag=del.do_single;
 		del.pl.add_process<RemoveProcess>();
 		return nullptr;
 	}
@@ -961,7 +872,8 @@ int main(int argc,char** argv)
 			std::cout<<"Unknown command\n";
 			return 1;
 		}
-		std::cout<<cmd->second->help_message()<<'\n';
+		auto& m=cmd->second;
+		std::cout<<m->name()<<":\n"<<m->help_message()<<'\n';
 		return 0;
 	}
 	bool is_folder=arg1.back()=='\\'||arg1.back()=='/';
@@ -985,9 +897,10 @@ int main(int argc,char** argv)
 				std::cout<<"Unknown command: "<<*arg_start<<'\n';
 				return 1;
 			}
-			if(auto res=cmd->second->make_command(arg_start+1,it,del))
+			auto& m=cmd->second;
+			if(auto res=m->make_command(arg_start+1,it,del))
 			{
-				std::cout<<res<<'\n';
+				std::cout<<m->name()<<" Error:\n"<<res<<'\n';
 				return 1;
 			}
 			arg_start=it;
