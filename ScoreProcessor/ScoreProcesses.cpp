@@ -1487,7 +1487,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			default:
 				throw std::invalid_argument("Invalid number of layers");
 		}
-		if(optimal_height=-1)
+		if(optimal_height==-1)
 		{
 			optimal_height=first_page._width*4/7;
 		}

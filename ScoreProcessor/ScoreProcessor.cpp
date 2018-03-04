@@ -707,7 +707,7 @@ public:
 		{
 			return "Invalid input for minimum padding";
 		}
-		if(n<4)
+		if(n==3)
 		{
 			oheight=-1;
 		}
@@ -715,7 +715,7 @@ public:
 		{
 			try
 			{
-				oheight=std::stoi(*begin);
+				oheight=std::stoi(begin[3]);
 				if(oheight<0)
 				{
 					return "Optimal height must be non-negative";
@@ -729,8 +729,8 @@ public:
 		del.flag=delivery::do_splice;
 		del.splice_args.horiz_padding=hpadding;
 		del.splice_args.min_padding=mpadding;
-		del.splice_args.optimal_height=oheight;
 		del.splice_args.optimal_padding=opadding;
+		del.splice_args.optimal_height=oheight;
 		return nullptr;
 	}
 };
@@ -930,6 +930,11 @@ int main(int argc,char** argv)
 			if(is_folder)
 			{
 				auto files=images_in_path(arg1);
+				if(files.empty())
+				{
+					std::cout<<"No files found\n";
+					return 0;
+				}
 				try
 				{
 					processes.process(files,&output,num_threads());
@@ -957,6 +962,11 @@ int main(int argc,char** argv)
 			if(is_folder)
 			{
 				auto files=images_in_path(arg1);
+				if(files.empty())
+				{
+					std::cout<<"No files found\n";
+					return 0;
+				}
 				class CutProcess:public exlib::ThreadTask {
 				private:
 					std::string const* input;
@@ -1005,7 +1015,12 @@ int main(int argc,char** argv)
 			if(is_folder)
 			{
 				auto files=images_in_path(arg1);
-				auto save=output.make_filename(arg1);
+				if(files.empty())
+				{
+					std::cout<<"No files found\n";
+					return 0;
+				}
+				auto save=output.make_filename(files[0]);
 				try
 				{
 					splice_pages(
