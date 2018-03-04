@@ -854,25 +854,14 @@ std::vector<std::string> images_in_path(std::string const& path)
 		ret.end());
 	return ret;
 }
-void png_stress_test()
+std::string pretty_date()
 {
-	auto files=images_in_path("C:\\Users\\edwar\\Videos\\Score\\mcant\\cut\\");
-	struct page:public CImg<uchar> {
-		page(char const* pg):CImg(pg)
-		{}
-		uint top,bottom;
-	};
-	std::vector<page> t;
-	size_t count=0;
-	for(auto it=files.begin();it!=files.end();++it,++count)
+	std::string ret(__DATE__);
+	if(ret[4]==' ')
 	{
-		t.emplace_back(it->c_str());
-		t.back().save((*it+"copy.png").c_str());
-		if(count%5==4)
-		{
-			t.erase(t.begin(),t.end()-1);
-		}
+		ret[4]='0';
 	}
+	return ret;
 }
 int main(int argc,char** argv)
 {
@@ -880,8 +869,8 @@ int main(int argc,char** argv)
 	if(argc==1)
 	{
 		std::cout<<
-			"Version: "
-			__DATE__
+			"Version: "<<
+			pretty_date()<<
 			" "
 			__TIME__
 			" Copyright 2017-2018 Edward Xie"
