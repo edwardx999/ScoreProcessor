@@ -891,10 +891,10 @@ int main(int argc,char** argv)
 		entry cmd=commands.find(arg1);
 		if(cmd==commands.end())
 		{
-			std::cout<<"Unknown command";
+			std::cout<<"Unknown command\n";
 			return 1;
 		}
-		std::cout<<cmd->second->help_message();
+		std::cout<<cmd->second->help_message()<<'\n';
 		return 0;
 	}
 	bool is_folder=arg1.back()=='\\'||arg1.back()=='/';
@@ -915,13 +915,12 @@ int main(int argc,char** argv)
 			entry cmd=commands.find(*arg_start);
 			if(cmd==commands.end())
 			{
-				std::cout<<"Unknown command: "<<*arg_start;
+				std::cout<<"Unknown command: "<<*arg_start<<'\n';
 				return 1;
 			}
-			auto res=cmd->second->make_command(arg_start+1,it,del);
-			if(res)
+			if(auto res=cmd->second->make_command(arg_start+1,it,del))
 			{
-				std::cout<<res;
+				std::cout<<res<<'\n';
 				return 1;
 			}
 			arg_start=it;
@@ -932,7 +931,7 @@ int main(int argc,char** argv)
 	{
 		if(del.flag==del.do_nothing)
 		{
-			std::cout<<"No commands given";
+			std::cout<<"No commands given\n";
 			return 0;
 		}
 		output.assign("%c");
@@ -956,7 +955,7 @@ int main(int argc,char** argv)
 				}
 				catch(std::exception const& ex)
 				{
-					std::cout<<ex.what();
+					std::cout<<ex.what()<<'\n';
 				}
 			}
 			else
@@ -967,7 +966,7 @@ int main(int argc,char** argv)
 				}
 				catch(std::exception const& ex)
 				{
-					std::cout<<ex.what();
+					std::cout<<ex.what()<<'\n';
 				}
 			}
 			break;
@@ -994,7 +993,7 @@ int main(int argc,char** argv)
 						}
 						catch(std::exception const& ex)
 						{
-							std::cout<<ex.what();
+							std::cout<<ex.what()<<'\n';
 						}
 					}
 				};
@@ -1014,7 +1013,7 @@ int main(int argc,char** argv)
 				}
 				catch(std::exception const& ex)
 				{
-					std::cout<<ex.what();
+					std::cout<<ex.what()<<'\n';
 					return 1;
 				}
 			}
@@ -1038,14 +1037,14 @@ int main(int argc,char** argv)
 				}
 				catch(std::exception const& ex)
 				{
-					std::cout<<ex.what();
+					std::cout<<ex.what()<<'\n';
 					return 1;
 				}
 				return 0;
 			}
 			else
 			{
-				std::cout<<"Splice requires folder input";
+				std::cout<<"Splice requires folder input\n";
 				return 1;
 			}
 		}
