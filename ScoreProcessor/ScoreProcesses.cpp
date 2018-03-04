@@ -1053,16 +1053,16 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 
 		result_container.push_back(ImageUtils::Rectangle<unsigned int>{left,right,start.y,start.y+1});
-		struct ScanRange {
+		struct scan_range {
 			unsigned int left,right,y;
 			char direction;
 		};
-		stack<ScanRange> scan_ranges;
+		stack<scan_range> scan_ranges;
 		scan_ranges.push({left,right,start.y,+1});
 		scan_ranges.push({left,right,start.y,-1});
 		while(!scan_ranges.empty())
 		{
-			ScanRange const current_range=scan_ranges.top();
+			scan_range const current_range=scan_ranges.top();
 			scan_ranges.pop();
 			//scan left
 			for(left=current_range.left-1;
@@ -1222,6 +1222,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		return resultContainer;
 	}
 	*/
+
 	float const _16by9=16.0f/9.0f;
 	int auto_padding(CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const horizontal_padding_max,unsigned int const horizontal_padding_min,signed int horiz_offset,float optimal_ratio)
 	{
@@ -1295,7 +1296,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				return 2;
 			}
 		}
-	#define prevLeftPadding (left)
+		auto& prevLeftPadding=left;
 		unsigned int prevRightPadding=image._width-right;
 
 		if(prevLeftPadding==paddingSize&&prevRightPadding==paddingSize)
@@ -1344,7 +1345,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			default:
 				return 2;
 		}
-	#define prevTopPadding (top)
+		auto& prevTopPadding=top;
 		unsigned int prevBottomPadding=image._height-bottom;
 
 		if(prevTopPadding==paddingSize&&prevBottomPadding==paddingSize)
@@ -1447,6 +1448,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	vector<uint> get_bottom_profile(CImg<uchar> const& img)
 	{
 		base_prof(bottom);
+	#undef base_prof
 	}
 	unsigned int splice_pages(
 		vector<::std::string> const& filenames,
@@ -1709,103 +1711,111 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 	}
 	float const VERTICAL_ENERGY_CONSTANT=100.0f;
-	CImg<float> create_vertical_energy(CImg<unsigned char> const& refImage)
+	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref)
 	{
-		CImg<float> map(refImage._width,refImage._height);
+		CImg<float> map(ref._width,ref._height);
 		map.fill(INFINITY);
 		for(unsigned int x=0;x<map._width;++x)
 		{
 			unsigned int y=0U;
-			unsigned int nodeStart;
-			bool nodeFound;
-		#define assign_nodeFound() (nodeFound=gray_diff(Grayscale::WHITE,refImage(x,y))<.2f)
-			if(assign_nodeFound())
+			unsigned int node_start;
+			bool node_found;
+			auto assign_node_found=[&]()
 			{
-				nodeStart=0;
-			}
-			for(y=1;y<refImage._height;++y)
+				return node_found=gray_diff(Grayscale::WHITE,ref(x,y))<.2f;
+			};
+			auto place_values=[&]()
 			{
-				if(nodeFound)
+				unsigned int mid=(node_start+y)/2;
+				float val_div=2.0f;
+				unsigned int node_y;
+				for(node_y=node_start;node_y<mid;++node_y)
 				{
-					if(!assign_nodeFound())
+					++val_div;
+					map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+				}
+				for(;node_y<y;++node_y)
+				{
+					--val_div;
+					map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+				}
+			};
+			if(assign_node_found())
+			{
+				node_start=0;
+			}
+			for(y=1;y<ref._height;++y)
+			{
+				if(node_found)
+				{
+					if(!assign_node_found())
 					{
-					#define placeValues() \
-							unsigned int mid=(nodeStart+y)/2;\
-							float val_div=2.0f;\
-							unsigned int node_y;\
-							for(node_y=nodeStart;node_y<mid;++node_y) {\
-								++val_div;\
-								map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(val_div*val_div*val_div);\
-							}\
-							for(;node_y<y;++node_y) {\
-								--val_div;\
-								map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(val_div*val_div*val_div);\
-							}
-						placeValues();
+						place_values();
 					}
 				}
 				else
 				{
-					if(assign_nodeFound())
+					if(assign_node_found())
 					{
-						nodeStart=y;
+						node_start=y;
 					}
 				}
 			}
-			if(nodeFound)
+			if(node_found)
 			{
-				placeValues();
+				place_values();
 			}
 		}
 		return map;
-	#undef placeValues
-	#undef assign_nodeFound
 	}
 	float const HORIZONTAL_ENERGY_CONSTANT=1.0f;
-	CImg<float> create_compress_energy(CImg<unsigned char> const& refImage)
+	CImg<float> create_compress_energy(CImg<unsigned char> const& ref)
 	{
-		auto map=create_vertical_energy(refImage);
+		auto map=create_vertical_energy(ref);
 		for(auto y=0U;y<map._height;++y)
 		{
 			auto x=0U;
-			unsigned int nodeStart;
-			bool nodeFound;
-		#define assign_nodeFound() (nodeFound=map(x,y)==INFINITY)
-			if(assign_nodeFound())
+			unsigned int node_start;
+			bool node_found;
+			auto assign_node_found=[&]()
 			{
-				nodeStart=0;
+				return (node_found=map(x,y)==INFINITY);
+			};
+			auto place_values=[&]()
+			{
+				unsigned int multiplier=(x-node_start)/2;
+				for(auto node_x=node_start;node_x<x;++node_x)
+				{
+					map(node_x,y)=HORIZONTAL_ENERGY_CONSTANT*multiplier;
+				}
+			};
+			if(assign_node_found())
+			{
+				node_start=0;
 			}
 			for(x=1;x<map._width;++x)
 			{
-				if(nodeFound)
+				if(node_found)
 				{
-					if(!assign_nodeFound())
+					if(!assign_node_found())
 					{
-					#define placeValues() \
-							unsigned int multiplier=(x-nodeStart)>>1;\
-							unsigned int nodeX;\
-							for(nodeX=nodeStart;nodeX<x;++nodeX) {\
-								map(nodeX,y)=HORIZONTAL_ENERGY_CONSTANT*multiplier;\
-							}
-						placeValues();
+						place_values();
 					}
 				}
 				else
 				{
-					if(assign_nodeFound())
+					if(assign_node_found())
 					{
-						nodeStart=x;
+						node_start=x;
 					}
 				}
 			}
-			if(nodeFound)
+			if(node_found)
 			{
-				placeValues();
+				place_values();
 			}
 		}
 		return map;
-	#undef placeValues
-	#undef assign_noteFound
 	}
 	void remove_border(CImg<unsigned char>& image,Grayscale const color,float const tolerance)
 	{

@@ -269,7 +269,7 @@ public:
 		{
 			params[i]=255;
 		}
-		del.pl.add_process<FilterGray>(*params,params[1],Grayscale(params[2]));
+		del.pl.add_process<FilterGray>(params[0],params[1],Grayscale(params[2]));
 		del.flag=delivery::do_single;
 		return nullptr;
 	}
@@ -638,6 +638,14 @@ public:
 				return errors[i];
 			}
 		}
+		if(params[0]>params[1])
+		{
+			return "Min value of Rescale Gray must be less than or equal to mid value";
+		}
+		if(params[1]>params[2])
+		{
+			return "Mid value of Rescale Gray must be less than or equal to max value";
+		}
 		del.flag=del.do_single;
 		del.pl.add_process<RescaleGray>(params[0],params[1],params[2]);
 		return nullptr;
@@ -785,6 +793,24 @@ public:
 		return nullptr;
 	}
 };
+
+class RemoveBorderMaker:public CommandMaker {
+public:
+	char const* help_message() const override
+	{
+		return "Removes border of image (SUPER BETA VERSION)";
+	}
+	char const* make_command(iter begin,iter end,delivery& del) const override
+	{
+		if(del.flag>1)
+		{
+			return mci;
+		}
+		del.flag=del.do_single;
+		del.pl.add_process<RemoveProcess>();
+		return nullptr;
+	}
+};
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 {
 	std::unordered_map<std::string,std::unique_ptr<CommandMaker>> commands;
@@ -799,6 +825,7 @@ std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 	commands.emplace("-spl",make_unique<SpliceMaker>());
 	commands.emplace("-bl",make_unique<BlurMaker>());
 	commands.emplace("-rcg",make_unique<RescaleGrayMaker>());
+	commands.emplace("-rb",make_unique<RemoveBorderMaker>());
 	return commands;
 }
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> const commands=init_commands();
@@ -868,7 +895,7 @@ int main(int argc,char** argv)
 			"    Cluster Clear Grayscale:  -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
 			"    Horizontal Padding:       -hp amount\n"
 			"    Vertical Padding:         -vp amount\n"
-			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777777\n"
+			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777778\n"
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
 			"  Multi Page Operations:\n"
@@ -936,11 +963,11 @@ int main(int argc,char** argv)
 		}
 		output.assign("%c");
 	}
-	unsigned int num_threads=std::thread::hardware_concurrency();
-	if(num_threads==0)
+	auto num_threads=[]()
 	{
-		num_threads=2;
-	}
+		auto nt=std::thread::hardware_concurrency();
+		return nt==0?2:nt;
+	};
 	switch(del.flag)
 	{
 		case del.do_nothing:
@@ -951,7 +978,7 @@ int main(int argc,char** argv)
 				auto files=images_in_path(arg1);
 				try
 				{
-					processes.process(files,&output,num_threads);
+					processes.process(files,&output,num_threads());
 				}
 				catch(std::exception const& ex)
 				{
@@ -997,7 +1024,7 @@ int main(int argc,char** argv)
 						}
 					}
 				};
-				exlib::ThreadPool tp(num_threads);
+				exlib::ThreadPool tp(num_threads());
 				for(auto const& f:files)
 				{
 					tp.add_task<CutProcess>(&f,&output);

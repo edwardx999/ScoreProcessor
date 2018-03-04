@@ -41,20 +41,15 @@ namespace ScoreProcessor {
 		virtual ~Log()=default;
 		virtual void log(char const*)=0;
 	};
-	class CoutLog:public Log,private exlib::OstreamLogger {
+	class CoutLog:public Log {
 	public:
-		CoutLog():exlib::OstreamLogger(std::cout)
-		{}
 		void log(char const* out) override
 		{
-			exlib::OstreamLogger::log(out);
+			std::cout<<out;
 		}
 	};
 	class SaveRules {
 	private:
-		template<typename T>
-		friend class ProcessList;
-
 		enum template_symbol:unsigned int {
 			i,x=10,f,p,c
 		};
