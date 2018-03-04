@@ -461,13 +461,14 @@ public:
 	OutputMaker():
 		CommandMaker(
 			1,1,
-			"Assign output pattern:\n"
-			" %c copy whole filename\n"
-			" %p copy path\n"
-			" %x copy extension\n"
-			" %f copy filename\n"
-			" %0 any number from 0-9, index of file with specified number of padding\n"
-			" %% literal percent",
+			"Pattern templates:\n"
+			"  %c copy whole filename\n"
+			"  %p copy path\n"
+			"  %x copy extension\n"
+			"  %f copy filename\n"
+			"  %0 any number from 0-9, index of file with specified number of padding\n"
+			"  %% literal percent\n"
+			"Anything else will be interpreted as a literal character",
 			"Output Pattern")
 	{}
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
