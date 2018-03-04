@@ -2,3 +2,14 @@ bin/
 obj/
 .vs/
 Debug/
+*.iobj
+*.obj
+*.txt
+*.jpg
+*.png
+*.ipdb
+*.pdb
+*.pdn
+ScoreProcessor/x64/
+ScoreProcessor/Release/
+Release/test/
