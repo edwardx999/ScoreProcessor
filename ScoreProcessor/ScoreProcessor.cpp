@@ -55,7 +55,14 @@ class RemoveProcess:public ImageProcess<> {
 public:
 	void process(Img& image)
 	{
-		remove_border(image);
+		if(image._spectrum==1)
+		{
+			remove_border(image);
+		}
+		else
+		{
+			throw std::invalid_argument("Remove process requires Grayscale image");
+		}
 	}
 };
 class FilterGray:public ImageProcess<> {
@@ -67,7 +74,14 @@ public:
 	{}
 	void process(Img& image)
 	{
-		replace_range(image,min,max,replacer);
+		if(image._spectrum==1)
+		{
+			replace_range(image,min,max,replacer);
+		}
+		else
+		{
+			throw std::invalid_argument("Filter Gray requires grayscale image");
+		}
 	}
 };
 class PadHoriz:public ImageProcess<> {
@@ -118,27 +132,41 @@ public:
 			2);
 	}
 };
-class ClusterClear:public ImageProcess<> {
+class ClusterClearGray:public ImageProcess<> {
 	unsigned int min,max;
 	Grayscale background;
 	float tolerance;
 public:
-	ClusterClear(unsigned int min,unsigned int max,Grayscale background,float tolerance):min(min),max(max),background(background),tolerance(tolerance)
+	ClusterClearGray(unsigned int min,unsigned int max,Grayscale background,float tolerance):min(min),max(max),background(background),tolerance(tolerance)
 	{}
 	void process(Img& img)
 	{
-		clear_clusters(img,rcast<ucharcp>(&background),
-			ImageUtils::Grayscale::color_diff,tolerance,true,min,max,rcast<ucharcp>(&background));
+		if(img._spectrum==1)
+		{
+			clear_clusters(img,rcast<ucharcp>(&background),
+				ImageUtils::Grayscale::color_diff,tolerance,true,min,max,rcast<ucharcp>(&background));
+		}
+		else
+		{
+			throw std::invalid_argument("Cluster Clear Grayscale requires grayscale image");
+		}
 	}
 };
-class RescaleColors:public ImageProcess<> {
+class RescaleGray:public ImageProcess<> {
 	unsigned char min,mid,max;
 public:
-	RescaleColors(unsigned char min,unsigned char mid,unsigned char max=255):min(min),mid(mid),max(max)
+	RescaleGray(unsigned char min,unsigned char mid,unsigned char max=255):min(min),mid(mid),max(max)
 	{}
 	void process(Img& img)
 	{
-		rescale_colors(img,min,mid,max);
+		if(img._spectrum==1)
+		{
+			rescale_colors(img,min,mid,max);
+		}
+		else
+		{
+			throw std::invalid_argument("Rescale Gray requires grayscale image");
+		}
 	}
 };
 class FillSelection:public ImageProcess<> {
@@ -277,15 +305,30 @@ public:
 		{
 			return mci;
 		}
-	#define check_args()\
-		if(begin==end)\
-		{\
-			return "Too few arguments for Cluster Clear";\
+		if(begin==end)
+		{
+			return "Too few arguments for Cluster Clear";
 		}
-		int min_size,max_size;
+		int max_size,min_size=0;
 		Grayscale background=255;
 		float tolerance=0.042;
-		check_args();
+		try
+		{
+			max_size=std::stoi(*begin);
+			if(min_size<0)
+			{
+				return "Maximum cluster size must be non-negative";
+			}
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid input for maximum size of cluster clear";
+		}
+		++begin;
+		if(begin==end)
+		{
+			goto end;
+		}
 		try
 		{
 			min_size=std::stoi(*begin);
@@ -297,20 +340,6 @@ public:
 		catch(std::exception const&)
 		{
 			return "Invalid input for minimum size of cluster clear";
-		}
-		++begin;
-		check_args();
-		try
-		{
-			max_size=std::stoi(*begin);
-			if(max_size<0)
-			{
-				return "Maximum cluster size must be non-negative";
-			}
-		}
-		catch(std::exception const&)
-		{
-			return "Invalid input for maximum size of cluster clear";
 		}
 		if(max_size<min_size)
 		{
@@ -353,7 +382,7 @@ public:
 		}
 	end:
 		del.flag=delivery::do_single;
-		del.pl.add_process<ClusterClear>(min_size,max_size,Grayscale(background),tolerance);
+		del.pl.add_process<ClusterClearGray>(min_size,max_size,Grayscale(background),tolerance);
 		return nullptr;
 	}
 };
@@ -570,6 +599,51 @@ public:
 	}
 };
 
+class RescaleGrayMaker:public CommandMaker {
+public:
+	char const* help_message() const override
+	{
+		return
+			"Colors are scaled such that values less than or equal to min become 0,\n"
+			"and values greater than or equal to max becomes 255.\n"
+			"They are scaled based on their distance from mid.";
+	}
+	char const* make_command(iter begin,iter end,delivery& del) const override
+	{
+		if(del.flag>1)
+		{
+			return mci;
+		}
+		if(std::distance(begin,end)<3)
+		{
+			return "Too few arguments for Rescale Gray";
+		}
+		char const* const errors[]=
+		{"Invalid argument for min value of Rescale Gray",
+			"Invalid argument for mid value of Rescale Gray",
+			"Invalid argument for max value of Rescale Gray"};
+		int params[3];
+		for(size_t i=0;i<3;++i)
+		{
+			try
+			{
+				params[i]=std::stoi(begin[i]);
+				if(params[i]<0||params[i]>255)
+				{
+					return "Values for Rescale Gray must be in range [0,255]";
+				}
+			}
+			catch(std::exception const&)
+			{
+				return errors[i];
+			}
+		}
+		del.flag=del.do_single;
+		del.pl.add_process<RescaleGray>(params[0],params[1],params[2]);
+		return nullptr;
+	}
+};
+
 class CutMaker:public CommandMaker {
 public:
 	char const* help_message() const override
@@ -724,6 +798,7 @@ std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 	commands.emplace("-cut",make_unique<CutMaker>());
 	commands.emplace("-spl",make_unique<SpliceMaker>());
 	commands.emplace("-bl",make_unique<BlurMaker>());
+	commands.emplace("-rcg",make_unique<RescaleGrayMaker>());
 	return commands;
 }
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> const commands=init_commands();
@@ -790,7 +865,7 @@ int main(int argc,char** argv)
 			"  Single Page Operations:\n"
 			"    Convert to Grayscale:     -cg\n"
 			"    Filter Gray:              -fg min_value max_value=255 replacer=255\n"
-			"    Cluster Clear Grayscale:  -ccg min_size max_size background_color=255 tolerance=0.042\n"
+			"    Cluster Clear Grayscale:  -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
 			"    Horizontal Padding:       -hp amount\n"
 			"    Vertical Padding:         -vp amount\n"
 			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777777\n"
