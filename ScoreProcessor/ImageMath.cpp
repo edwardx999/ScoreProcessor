@@ -306,12 +306,11 @@ namespace cimg_library {
 			{
 				if(std::abs(gradient(x,y))>threshold)
 				{
-					
 					for(uint f=0;f<=angle_steps;++f)
 					{
 						float theta=angle_dif*f/angle_steps+theta_min;
 						float r=x*std::cos(theta)+y*std::sin(theta);
-						++operator()(theta,r);
+						++CImg<unsigned int>::operator()(f,((r+rmax)/(2*rmax))/precision);
 					}
 				}
 			}
@@ -321,7 +320,7 @@ namespace cimg_library {
 	{
 		unsigned int x=(theta-theta_min)/angle_dif*angle_steps;
 		unsigned int y=((r+rmax)/(2*rmax))/precision;
-		printf("%u\t%u\n",x,y);
+		//printf("%u\t%u\n",x,y);
 		return CImg<unsigned int>::operator()(x,y);
 	}
 	float HoughArray::angle() const

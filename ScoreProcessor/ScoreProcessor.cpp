@@ -256,6 +256,10 @@ public:
 		{
 			return "Too few parameters for Filter Gray";
 		}
+		if(std::distance(argb,end)>3)
+		{
+			return "Too many parameters for Filter Gray";
+		}
 		int params[3];
 		size_t i;
 		for(i=0;argb+i!=end;++i)
@@ -287,6 +291,10 @@ public:
 		{
 			return mci;
 		}
+		if(begin!=end)
+		{
+			return "Too many parameters for Convert Gray";
+		}
 		del.flag=delivery::do_single;
 		del.pl.add_process<ChangeToGrayscale>();
 		return nullptr;
@@ -307,7 +315,11 @@ public:
 		}
 		if(begin==end)
 		{
-			return "Too few arguments for Cluster Clear";
+			return "Too few parameters for Cluster Clear";
+		}
+		if(std::distance(begin,end)>4)
+		{
+			return "Too many parameters for Cluster Clear";
 		}
 		int max_size,min_size=0;
 		Grayscale background=255;
@@ -401,7 +413,11 @@ public:
 		}
 		if(begin==end)
 		{
-			return "Too few arguments to horizontal padding";
+			return "Too few parameters for Horizontal Padding";
+		}
+		if(std::distance(begin,end)>1)
+		{
+			return "Too many parameters for Horizontal Padding";
 		}
 		try
 		{
@@ -435,14 +451,18 @@ public:
 		}
 		if(begin==end)
 		{
-			return "Too few arguments to vertical padding";
+			return "Too few parameters for Vertical Padding";
+		}
+		if(std::distance(begin,end)>1)
+		{
+			return "Too many parameters for Vertical Padding";
 		}
 		try
 		{
 			int amount=std::stoi(*begin);
 			if(amount<0)
 			{
-				return "Value for vertical padding must be non-negative";
+				return "Value for Vertical Padding must be non-negative";
 			}
 			del.flag=delivery::do_single;
 			del.pl.add_process<PadVert>(amount);
@@ -473,7 +493,11 @@ public:
 
 		if(begin==end)
 		{
-			return "Missing filename params";
+			return "Too few parameters for output pattern";
+		}
+		if(std::distance(begin,end)>1)
+		{
+			return "Too many parameters for output pattern";
 		}
 		try
 		{
@@ -505,7 +529,11 @@ public:
 		}
 		if(std::distance(begin,end)<3)
 		{
-			return "Too few arguments for Auto Padding";
+			return "Too few parameters for Auto Padding";
+		}
+		if(std::distance(begin,end)>5)
+		{
+			return "Too many parameters for Auto Padding";
 		}
 		int vert,minh,maxh,hoff;
 		float opt_rat;
@@ -616,7 +644,11 @@ public:
 		}
 		if(std::distance(begin,end)<3)
 		{
-			return "Too few arguments for Rescale Gray";
+			return "Too few parameters for Rescale Gray";
+		}
+		if(std::distance(begin,end)>3)
+		{
+			return "Too many parameters for Rescale Gray";
 		}
 		char const* const errors[]=
 		{"Invalid argument for min value of Rescale Gray",
@@ -664,6 +696,10 @@ public:
 		{
 			return "Cut can not be done along with other commands";
 		}
+		if(begin!=end)
+		{
+			return "Too many parameters for Cut";
+		}
 		del.flag=delivery::do_cut;
 		return 0;
 	}
@@ -686,23 +722,27 @@ public:
 		{
 			return "Splice can not be done along with other commands";
 		}
-		del.flag=delivery::do_splice;
 		if(std::distance(begin,end)<3)
 		{
-			return "Too few arguments for splice";
+			return "Too few parameters for Splice";
 		}
+		if(std::distance(begin,end)>4)
+		{
+			return "Too many parameters for Splice";
+		}
+		del.flag=del.do_splice;
 		int hpadding,opadding,mpadding,oheight;
 		try
 		{
 			hpadding=std::stoi(*begin);
 			if(hpadding<0)
 			{
-				return "Horizontal padding of splice must be non-negative";
+				return "Horizontal padding of Splice must be non-negative";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for horizontal padding of splice";
+			return "Invalid input for horizontal padding of Splice";
 		}
 		++begin;
 		try
@@ -710,12 +750,12 @@ public:
 			opadding=std::stoi(*begin);
 			if(opadding<0)
 			{
-				return "Optimal padding of splice must be non-negative";
+				return "Optimal padding of Splice must be non-negative";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for optimal padding of splice";
+			return "Invalid input for optimal padding of Splice";
 		}
 		++begin;
 		try
@@ -723,12 +763,12 @@ public:
 			mpadding=std::stoi(*begin);
 			if(mpadding<0)
 			{
-				return "Minimum padding of splice must be non-negative";
+				return "Minimum padding of Splice must be non-negative";
 			}
 		}
 		catch(std::exception const&)
 		{
-			return "Invalid input for minimum padding of splice";
+			return "Invalid input for minimum padding of Splice";
 		}
 		++begin;
 		if(begin==end)
@@ -773,7 +813,11 @@ public:
 		}
 		if(begin==end)
 		{
-			return "Too few arguments for blur";
+			return "Too few parameters for Blur";
+		}
+		if(std::distance(begin,end)>1)
+		{
+			return "Too many parameters for Blur";
 		}
 		float radius;
 		try
@@ -805,6 +849,10 @@ public:
 		if(del.flag>1)
 		{
 			return mci;
+		}
+		if(begin!=end)
+		{
+			return "Too many parameters for Remove Border";
 		}
 		del.flag=del.do_single;
 		del.pl.add_process<RemoveProcess>();
@@ -863,6 +911,10 @@ std::string pretty_date()
 	}
 	return ret;
 }
+void test()
+{
+
+}
 int main(int argc,char** argv)
 {
 	cimg::exception_mode(0);
@@ -892,7 +944,6 @@ int main(int argc,char** argv)
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(4/7 width of first page)\n"
 			"  Options:\n"
 			"    Output:                   -o format\n"
-			"Any parameters given beyond the number requested are ignored.\n"
 			"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
 			"A Multi Page Operation can not be done with other operations.\n"
 			;
