@@ -356,7 +356,7 @@ public:
 		try
 		{
 			max_size=std::stoi(begin[0]);
-			if(min_size<0)
+			if(max_size<0)
 			{
 				return "Maximum cluster size must be non-negative";
 			}
@@ -426,7 +426,7 @@ public:
 	def_background:
 		background=255;
 	def_tolerance:
-		tolerance=0.042;
+		tolerance=0.042f;
 		goto end;
 	}
 };
@@ -486,9 +486,9 @@ public:
 			1,1,
 			"Pattern templates:\n"
 			"  %c copy whole filename\n"
-			"  %p copy path\n"
-			"  %x copy extension\n"
-			"  %f copy filename\n"
+			"  %p copy path (includes trailing slash)\n"
+			"  %x copy extension (does not include dot)\n"
+			"  %f copy filename (does not include path, dot, or extension)\n"
 			"  %0 any number from 0-9, index of file with specified number of padding\n"
 			"  %% literal percent\n"
 			"Anything else will be interpreted as a literal character\n"
@@ -975,7 +975,7 @@ int main(int argc,char** argv)
 	if(!del.pl.get_log())
 	{
 		del.pl.set_log(&CoutLog::get());
-		del.pl.set_verbosity(decltype(del.pl)::verbosity::errors_only);
+		del.pl.set_verbosity(decltype(del.pl)::errors_only);
 	}
 	auto num_threads=[]()
 	{

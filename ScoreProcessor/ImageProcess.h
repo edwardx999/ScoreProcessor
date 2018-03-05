@@ -118,7 +118,7 @@ namespace ScoreProcessor {
 	};
 
 	/*
-		A series of processes to done onto an image.
+		A series of processes to be done onto an image.
 	*/
 	template<typename T=unsigned char>
 	class ProcessList:public std::vector<std::unique_ptr<ImageProcess<T>>> {
