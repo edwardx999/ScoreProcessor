@@ -154,12 +154,9 @@ namespace ScoreProcessor {
 			}
 		};
 		Log* plog;
-		std::string log_buffer;
 	public:
 		ProcessList(Log* log):plog(log)
-		{
-			log_buffer.reserve(200);
-		}
+		{}
 		ProcessList():plog(nullptr)
 		{}
 
@@ -272,10 +269,9 @@ namespace ScoreProcessor {
 		{
 			if(plog)
 			{
-				std::string& log_buffer=const_cast<std::string&>(this->log_buffer);
-				log_buffer=ex.what();
-				log_buffer.push_back('\n');
-				plog->log_error(log_buffer.c_str(),0);
+				std::string log(ex.what());
+				log.push_back('\n');
+				plog->log_error(log.c_str(),0);
 			}
 			else
 			{
@@ -313,14 +309,13 @@ namespace ScoreProcessor {
 	template<typename T>
 	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index) const
 	{
-		std::string& log_buffer=const_cast<std::string&>(this->log_buffer);
 		size_t len=strlen(filename);
 		if(plog)
 		{
-			log_buffer="Starting ";
-			log_buffer.append(filename,len);
-			log_buffer.push_back('\n');
-			plog->log(log_buffer.c_str(),index);
+			std::string log("Starting ");
+			log.append(filename,len);
+			log.push_back('\n');
+			plog->log(log.c_str(),index);
 		}
 		if(psr==nullptr)
 		{
@@ -335,12 +330,12 @@ namespace ScoreProcessor {
 		{
 			if(plog)
 			{
-				log_buffer="Error processing ";
-				log_buffer.append(filename,len);
-				log_buffer.append(": ",2);
-				log_buffer.append(ex.what());
-				log_buffer.push_back('\n');
-				plog->log_error(log_buffer.c_str(),index);
+				std::string log("Error processing ");
+				log.append(filename,len);
+				log.append(": ",2);
+				log.append(ex.what());
+				log.push_back('\n');
+				plog->log_error(log.c_str(),index);
 				return;
 			}
 			else
@@ -350,10 +345,10 @@ namespace ScoreProcessor {
 		}
 		if(plog)
 		{
-			log_buffer="Finished ";
-			log_buffer.append(filename,len);
-			log_buffer.push_back('\n');
-			plog->log(log_buffer.c_str(),index);
+			std::string log("Finished ");
+			log.append(filename,len);
+			log.push_back('\n');
+			plog->log(log.c_str(),index);
 		}
 	}
 
