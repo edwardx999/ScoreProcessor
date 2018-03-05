@@ -122,6 +122,12 @@ namespace ScoreProcessor {
 	*/
 	template<typename T=unsigned char>
 	class ProcessList:public std::vector<std::unique_ptr<ImageProcess<T>>> {
+	public:
+		enum verbosity {
+			silent,
+			errors_only,
+			loud
+		};
 	private:
 		class ProcessTaskImg:public exlib::ThreadTask {
 		private:
@@ -154,10 +160,13 @@ namespace ScoreProcessor {
 			}
 		};
 		Log* plog;
+		verbosity vb;
 	public:
-		ProcessList(Log* log):plog(log)
+		ProcessList(Log* log,verbosity vb):plog(log),vb(vb)
 		{}
-		ProcessList():plog(nullptr)
+		ProcessList(Log* log):ProcessList(log,1)
+		{}
+		ProcessList():ProcessList(nullptr,silent)
 		{}
 
 		void set_log(Log* log)
@@ -168,6 +177,16 @@ namespace ScoreProcessor {
 		Log* get_log() const
 		{
 			return plog;
+		}
+
+		verbosity get_verbosity() const
+		{
+			return vb;
+		}
+
+		void set_verbosity(verbosity vb)
+		{
+			this->vb=vb;
 		}
 /*
 	Adds a process to the list.
@@ -269,9 +288,12 @@ namespace ScoreProcessor {
 		{
 			if(plog)
 			{
-				std::string log(ex.what());
-				log.push_back('\n');
-				plog->log_error(log.c_str(),0);
+				if(vb)
+				{
+					std::string log(ex.what());
+					log.push_back('\n');
+					plog->log_error(log.c_str(),0);
+				}
 			}
 			else
 			{
@@ -310,7 +332,8 @@ namespace ScoreProcessor {
 	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index) const
 	{
 		size_t len=strlen(filename);
-		if(plog)
+		bool out_loud=plog&&vb>=decltype(vb)::loud;
+		if(out_loud)
 		{
 			std::string log("Starting ");
 			log.append(filename,len);
@@ -330,12 +353,15 @@ namespace ScoreProcessor {
 		{
 			if(plog)
 			{
-				std::string log("Error processing ");
-				log.append(filename,len);
-				log.append(": ",2);
-				log.append(ex.what());
-				log.push_back('\n');
-				plog->log_error(log.c_str(),index);
+				if(vb)
+				{
+					std::string log("Error processing ");
+					log.append(filename,len);
+					log.append(": ",2);
+					log.append(ex.what());
+					log.push_back('\n');
+					plog->log_error(log.c_str(),index);
+				}
 				return;
 			}
 			else
@@ -343,7 +369,7 @@ namespace ScoreProcessor {
 				throw ex;
 			}
 		}
-		if(plog)
+		if(out_loud)
 		{
 			std::string log("Finished ");
 			log.append(filename,len);

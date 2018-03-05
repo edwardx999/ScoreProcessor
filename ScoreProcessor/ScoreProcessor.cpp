@@ -195,10 +195,10 @@ void stop()
 	cout<<"Done\n";
 	Sleep(60000);
 }
-class LoudLog:public Log {
-	LoudLog()
+class CoutLog:public Log {
+	CoutLog()
 	{}
-	static LoudLog singleton;
+	static CoutLog singleton;
 public:
 	static Log& get()
 	{
@@ -213,40 +213,7 @@ public:
 		std::cout<<msg;
 	}
 };
-LoudLog LoudLog::singleton;
-class QuietLog:public Log {
-	QuietLog()
-	{}
-	static QuietLog singleton;
-public:
-	static Log& get()
-	{
-		return singleton;
-	}
-	void log(char const* msg,size_t) override
-	{}
-	void log_error(char const* msg,size_t) override
-	{
-		std::cout<<msg;
-	}
-};
-QuietLog QuietLog::singleton;
-
-class SilentLog:public Log {
-	SilentLog()
-	{}
-	static SilentLog singleton;
-public:
-	static Log& get()
-	{
-		return singleton;
-	}
-	void log(char const*,size_t) override
-	{}
-	void log_error(char const*,size_t) override
-	{}
-};
-SilentLog SilentLog::singleton;
+CoutLog CoutLog::singleton;
 
 class CommandMaker {
 public:
@@ -847,18 +814,8 @@ public:
 			{
 				return "Invalid level";
 			}
-			switch(lvl)
-			{
-				case 0:
-					del.pl.set_log(&SilentLog::get());
-					break;
-				case 1:
-					del.pl.set_log(&QuietLog::get());
-					break;
-				case 2:
-					del.pl.set_log(&LoudLog::get());
-					break;
-			}
+			del.pl.set_log(&CoutLog::get());
+			del.pl.set_verbosity(decltype(del.pl)::verbosity(lvl));
 			return nullptr;
 		}
 		catch(std::exception const&)
@@ -1017,7 +974,8 @@ int main(int argc,char** argv)
 	}
 	if(!del.pl.get_log())
 	{
-		del.pl.set_log(&QuietLog::get());
+		del.pl.set_log(&CoutLog::get());
+		del.pl.set_verbosity(decltype(del.pl)::verbosity::errors_only);
 	}
 	auto num_threads=[]()
 	{
