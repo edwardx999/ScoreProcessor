@@ -284,7 +284,7 @@ namespace ScoreProcessor {
 		{
 			process_unsafe(img,output);
 		}
-		catch(cimg_library::CImgException const& ex)
+		catch(std::exception const& ex)
 		{
 			if(plog)
 			{
@@ -349,7 +349,7 @@ namespace ScoreProcessor {
 		{
 			process_unsafe(cimg_library::CImg<T>(filename),output.c_str());
 		}
-		catch(cimg_library::CImgIOException const& ex)
+		catch(std::exception const& ex)
 		{
 			if(plog)
 			{

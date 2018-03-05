@@ -285,7 +285,7 @@ protected:
 		:CommandMaker(min_args,max_args,hm,nm)
 	{}
 public:
-	char const* const mci="Single Command cannot be done with a Multi Command";
+	static char const* const mci;
 	char const* parse_command(iter begin,size_t num_args,delivery& del) const override final
 	{
 		if(del.flag>1)
@@ -296,6 +296,7 @@ public:
 		return parse_command_h(begin,num_args,del);
 	}
 };
+char const* const SingleCommandMaker::mci="Single Command cannot be done with a Multi Command";
 
 class FilterGrayMaker:public SingleCommandMaker {
 	static char const* assign_val(iter arg,int* hold)

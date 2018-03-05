@@ -407,7 +407,7 @@ namespace ScoreProcessor {
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);
 
 	/*
-		
+
 	*/
 	void rescale_colors(::cimg_library::CImg<unsigned char>&,unsigned char min,unsigned char mid,unsigned char max=255);
 	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const&,unsigned int horiz_padding);
@@ -602,47 +602,55 @@ template<typename T>
 	vector<ImageUtils::Rectangle<unsigned int>> container;
 	//std::unique_ptr<T[]> pixel_color=make_unique<T[]>(3);
 	unique_ptr<T[]> pixel_color(new T[image._spectrum]);
-	unsigned int rangeFound=0,rangeStart=0,rangeEnd=0;
+	unsigned int range_found=0,range_start=0,range_end=0;
 	for(unsigned int y=0;y<image._height;++y)
 	{
 		for(unsigned int x=0;x<image._width;++x)
 		{
-			switch(rangeFound)
+			auto load_color=[&]()
 			{
-				case 0: {
-				#define load_color() for(unsigned int i=0;i<image._spectrum;++i) pixel_color[i]=image(x,y,i);
+				for(unsigned int i=0;i<image._spectrum;++i)
+				{
+					pixel_color[i]=image(x,y,i);
+				}
+			};
+			switch(range_found)
+			{
+				case 0:
+				{
 					load_color();
 					if((color_diff(color,pixel_color.get())<=tolerance)^invert_selection)
 					{
-						rangeFound=1;
-						rangeStart=x;
+						range_found=1;
+						range_start=x;
 					}
 					break;
 				}
-				case 1: {
+				case 1:
+				{
 					load_color();
 					if((color_diff(color,pixel_color.get())>tolerance)^invert_selection)
 					{
-						rangeFound=2;
-						rangeEnd=x;
+						range_found=2;
+						range_end=x;
 					}
 					else
 					{
 						break;
 					}
 				}
-					#undef load_color
-				case 2: {
-					container.push_back(RectangleUINT{rangeStart,rangeEnd,y,y+1});
-					rangeFound=0;
+				case 2:
+				{
+					container.push_back(RectangleUINT{range_start,range_end,y,y+1});
+					range_found=0;
 					break;
 				}
 			}
 		}
-		if(1==rangeFound)
+		if(1==range_found)
 		{
-			container.push_back(RectangleUINT{rangeStart,image._width,y,y+1});
-			rangeFound=0;
+			container.push_back(RectangleUINT{range_start,image._width,y,y+1});
+			range_found=0;
 		}
 	}
 	ImageUtils::compress_rectangles(container);
