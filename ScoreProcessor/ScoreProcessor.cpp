@@ -195,7 +195,58 @@ void stop()
 	cout<<"Done\n";
 	Sleep(60000);
 }
+class LoudLog:public Log {
+	LoudLog()
+	{}
+	static LoudLog singleton;
+public:
+	static Log& get()
+	{
+		return singleton;
+	}
+	void log(char const* msg,size_t) override
+	{
+		std::cout<<msg;
+	}
+	void log_error(char const* msg,size_t) override
+	{
+		std::cout<<msg;
+	}
+};
+LoudLog LoudLog::singleton;
+class QuietLog:public Log {
+	QuietLog()
+	{}
+	static QuietLog singleton;
+public:
+	static Log& get()
+	{
+		return singleton;
+	}
+	void log(char const* msg,size_t) override
+	{}
+	void log_error(char const* msg,size_t) override
+	{
+		std::cout<<msg;
+	}
+};
+QuietLog QuietLog::singleton;
 
+class SilentLog:public Log {
+	SilentLog()
+	{}
+	static SilentLog singleton;
+public:
+	static Log& get()
+	{
+		return singleton;
+	}
+	void log(char const*,size_t) override
+	{}
+	void log_error(char const*,size_t) override
+	{}
+};
+SilentLog SilentLog::singleton;
 
 class CommandMaker {
 public:
@@ -203,7 +254,7 @@ public:
 	struct delivery {
 		SaveRules sr;
 		ProcessList<unsigned char> pl;
-		enum do_state:unsigned char {
+		enum do_state {
 			do_nothing,
 			do_single,
 			do_cut,
@@ -228,7 +279,6 @@ protected:
 	{}
 	virtual char const* parse_command(iter begin,size_t num_args,delivery&) const=0;
 public:
-	static char const* const mci;
 	virtual ~CommandMaker()=default;
 	char const* help_message() const
 	{
@@ -251,7 +301,6 @@ public:
 		}
 		return parse_command(begin,n,del);
 	}
-
 };
 
 class SingleCommandMaker:public CommandMaker {
@@ -334,9 +383,9 @@ public:
 	{}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		int max_size,min_size=0;
-		Grayscale background=255;
-		float tolerance=0.042;
+		int max_size,min_size;
+		Grayscale background;
+		float tolerance;
 		try
 		{
 			max_size=std::stoi(begin[0]);
@@ -351,7 +400,7 @@ public:
 		}
 		if(n<2)
 		{
-			goto end;
+			goto def_min_size;
 		}
 		try
 		{
@@ -371,7 +420,7 @@ public:
 		}
 		if(n<3)
 		{
-			goto end;
+			goto def_background;
 		}
 		try
 		{
@@ -388,7 +437,7 @@ public:
 		}
 		if(n<4)
 		{
-			goto end;
+			goto def_tolerance;
 		}
 		try
 		{
@@ -403,8 +452,15 @@ public:
 			return "Invalid input for tolerance";
 		}
 	end:
-		del.pl.add_process<ClusterClearGray>(min_size,max_size,Grayscale(background),tolerance);
+		del.pl.add_process<ClusterClearGray>(min_size,max_size,background,tolerance);
 		return nullptr;
+	def_min_size:
+		min_size=0;
+	def_background:
+		background=255;
+	def_tolerance:
+		tolerance=0.042;
+		goto end;
 	}
 };
 
@@ -468,7 +524,8 @@ public:
 			"  %f copy filename\n"
 			"  %0 any number from 0-9, index of file with specified number of padding\n"
 			"  %% literal percent\n"
-			"Anything else will be interpreted as a literal character",
+			"Anything else will be interpreted as a literal character\n"
+			"Pattern is %c if no output is specified",
 			"Output Pattern")
 	{}
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
@@ -771,6 +828,45 @@ public:
 		return nullptr;
 	}
 };
+
+class LogMaker:public CommandMaker {
+public:
+	LogMaker()
+		:CommandMaker(1,1,"Changes verbosity of output: Silent=0, Errors-only=1 (default), Loud=2","Verbosity")
+	{}
+	char const* parse_command(iter begin,size_t,delivery& del) const override
+	{
+		if(del.pl.get_log())
+		{
+			return "Verbosity level already given";
+		}
+		try
+		{
+			int lvl=std::stoi(*begin);
+			if(lvl<0||lvl>2)
+			{
+				return "Invalid level";
+			}
+			switch(lvl)
+			{
+				case 0:
+					del.pl.set_log(&SilentLog::get());
+					break;
+				case 1:
+					del.pl.set_log(&QuietLog::get());
+					break;
+				case 2:
+					del.pl.set_log(&LoudLog::get());
+					break;
+			}
+			return nullptr;
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid input for level";
+		}
+	}
+};
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 {
 	std::unordered_map<std::string,std::unique_ptr<CommandMaker>> commands;
@@ -786,6 +882,7 @@ std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 	commands.emplace("-bl",make_unique<BlurMaker>());
 	commands.emplace("-rcg",make_unique<RescaleGrayMaker>());
 	commands.emplace("-rb",make_unique<RemoveBorderMaker>());
+	commands.emplace("-vb",make_unique<LogMaker>());
 	return commands;
 }
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> const commands=init_commands();
@@ -856,6 +953,7 @@ int main(int argc,char** argv)
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(4/7 width of first page)\n"
 			"  Options:\n"
 			"    Output:                   -o format\n"
+			"    Verbosity:                -vb level\n"
 			"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
 			"A Multi Page Operation can not be done with other operations.\n"
 			;
@@ -917,10 +1015,14 @@ int main(int argc,char** argv)
 		}
 		output.assign("%c");
 	}
+	if(!del.pl.get_log())
+	{
+		del.pl.set_log(&QuietLog::get());
+	}
 	auto num_threads=[]()
 	{
 		auto nt=std::thread::hardware_concurrency();
-		return nt==0?2:nt;
+		return nt==0?2U:nt;
 	};
 	switch(del.flag)
 	{

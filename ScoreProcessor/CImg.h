@@ -2175,7 +2175,8 @@ extern "C" {
 // You should not use these macros is your own code.
 #define _cimgdisplay_instance "[instance(%u,%u,%u,%c%s%c)] CImgDisplay::"
 #define cimgdisplay_instance _width,_height,_normalization,_title?'\"':'[',_title?_title:"untitled",_title?'\"':']'
-#define _cimg_instance "[instance(%u,%u,%u,%u,%p,%sshared)] CImg<%s>::"
+//#define _cimg_instance "[instance(%u,%u,%u,%u,%p,%sshared)] CImg<%s>::"
+#define _cimg_instance ""
 #define cimg_instance _width,_height,_depth,_spectrum,_data,_is_shared?"":"non-",pixel_type()
 #define _cimglist_instance "[instance(%u,%u,%p)] CImgList<%s>::"
 #define cimglist_instance _width,_allocated_width,_data,pixel_type()

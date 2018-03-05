@@ -45,18 +45,10 @@ namespace ScoreProcessor {
 	class Log {
 	public:
 		virtual ~Log()=default;
-		virtual void log(char const*)=0;
+		virtual void log(char const* message,size_t id)=0;
+		virtual void log_error(char const* message,size_t id)=0;
 	};
-	/*
-		Logs to the standard console output.
-	*/
-	class CoutLog:public Log {
-	public:
-		void log(char const* out) override
-		{
-			std::cout<<out;
-		}
-	};
+
 	/*
 		Template for creating an output name based on an input name.
 	*/
@@ -158,23 +150,32 @@ namespace ScoreProcessor {
 			{}
 			void execute() override
 			{
-				try
-				{
-					pparent->process(fname,output,index);
-				}
-				catch(std::exception const& ex)
-				{
-					std::cout<<ex.what()<<'\n';//REPLACE WITH LOGGER
-				}
+				pparent->process(fname,output,index);
 			}
 		};
+		Log* plog;
 	public:
-		/*
-			Adds a process to the list.
-		*/
+		ProcessList(Log* log):plog(log)
+		{}
+		ProcessList():plog(nullptr)
+		{}
+
+		void set_log(Log* log)
+		{
+			plog=log;
+		}
+
+		Log* get_log() const
+		{
+			return plog;
+		}
+/*
+	Adds a process to the list.
+*/
 		template<typename U,typename... Args>
 		void add_process(Args&&... args);
 
+		void process_unsafe(cimg_library::CImg<T>& img,char const* output) const;
 		/*
 			Processes an image.
 		*/
@@ -245,7 +246,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(cimg_library::CImg<T>& img,char const* output) const
+	void ProcessList<T>::process_unsafe(cimg_library::CImg<T>& img,char const* output) const
 	{
 		for(auto& pprocess:*this)
 		{
@@ -254,6 +255,28 @@ namespace ScoreProcessor {
 		if(output!=nullptr)
 		{
 			img.save(output);
+		}
+	}
+
+	template<typename T>
+	void ProcessList<T>::process(cimg_library::CImg<T>& img,char const* output) const
+	{
+		try
+		{
+			process_unsafe(img,output);
+		}
+		catch(cimg_library::CImgException const& ex)
+		{
+			if(plog)
+			{
+				std::string log(ex.what());
+				log.push_back('\n');
+				plog->log_error(log.c_str(),0);
+			}
+			else
+			{
+				throw ex;
+			}
 		}
 	}
 
@@ -286,12 +309,47 @@ namespace ScoreProcessor {
 	template<typename T>
 	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index) const
 	{
+		size_t len=strlen(filename);
+		if(plog)
+		{
+			std::string log("Starting ");
+			log.append(filename,len);
+			log.push_back('\n');
+			plog->log(log.c_str(),index);
+		}
 		if(psr==nullptr)
 		{
 			process(filename);
 		}
-		auto output=psr->make_filename(filename,index);
-		process(filename,output.c_str());
+		auto output=psr->make_filename(exlib::weak_string(const_cast<char*>(filename),len),index);
+		try
+		{
+			process_unsafe(cimg_library::CImg<T>(filename),output.c_str());
+		}
+		catch(cimg_library::CImgIOException const& ex)
+		{
+			if(plog)
+			{
+				std::string log("Error processing ");
+				log.append(filename,len);
+				log.append(": ",2);
+				log.append(ex.what());
+				log.push_back('\n');
+				plog->log_error(log.c_str(),index);
+				return;
+			}
+			else
+			{
+				throw ex;
+			}
+		}
+		if(plog)
+		{
+			std::string log("Finished ");
+			log.append(filename,len);
+			log.push_back('\n');
+			plog->log(log.c_str(),index);
+		}
 	}
 
 	template<typename T>
