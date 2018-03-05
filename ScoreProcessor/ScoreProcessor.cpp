@@ -190,9 +190,17 @@ public:
 	}
 };
 
+class Straighten:public ImageProcess<> {
+public:
+	void process(Img& img) override
+	{
+		auto_rotate(img);
+	}
+};
+
 void stop()
 {
-	cout<<"Done\n";
+	cout<<"Stopped\n";
 	Sleep(60000);
 }
 class CoutLog:public Log {
@@ -784,6 +792,17 @@ public:
 	}
 };
 
+class StraightenMaker:public SingleCommandMaker {
+public:
+	StraightenMaker()
+		:SingleCommandMaker(0,0,"Straightens the image","Straighten")
+	{}
+	char const* parse_command_h(iter,size_t,delivery& del) const override
+	{
+		del.pl.add_process<Straighten>();
+		return nullptr;
+	}
+};
 class RemoveBorderMaker:public SingleCommandMaker {
 public:
 	RemoveBorderMaker()
@@ -840,6 +859,7 @@ std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 	commands.emplace("-rcg",make_unique<RescaleGrayMaker>());
 	commands.emplace("-rb",make_unique<RemoveBorderMaker>());
 	commands.emplace("-vb",make_unique<LogMaker>());
+	commands.emplace("-str",make_unique<StraightenMaker>());
 	return commands;
 }
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> const commands=init_commands();
@@ -879,7 +899,23 @@ std::string pretty_date()
 }
 void test()
 {
-
+	CImg<unsigned char> test("rtest.jpg");
+	//test.rotate(20,2,1);
+	test.display();
+	if(test._spectrum>1)
+	{
+		test=get_grayscale_simple(test);
+	}
+	auto grad=get_vertical_gradient(test);
+	grad.display();
+	std::cout<<"hi\n";
+	HoughArray ha(grad);
+	ha.display();
+	double hangle=ha.angle()*180.0/M_PI;
+	std::cout<<hangle<<'\n';
+	test.rotate(90-hangle);
+	test.display();
+	stop();
 }
 int main(int argc,char** argv)
 {
@@ -905,6 +941,7 @@ int main(int argc,char** argv)
 			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777778\n"
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
+			"    Straighten:               -str\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(4/7 width of first page)\n"
@@ -995,25 +1032,11 @@ int main(int argc,char** argv)
 					std::cout<<"No files found\n";
 					return 0;
 				}
-				try
-				{
-					processes.process(files,&output,num_threads());
-				}
-				catch(std::exception const& ex)
-				{
-					std::cout<<ex.what()<<'\n';
-				}
+				processes.process(files,&output,num_threads());
 			}
 			else
 			{
-				try
-				{
-					processes.process(arg1.c_str(),&output);
-				}
-				catch(std::exception const& ex)
-				{
-					std::cout<<ex.what()<<'\n';
-				}
+				processes.process(arg1.c_str(),&output);
 			}
 			break;
 		}

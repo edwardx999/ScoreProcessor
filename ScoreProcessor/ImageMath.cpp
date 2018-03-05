@@ -262,7 +262,7 @@ namespace cimg_library {
 		{
 			for(unsigned int y=0;y<image._height;++y)
 			{
-				ret(x,y)=uint16_t(image(x,y,0)+image(x,y,1)+image(x,y,2))/3;
+				ret(x,y)=(uint16_t(image(x,y,0))+uint16_t(image(x,y,1))+uint16_t(image(x,y,2)))/3;
 			}
 		}
 		return ret;
@@ -286,16 +286,15 @@ namespace cimg_library {
 
 	HoughArray::HoughArray(
 		CImg<signed char> const& gradient,
-		float lower_angle,float upper_angle,
+		double lower_angle,double upper_angle,
 		unsigned int num_steps,
-		float precision,
+		double precision,
 		signed char threshold)
 		:
-		rmax(hypot(gradient._width,gradient._height)),
-		angle_steps(num_steps),
-		CImg(angle_steps+1,rmax/precision),
+		CImg(num_steps+1,(rmax=hypot(gradient._width,gradient._height))*2/precision+1),
 		theta_min(lower_angle),
 		angle_dif(upper_angle-lower_angle),
+		angle_steps(num_steps),
 		precision(precision)
 	{
 		threshold=std::abs(threshold);
@@ -308,22 +307,24 @@ namespace cimg_library {
 				{
 					for(uint f=0;f<=angle_steps;++f)
 					{
-						float theta=angle_dif*f/angle_steps+theta_min;
-						float r=x*std::cos(theta)+y*std::sin(theta);
-						++CImg<unsigned int>::operator()(f,((r+rmax)/(2*rmax))/precision);
+						double theta=angle_dif*f/angle_steps+theta_min;
+						double r=x*std::cos(theta)+y*std::sin(theta);
+						unsigned int y=((r+rmax)/(2*rmax))/precision*_height;
+						++CImg<unsigned int>::operator()(f,y);
+						++CImg<unsigned int>::operator()(f,y+1);
 					}
 				}
 			}
 		}
 	}
-	unsigned int& HoughArray::operator()(float theta,float r)
+	unsigned int& HoughArray::operator()(double theta,double r)
 	{
 		unsigned int x=(theta-theta_min)/angle_dif*angle_steps;
-		unsigned int y=((r+rmax)/(2*rmax))/precision;
+		unsigned int y=((r+rmax)/(2*rmax))/precision*_height;
 		//printf("%u\t%u\n",x,y);
 		return CImg<unsigned int>::operator()(x,y);
 	}
-	float HoughArray::angle() const
+	double HoughArray::angle() const
 	{
 		if(empty())
 		{
@@ -337,6 +338,6 @@ namespace cimg_library {
 				max_it=it;
 			}
 		}
-		return std::distance(max_it,begin())%_width*angle_dif/angle_steps+theta_min;
+		return std::distance(begin(),max_it)%_width*angle_dif/angle_steps+theta_min;
 	}
 }

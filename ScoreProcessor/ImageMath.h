@@ -86,25 +86,21 @@ namespace cimg_library {
 
 	class HoughArray:public CImg<unsigned int> {
 	private:
-		float rmax;
-		float theta_min;
-		float angle_dif;
+		double rmax;
+		double theta_min;
+		double angle_dif;
 		unsigned int angle_steps;
-		float precision;
+		double precision;
 	public:
-		struct line {
-			float theta;
-			float r;
-		};
 		HoughArray(
 			CImg<signed char> const& gradient,
-			float lower_angle=2*M_PI_6,float upper_angle=4*M_PI_6,
-			unsigned int num_steps=100,
-			float precision=1.0f,
+			double lower_angle=2*M_PI_6,double upper_angle=4*M_PI_6,
+			unsigned int num_steps=300,
+			double precision=1.0f,
 			signed char threshold=64);
-		unsigned int& operator()(float theta,float r);
-		float angle() const;
-		std::vector<line> top_lines(size_t num);
+		unsigned int& operator()(double theta,double r);
+		double angle() const;
+		std::vector<ImageUtils::line<>> top_lines(size_t num);
 	};
 }
 #endif // !IMAGE_MATH_H

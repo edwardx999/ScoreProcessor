@@ -892,7 +892,12 @@ namespace ScoreProcessor {
 	}
 
 	void auto_rotate(CImg<unsigned char>& image)
-	{}
+	{
+		auto grad=get_vertical_gradient(image);
+		HoughArray ha(grad);
+		double angle=90.0-180.0*ha.angle()/M_PI;
+		image.rotate(angle,2,1);
+	}
 
 	void auto_skew(CImg<unsigned char>& image)
 	{}
