@@ -947,7 +947,7 @@ int main(int argc,char** argv)
 			"    Straighten:               -str\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
-			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(4/7 width of first page)\n"
+			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(6/11 width of first page)\n"
 			"  Options:\n"
 			"    Output:                   -o format\n"
 			"    Verbosity:                -vb level\n"

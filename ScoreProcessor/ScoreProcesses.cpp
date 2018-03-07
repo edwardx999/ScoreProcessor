@@ -1494,7 +1494,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		if(optimal_height==-1)
 		{
-			optimal_height=first_page._width*4/7;
+			optimal_height=first_page._width*6/11;
 		}
 		function<cost_pad(page const*,size_t)> cost_splice=
 			[optimal_padding,min_padding,optimal_height](page const* page,size_t num)
