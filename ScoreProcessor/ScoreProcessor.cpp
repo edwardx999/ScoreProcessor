@@ -1053,6 +1053,10 @@ int main(int argc,char** argv)
 					std::cout<<"No files found\n";
 					return 0;
 				}
+				for(auto const& f:files)
+				{
+					std::cout<<f<<'\n';
+				}
 				class CutProcess:public exlib::ThreadTask {
 				private:
 					std::string const* input;

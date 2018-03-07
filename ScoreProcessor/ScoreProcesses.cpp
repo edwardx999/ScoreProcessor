@@ -730,7 +730,7 @@ namespace ScoreProcessor {
 				break;
 			case 3:
 				isRGB=true;
-				return 0;
+				//return 0;
 				break;
 			default:
 				return 0;
