@@ -57,8 +57,6 @@ namespace exlib {
 		std::vector<String> files;
 		if(hFind!=INVALID_HANDLE_VALUE)
 		{
-			FindNextFileA(hFind,&fdata);
-			FindNextFileA(hFind,&fdata);//gets rid of . and ..
 			do
 			{
 				if(!(fdata.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY))

@@ -284,8 +284,8 @@ protected:
 	SingleCommandMaker(unsigned int min_args,unsigned int max_args,char const* hm,char const* nm)
 		:CommandMaker(min_args,max_args,hm,nm)
 	{}
-public:
 	static char const* const mci;
+public:
 	char const* parse_command(iter begin,size_t num_args,delivery& del) const override final
 	{
 		if(del.flag>1)
@@ -872,7 +872,7 @@ std::vector<std::string> conv_strings(int argc,char** argv)
 	{
 		ret.emplace_back(argv[i]);
 	}
-	ret.emplace_back("-duMmMwMd");
+	ret.emplace_back("-duMmMwMd");//dummy used to prevent access violation and trigger analyzing the last function input
 	return ret;
 }
 std::vector<std::string> images_in_path(std::string const& path)
@@ -882,11 +882,13 @@ std::vector<std::string> images_in_path(std::string const& path)
 	{
 		f=path+f;
 	}
+	/*
 	ret.erase(std::remove_if(ret.begin(),ret.end(),[](auto& a)
 	{
 		return a.find('.')==std::string::npos;
 	}),
 		ret.end());
+	*/
 	return ret;
 }
 std::string pretty_date()
