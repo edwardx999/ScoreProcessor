@@ -809,7 +809,7 @@ public:
 			"Straightens the image\n"
 			"Min angle is minimum angle of range to consider rotation (in degrees)\n"
 			"Max angle is maximum angle of range to consider rotation (in degrees)\n"
-			"Angle precision is the precision in measuring angle (in drgrees)\n"
+			"Angle precision is the precision in measuring angle (in degrees)\n"
 			"Pixel precision is precision when measuring distance from origin",
 			"Straighten")
 	{}
