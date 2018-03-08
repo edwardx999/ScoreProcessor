@@ -291,7 +291,7 @@ namespace cimg_library {
 		double precision,
 		signed char threshold)
 		:
-		CImg(num_steps+1,(rmax=hypot(gradient._width,gradient._height))*2/precision+1),
+		CImg(num_steps+1,(rmax=hypot(gradient._width,gradient._height))*2/precision),
 		theta_min(lower_angle),
 		angle_dif(upper_angle-lower_angle),
 		angle_steps(num_steps),
@@ -299,17 +299,19 @@ namespace cimg_library {
 	{
 		threshold=std::abs(threshold);
 		fill(0);
+		double step=(_height-1)/precision;
 		for(uint x=0;x<gradient._width;++x)
 		{
 			for(uint y=0;y<gradient._height;++y)
 			{
 				if(std::abs(gradient(x,y))>threshold)
 				{
+					
 					for(uint f=0;f<=angle_steps;++f)
 					{
 						double theta=angle_dif*f/angle_steps+theta_min;
 						double r=x*std::cos(theta)+y*std::sin(theta);
-						unsigned int y=((r+rmax)/(2*rmax))/precision*_height;
+						unsigned int y=((r+rmax)/(2*rmax))*step;
 						++CImg<unsigned int>::operator()(f,y);
 						++CImg<unsigned int>::operator()(f,y+1);
 					}
@@ -320,7 +322,7 @@ namespace cimg_library {
 	unsigned int& HoughArray::operator()(double theta,double r)
 	{
 		unsigned int x=(theta-theta_min)/angle_dif*angle_steps;
-		unsigned int y=((r+rmax)/(2*rmax))/precision*_height;
+		unsigned int y=((r+rmax)/(2*rmax))/precision*(_height-1);
 		//printf("%u\t%u\n",x,y);
 		return CImg<unsigned int>::operator()(x,y);
 	}

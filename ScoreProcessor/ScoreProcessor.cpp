@@ -191,10 +191,18 @@ public:
 };
 
 class Straighten:public ImageProcess<> {
+	double pixel_prec;
+	unsigned int num_steps;
+	double min_angle,max_angle;
 public:
+	Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec)
+		:pixel_prec(pixel_prec),
+		min_angle(M_PI_2+min_angle*DEG_RAD),max_angle(M_PI_2+max_angle*DEG_RAD),
+		num_steps((max_angle-min_angle)/angle_prec+1)
+	{}
 	void process(Img& img) override
 	{
-		auto_rotate(img);
+		auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps);
 	}
 };
 
@@ -796,12 +804,64 @@ public:
 class StraightenMaker:public SingleCommandMaker {
 public:
 	StraightenMaker()
-		:SingleCommandMaker(0,0,"Straightens the image","Straighten")
+		:SingleCommandMaker(
+			0,4,
+			"Straightens the image\n"
+			"Min angle is minimum angle of range to consider rotation (in degrees)\n"
+			"Max angle is maximum angle of range to consider rotation (in degrees)\n"
+			"Angle precision is the precision in measuring angle (in drgrees)\n"
+			"Pixel precision is precision when measuring distance from origin",
+			"Straighten")
 	{}
-	char const* parse_command_h(iter,size_t,delivery& del) const override
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		del.pl.add_process<Straighten>();
+		double pixel_prec,min_angle,max_angle,angle_prec;
+	#define assign_val(val,index,cond,check_statement,error_statement)\
+		if(n>##index##)\
+		{\
+			try\
+			{\
+				##val##=std::stod(begin[##index##]);\
+				if(##cond##)\
+				{\
+					return ##check_statement##;\
+				}\
+			}\
+			catch(std::exception const&)\
+			{\
+				return "Invalid input for " ## error_statement ##;\
+			}\
+		}\
+		else\
+		{\
+			goto init_##val##;\
+		}
+		assign_val(min_angle,0,false,"","minimum angle");
+		assign_val(max_angle,1,false,"","maximum angle");
+		assign_val(angle_prec,2,angle_prec<=0,"Angle precision must be positive","angle precision");
+		assign_val(pixel_prec,3,pixel_prec<=0,"Pixel precision must be positive","pixel precision");
+	#undef assign_val
+		;
+	end:
+		if(min_angle>max_angle)
+		{
+			return "Max angle must be greater than min angle";
+		}
+		if(max_angle-min_angle>180)
+		{
+			return "Difference between angles must be less than or equal to 180";
+		}
+		del.pl.add_process<Straighten>(pixel_prec,min_angle,max_angle,angle_prec);
 		return nullptr;
+	init_min_angle:
+		min_angle=-5.0;
+	init_max_angle:
+		max_angle=5.0;
+	init_angle_prec:
+		angle_prec=0.1;
+	init_pixel_prec:
+		pixel_prec=1.0;
+		goto end;
 	}
 };
 class RemoveBorderMaker:public SingleCommandMaker {
@@ -944,7 +1004,7 @@ int main(int argc,char** argv)
 			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777778\n"
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
-			"    Straighten:               -str\n"
+			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(6/11 width of first page)\n"

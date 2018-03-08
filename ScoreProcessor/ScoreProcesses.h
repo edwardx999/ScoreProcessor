@@ -278,8 +278,22 @@ namespace ScoreProcessor {
 	/*
 		Automatically levels the image
 		@param image
+		@param pixel_prec precision when measuring distance from origin
+		@param min_angle minimum angle of range to consider rotation (degrees), is angle of line from x-axis
+		@param max_angle maximum angle of range to consider rotation (degrees), is angle of line from x-axis
+		@param angle_prec precision when measuring angle
 	*/
-	void auto_rotate(::cimg_library::CImg<unsigned char>& image);
+	void auto_rotate(::cimg_library::CImg<unsigned char>& image,double pixel_prec,double min_angle,double max_angle,double angle_prec);
+
+	/*
+		Automatically levels the image.
+		@param image
+		@param pixel_prec precision when measuring distance from origin
+		@param min_angle minimum angle of range to consider rotation (radians), is angle of Hesse normal form
+		@param max_angle maximum angle of range to consider rotation (radians), is angle of Hesse normal form
+		@param angle_steps number of angle quantization steps between min and max angle
+	*/
+	void auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps);
 	/*
 		Automatically deskews the image
 		@param image

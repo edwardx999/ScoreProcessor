@@ -22,6 +22,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #define M_PI_2	1.57079632679489661923
 #define M_PI_4	0.78539816339744830962
 #define M_PI_6	0.52359877559829887308
+#define RAD_DEG 180.0/M_PI
+#define DEG_RAD M_PI/180.0
 namespace cimg_library {
 	/*
 	Returns an image that has the vertical brightness gradient at each point
@@ -94,7 +96,7 @@ namespace cimg_library {
 	public:
 		HoughArray(
 			CImg<signed char> const& gradient,
-			double lower_angle=2*M_PI_6,double upper_angle=4*M_PI_6,
+			double lower_angle=M_PI_2-M_PI_2/18,double upper_angle=M_PI_2+M_PI_2/18,
 			unsigned int num_steps=300,
 			double precision=1.0f,
 			signed char threshold=64);

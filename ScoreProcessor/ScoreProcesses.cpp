@@ -891,12 +891,23 @@ namespace ScoreProcessor {
 		return num_images;
 	}
 
-	void auto_rotate(CImg<unsigned char>& image)
+	void auto_rotate(CImg<unsigned char>& image,double pixel_prec,double min_angle,double max_angle,double angle_prec)
 	{
-		auto grad=get_vertical_gradient(image);
-		HoughArray ha(grad);
-		double angle=90.0-180.0*ha.angle()/M_PI;
-		image.rotate(angle,2,1);
+		assert(angle_prec>0);
+		assert(pixel_prec>0);
+		assert(min_angle<max_angle);
+		auto_rotate_bare(image,pixel_prec,min_angle*DEG_RAD+M_PI_2,max_angle*DEG_RAD+M_PI_2,(max_angle-min_angle)/angle_prec+1);
+	}
+
+	void auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps)
+	{
+		assert(angle_steps>0);
+		assert(pixel_prec>0);
+		assert(min_angle<max_angle);
+		auto grad=get_vertical_gradient(img);
+		HoughArray ha(grad,min_angle,max_angle,angle_steps,pixel_prec);
+		double angle=90.0-ha.angle()*RAD_DEG;
+		img.rotate(angle,2,1);
 	}
 
 	void auto_skew(CImg<unsigned char>& image)
@@ -1463,7 +1474,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		unsigned int optimal_height,
 		char const* output)
 	{
-		if(filenames.size()<2)
+		if(filenames.empty())
 		{
 			return 0;
 		}
@@ -1519,9 +1530,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 			height+=padding*(num+1);
 			float height_cost=abs_dif(height,optimal_height);
-			height_cost=powf(height_cost,.6);
+			height_cost=powf(height_cost,0.8f);
 			float padding_cost=abs_dif(padding,optimal_padding);
-			padding_cost=powf(padding_cost,0.6);
+			padding_cost=powf(padding_cost,0.6f);
 			return cost_pad
 			{
 				2*padding_cost+height_cost,
