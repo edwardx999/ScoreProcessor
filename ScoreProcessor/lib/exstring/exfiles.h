@@ -64,8 +64,8 @@ namespace exlib {
 					files.emplace_back(fdata.cFileName);
 				}
 			} while(FindNextFileA(hFind,&fdata));
+			FindClose(hFind);
 		}
-		FindClose(hFind);
 		return files;
 	}
 #endif
