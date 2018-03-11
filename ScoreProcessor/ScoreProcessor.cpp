@@ -198,7 +198,7 @@ public:
 	Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec)
 		:pixel_prec(pixel_prec),
 		min_angle(M_PI_2+min_angle*DEG_RAD),max_angle(M_PI_2+max_angle*DEG_RAD),
-		num_steps((max_angle-min_angle)/angle_prec+1)
+		num_steps(std::ceil((max_angle-min_angle)/angle_prec))
 	{}
 	void process(Img& img) override
 	{
@@ -1005,6 +1005,7 @@ int main(int argc,char** argv)
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
 			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1\n"
+			"    Remove Border (DANGER):   -rb"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(6/11 width of first page)\n"
