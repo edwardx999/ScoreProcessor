@@ -1,4 +1,4 @@
-An application useful in making score videos.
+An application useful in making editing musical scores.
 
 Copyright (C) 2017-2018 Edward Xie
 
