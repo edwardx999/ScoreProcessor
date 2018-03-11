@@ -209,7 +209,7 @@ public:
 void stop()
 {
 	cout<<"Stopped\n";
-	Sleep(60000);
+	std::this_thread::sleep_for(std::chrono::seconds(1000));
 }
 class CoutLog:public Log {
 	CoutLog()
@@ -962,22 +962,10 @@ std::string pretty_date()
 }
 void test()
 {
-	CImg<unsigned char> test("rtest.jpg");
-	//test.rotate(20,2,1);
-	test.display();
-	if(test._spectrum>1)
-	{
-		test=get_grayscale_simple(test);
-	}
-	auto grad=get_vertical_gradient(test);
-	grad.display();
-	std::cout<<"hi\n";
-	HoughArray ha(grad);
-	ha.display();
-	double hangle=ha.angle()*180.0/M_PI;
-	std::cout<<hangle<<'\n';
-	test.rotate(90-hangle);
-	test.display();
+	CImg<unsigned char> test_img("cuttest.jpg");
+	CImg<float> map=create_vertical_energy(test_img);
+	add_horizontal_energy(test_img,map);
+	map.display();
 	stop();
 }
 int main(int argc,char** argv)

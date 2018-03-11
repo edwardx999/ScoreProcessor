@@ -720,6 +720,62 @@ namespace ScoreProcessor {
 		}
 		return resultContainer;
 	}
+	
+	float const HORIZONTAL_ENERGY_CONSTANT=200.0f;
+	void add_horizontal_energy(CImg<unsigned char> const& ref,CImg<float>& map)
+	{
+		for(unsigned int y=0;y<map._height;++y)
+		{
+			unsigned int x=0;
+			unsigned int node_start;
+			bool node_found;
+			auto assign_node_found=[&]()
+			{
+				return node_found=gray_diff(Grayscale::WHITE,ref(x,y))<.2f;
+			};
+			auto place_values=[&]()
+			{
+				unsigned int mid=(node_start+x)/2;
+				float val_div=2.0f;
+				unsigned int node_x;
+				for(node_x=node_start;node_x<mid;++node_x)
+				{
+					++val_div;
+					map(node_x,y)+=HORIZONTAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+				}
+				for(;node_x<x;++node_x)
+				{
+					--val_div;
+					map(node_x,y)+=HORIZONTAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+				}
+			};
+			if(assign_node_found())
+			{
+				node_start=0;
+			}
+			for(x=1;x<ref._width;++x)
+			{
+				if(node_found)
+				{
+					if(!assign_node_found())
+					{
+						place_values();
+					}
+				}
+				else
+				{
+					if(assign_node_found())
+					{
+						node_start=x;
+					}
+				}
+			}
+			if(node_found)
+			{
+				place_values();
+			}
+		}
+	}
 	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename)
 	{
 		bool isRGB;
@@ -741,6 +797,7 @@ namespace ScoreProcessor {
 			typedef ImageUtils::vertical_line<unsigned int> line;
 			unsigned int right=find_right(image,Grayscale::WHITE,5);
 			CImg<float> map=create_vertical_energy(image);
+			add_horizontal_energy(image,map);
 			min_energy_to_right(map);
 			//map.display();
 			struct float_color {
@@ -765,7 +822,7 @@ namespace ScoreProcessor {
 					boxes.push_back(clusters[i]->right_side());
 				}
 			}
-			std::sort(boxes.begin(),boxes.end(),[](line& a,line&b)
+			std::sort(boxes.begin(),boxes.end(),[](line const& a,line const& b)
 			{
 				return a.bottom<b.top;
 			});
@@ -1437,13 +1494,11 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					{
 						uchar& tpixel=tog(tog._width-x,yabs);
 						tpixel=std::min(current(current._width-x,y),tpixel);
-						//tpixel=current(current._width-x,y)>>1+tpixel>>1;
 					}
 				}
 			}
 			ypos+=padding+current.height();
 		}
-		//tog.display();
 		return tog;
 	}
 	vector<uint> get_top_profile(CImg<uchar> const& img)
@@ -1490,7 +1545,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		Splice items;
 		items.emplace_back(filenames[0].c_str());
 		auto const& first_page=items[0];
-		unsigned int touch_tolerance=first_page._width/1000+1;
+		unsigned int touch_tolerance=first_page._width/1024+1;
 		switch(first_page._spectrum)
 		{
 			case 1:
@@ -1498,7 +1553,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				break;
 			case 3:
 			case 4:
-				items[0].top=find_top(first_page,Grayscale::WHITE,touch_tolerance);
+				items[0].top=find_top(first_page,ColorRGB::WHITE,touch_tolerance);
 				break;
 			default:
 				throw std::invalid_argument("Invalid number of layers");
@@ -1545,11 +1600,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		above_bottom_profile=get_bottom_profile(items[0]);
 		items[0].bottom=*max_element(above_bottom_profile.begin(),above_bottom_profile.end());
 		items.pad_info=cost_splice(items.data(),1);
-		uint num_digits=exlib::num_digits(filenames.size());;
+		uint const num_digits=exlib::num_digits(filenames.size());
 		for(auto it=filenames.begin()+1;it!=filenames.end();++it)
 		{
-			//cout<<filenames[i].c_str()<<'\n';
-			//char const* filename=filenames[i].c_str();
 			items.emplace_back(it->c_str());
 			auto& above=*(items.end()-2);
 			auto& below=items.back();
@@ -1575,26 +1628,15 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			{
 				above.bottom=old_bottom;
 				auto tog=splice_images(items.data(),items.size()-1,items.pad_info.padding);
-				++num_pages;
-				//cout<<num_pages<<'\n';
-				tog.save(output,num_pages,3);
-				//cout<<"Finished saving "<<num_pages<<'\n';
-				//cout<<(void const*)items.back().img.data()<<'\n';
+				tog.save(output,++num_pages,num_digits);
 				items.erase(items.begin(),items.end()-1);
-				//cout<<(void const*)items.back().img.data()<<'\n'<<'\n';
-				//cout<<"Erased all but last\n";
 				items[0].top=*min_element(below_top_profile.begin(),below_top_profile.end());
-				//cout<<"Assigned new top\n";
 				items.pad_info=cost_splice(items.data(),1);
-				//cout<<"Reevaluated cost\n";
 			}
 			above_bottom_profile=move(below_bottom_profile);
 		}
 		auto tog=splice_images(items.data(),items.size(),items.pad_info.padding);
-		++num_pages;
-		//cout<<num_pages<<'\n';
-		tog.save(output,num_pages,3);
-		//cout<<"Finished saving "<<num_pages<<'\n';
+		tog.save(output,++num_pages,num_digits);
 		return num_pages;
 	}
 	spacing find_spacing(vector<uint> const& bottom_of_top,uint size_top,vector<uint> const& top_of_bottom)
@@ -1784,7 +1826,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		return map;
 	}
-	float const HORIZONTAL_ENERGY_CONSTANT=1.0f;
+	float const COMPRESS_HORIZONTAL_ENERGY_CONSTANT=1.0f;
 	CImg<float> create_compress_energy(CImg<unsigned char> const& ref)
 	{
 		auto map=create_vertical_energy(ref);
@@ -1802,7 +1844,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				unsigned int multiplier=(x-node_start)/2;
 				for(auto node_x=node_start;node_x<x;++node_x)
 				{
-					map(node_x,y)=HORIZONTAL_ENERGY_CONSTANT*multiplier;
+					map(node_x,y)=COMPRESS_HORIZONTAL_ENERGY_CONSTANT*multiplier;
 				}
 			};
 			if(assign_node_found())
