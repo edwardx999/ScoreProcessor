@@ -117,10 +117,10 @@ public:
 		auto_padding(img,vert,max_h,min_h,hoff,opt_rat);
 	}
 };
-class Resize:public ImageProcess<> {
+class Rescale:public ImageProcess<> {
 	double val;
 public:
-	Resize(double val):val(val)
+	Rescale(double val):val(val)
 	{}
 	void process(Img& img)
 	{
@@ -129,7 +129,7 @@ public:
 			scast<int>(std::round(img._height*val)),
 			1,
 			1,
-			2);
+			val>1?5:2);
 	}
 };
 class ClusterClearGray:public ImageProcess<> {
@@ -876,6 +876,28 @@ public:
 	}
 };
 
+class RescaleMaker:public SingleCommandMaker {
+public:
+	RescaleMaker():SingleCommandMaker(1,1,"Rescales image by given factor","Rescale")
+	{}
+	char const* parse_command_h(iter begin,size_t,delivery& del) const override
+	{
+		try
+		{
+			double factor=std::stod(*begin);
+			if(factor<0)
+			{
+				return "Rescale factor must be non-negative";
+			}
+			del.pl.add_process<Rescale>(factor);
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid input for rescale factor";
+		}
+		return nullptr;
+	}
+};
 class LogMaker:public CommandMaker {
 public:
 	LogMaker()
@@ -921,6 +943,7 @@ std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
 	commands.emplace("-rb",make_unique<RemoveBorderMaker>());
 	commands.emplace("-vb",make_unique<LogMaker>());
 	commands.emplace("-str",make_unique<StraightenMaker>());
+	commands.emplace("-rs",make_unique<RescaleMaker>());
 	return commands;
 }
 std::unordered_map<std::string,std::unique_ptr<CommandMaker>> const commands=init_commands();
@@ -993,7 +1016,8 @@ int main(int argc,char** argv)
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
 			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1\n"
-			"    Remove Border (DANGER):   -rb"
+			"    Remove Border (DANGER):   -rb\n"
+			"    Rescale:                  -rs factor\n" 
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(6/11 width of first page)\n"
