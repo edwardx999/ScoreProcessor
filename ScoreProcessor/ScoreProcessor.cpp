@@ -51,13 +51,16 @@ public:
 		}
 	}
 };
-class RemoveProcess:public ImageProcess<> {
+class RemoveBorderGray:public ImageProcess<> {
+	float tolerance;
 public:
+	RemoveBorderGray(float tolerance):tolerance(tolerance)
+	{}
 	void process(Img& image)
 	{
 		if(image._spectrum==1)
 		{
-			remove_border(image);
+			remove_border(image,0,tolerance);
 		}
 		else
 		{
@@ -867,11 +870,31 @@ public:
 class RemoveBorderMaker:public SingleCommandMaker {
 public:
 	RemoveBorderMaker()
-		:SingleCommandMaker(0,0,"Removes border of image (SUPER BETA VERSION)","Remove Border")
+		:SingleCommandMaker(0,1,"Removes border of image (SUPER BETA VERSION)","Remove Border")
 	{}
-	char const* parse_command_h(iter begin,size_t,delivery& del) const override
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		del.pl.add_process<RemoveProcess>();
+		float tolerance;
+		if(n>0)
+		{
+			try
+			{
+				tolerance=std::stof(*begin);
+				if(tolerance<0||tolerance>1)
+				{
+					return "Tolerance must be in range [0,1]";
+				}
+			}
+			catch(std::exception const&)
+			{
+				return "Invalid input for tolerance";
+			}
+		}
+		else
+		{
+			tolerance=0.5;
+		}
+		del.pl.add_process<RemoveBorderGray>(tolerance);
 		return nullptr;
 	}
 };
@@ -1016,8 +1039,8 @@ int main(int argc,char** argv)
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
 			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1\n"
-			"    Remove Border (DANGER):   -rb\n"
-			"    Rescale:                  -rs factor\n" 
+			"    Remove Border (DANGER):   -rb tolerance=0.5\n"
+			"    Rescale:                  -rs factor\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(6/11 width of first page)\n"
