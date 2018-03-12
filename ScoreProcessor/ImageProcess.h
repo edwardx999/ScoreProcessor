@@ -303,7 +303,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(cimg_library::CImg<T>& img,SaveRules const* psr,unsigned int index=0) const
+	void ProcessList<T>::process(cimg_library::CImg<T>& img,SaveRules const* psr,unsigned int index) const
 	{
 		if(psr==nullptr)
 		{

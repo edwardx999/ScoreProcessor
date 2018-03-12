@@ -1048,23 +1048,45 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 {
 	std::unordered_map<std::string,CommandMaker const*> commands;
 	commands.emplace("-fg",&FilterGrayMaker::get());
+
 	commands.emplace("-cg",&ConvertGrayMaker::get());
+
 	commands.emplace("-ccg",&ClusterClearMaker::get());
+
 	commands.emplace("-hp",&HorizontalPaddingMaker::get());
+
 	commands.emplace("-vp",&VerticalPaddingMaker::get());
+
 	commands.emplace("-o",&OutputMaker::get());
+
 	commands.emplace("-ap",&AutoPaddingMaker::get());
+
 	commands.emplace("-cut",&CutMaker::get());
+
 	commands.emplace("-spl",&SpliceMaker::get());
+	commands.emplace("-splice",&SpliceMaker::get());
+
 	commands.emplace("-bl",&BlurMaker::get());
+	commands.emplace("-blur",&BlurMaker::get());
+
 	commands.emplace("-rcg",&RescaleGrayMaker::get());
+
 	commands.emplace("-rb",&RemoveBorderMaker::get());
+
 	commands.emplace("-vb",&LogMaker::get());
+	commands.emplace("-verbosity",&LogMaker::get());
+
 	commands.emplace("-str",&StraightenMaker::get());
+	commands.emplace("-straighten",&StraightenMaker::get());
+
 	commands.emplace("-rs",&RescaleMaker::get());
+	commands.emplace("-rescale",&RescaleMaker::get());
+
 	return commands;
 }
+
 auto commands=init_commands();
+
 std::vector<std::string> conv_strings(int argc,char** argv)
 {
 	std::vector<std::string> ret;
@@ -1073,7 +1095,7 @@ std::vector<std::string> conv_strings(int argc,char** argv)
 	{
 		ret.emplace_back(argv[i]);
 	}
-	ret.emplace_back("-duMmMwMd");//dummy used to prevent access violation and trigger analyzing the last function input
+	ret.emplace_back("-duMmMwMd");//dummy used to trigger analyzing the last function input
 	return ret;
 }
 std::vector<std::string> images_in_path(std::string const& path)
@@ -1083,13 +1105,6 @@ std::vector<std::string> images_in_path(std::string const& path)
 	{
 		f=path+f;
 	}
-	/*
-	ret.erase(std::remove_if(ret.begin(),ret.end(),[](auto& a)
-	{
-		return a.find('.')==std::string::npos;
-	}),
-		ret.end());
-	*/
 	return ret;
 }
 std::string pretty_date()
