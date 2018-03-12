@@ -266,6 +266,8 @@ protected:
 	virtual char const* parse_command(iter begin,size_t num_args,delivery&) const=0;
 public:
 	virtual ~CommandMaker()=default;
+	CommandMaker(CommandMaker const&)=delete;
+	CommandMaker(CommandMaker&&)=delete;
 	char const* help_message() const
 	{
 		return _help_message;
@@ -326,9 +328,14 @@ class FilterGrayMaker:public SingleCommandMaker {
 		}
 		return nullptr;
 	}
-public:
 	FilterGrayMaker():SingleCommandMaker(1,3,"Replaces all values between min and max value inclusive with replacer","Filter Gray")
 	{}
+	static FilterGrayMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter argb,size_t n,delivery& del) const override
 	{
 		int params[3];
@@ -348,26 +355,38 @@ public:
 		return nullptr;
 	}
 };
+FilterGrayMaker const FilterGrayMaker::singleton;
 
 class ConvertGrayMaker:public SingleCommandMaker {
-public:
 	ConvertGrayMaker():SingleCommandMaker(0,0,"Converts given image to Grayscale","Convert Gray")
 	{}
+	static ConvertGrayMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		del.pl.add_process<ChangeToGrayscale>();
 		return nullptr;
 	}
 };
+ConvertGrayMaker const ConvertGrayMaker::singleton;
 
 class ClusterClearMaker:public SingleCommandMaker {
-public:
 	ClusterClearMaker()
 		:SingleCommandMaker(1,4,
 			"All clusters of pixels that are outside of tolerance of background color\n"
 			"and between min and max size are replaced by the background color",
 			"Cluster Clear Grayscale")
 	{}
+	static ClusterClearMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		int max_size,min_size;
@@ -450,12 +469,18 @@ public:
 		goto end;
 	}
 };
+ClusterClearMaker const ClusterClearMaker::singleton;
 
 class HorizontalPaddingMaker:public SingleCommandMaker {
-public:
 	HorizontalPaddingMaker():
 		SingleCommandMaker(1,1,"Pads the left and right sides of the image with given number of pixels","Horizontal Padding")
 	{}
+	static HorizontalPaddingMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		try
@@ -474,12 +499,18 @@ public:
 		}
 	}
 };
+HorizontalPaddingMaker const HorizontalPaddingMaker::singleton;
 
 class VerticalPaddingMaker:public SingleCommandMaker {
-public:
 	VerticalPaddingMaker()
 		:SingleCommandMaker(1,1,"Pads the top and bottom of the image with given number of pixels","Vertical Padding")
 	{}
+	static VerticalPaddingMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		try
@@ -498,9 +529,9 @@ public:
 		}
 	}
 };
+VerticalPaddingMaker const VerticalPaddingMaker::singleton;
 
 class OutputMaker:public CommandMaker {
-public:
 	OutputMaker():
 		CommandMaker(
 			1,1,
@@ -515,6 +546,12 @@ public:
 			"Pattern is %c if no output is specified",
 			"Output Pattern")
 	{}
+	static OutputMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
 		if(del.sr.empty())
@@ -535,9 +572,9 @@ public:
 		return nullptr;
 	}
 };
+OutputMaker const OutputMaker::singleton;
 
 class AutoPaddingMaker:public SingleCommandMaker {
-public:
 	AutoPaddingMaker()
 		:SingleCommandMaker(
 			3,5,
@@ -547,6 +584,12 @@ public:
 			"Right is padded by left padding plus horizontal offset.",
 			"Auto Padding")
 	{}
+	static AutoPaddingMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		int vert,minh,maxh,hoff;
@@ -635,9 +678,9 @@ public:
 		return nullptr;
 	}
 };
+AutoPaddingMaker const AutoPaddingMaker::singleton;
 
 class RescaleGrayMaker:public SingleCommandMaker {
-public:
 	RescaleGrayMaker()
 		:SingleCommandMaker(3,3,
 			"Colors are scaled such that values less than or equal to min become 0,\n"
@@ -645,6 +688,12 @@ public:
 			"They are scaled based on their distance from mid.",
 			"Rescale Gray")
 	{}
+	static RescaleGrayMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t,delivery& del) const override
 	{
 		char const* const errors[]=
@@ -679,12 +728,18 @@ public:
 		return nullptr;
 	}
 };
+RescaleGrayMaker const RescaleGrayMaker::singleton;
 
 class CutMaker:public CommandMaker {
-public:
 	CutMaker()
 		:CommandMaker(0,0,"Cuts the image into separate systems","Cut")
 	{}
+	static CutMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command(iter begin,size_t,delivery& del) const override
 	{
 		if(del.flag)
@@ -695,9 +750,9 @@ public:
 		return nullptr;
 	}
 };
+CutMaker const CutMaker::singleton;
 
 class SpliceMaker:public CommandMaker {
-public:
 	SpliceMaker():
 		CommandMaker(
 			3,4,
@@ -707,6 +762,12 @@ public:
 			"Min padding is the minimal vertical padding between pages.",
 			"Splice")
 	{}
+	static SpliceMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
 		if(del.flag)
@@ -778,12 +839,18 @@ public:
 		return nullptr;
 	}
 };
+SpliceMaker const SpliceMaker::singleton;
 
 class BlurMaker:public SingleCommandMaker {
-public:
 	BlurMaker()
 		:SingleCommandMaker(1,1,"Gaussian blur of given standard deviation","Blur")
 	{}
+	static BlurMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		float radius;
@@ -803,9 +870,9 @@ public:
 		return nullptr;
 	}
 };
+BlurMaker const BlurMaker::singleton;
 
 class StraightenMaker:public SingleCommandMaker {
-public:
 	StraightenMaker()
 		:SingleCommandMaker(
 			0,4,
@@ -816,6 +883,12 @@ public:
 			"Pixel precision is precision when measuring distance from origin",
 			"Straighten")
 	{}
+	static StraightenMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		double pixel_prec,min_angle,max_angle,angle_prec;
@@ -867,11 +940,18 @@ public:
 		goto end;
 	}
 };
+StraightenMaker const StraightenMaker::singleton;
+
 class RemoveBorderMaker:public SingleCommandMaker {
-public:
 	RemoveBorderMaker()
 		:SingleCommandMaker(0,1,"Removes border of image (SUPER BETA VERSION)","Remove Border")
 	{}
+	static RemoveBorderMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		float tolerance;
@@ -898,11 +978,17 @@ public:
 		return nullptr;
 	}
 };
+RemoveBorderMaker const RemoveBorderMaker::singleton;
 
 class RescaleMaker:public SingleCommandMaker {
-public:
 	RescaleMaker():SingleCommandMaker(1,1,"Rescales image by given factor","Rescale")
 	{}
+	static RescaleMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command_h(iter begin,size_t,delivery& del) const override
 	{
 		try
@@ -921,11 +1007,18 @@ public:
 		return nullptr;
 	}
 };
+RescaleMaker const RescaleMaker::singleton;
+
 class LogMaker:public CommandMaker {
-public:
 	LogMaker()
 		:CommandMaker(1,1,"Changes verbosity of output: Silent=0, Errors-only=1 (default), Loud=2","Verbosity")
 	{}
+	static LogMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
 	char const* parse_command(iter begin,size_t,delivery& del) const override
 	{
 		if(del.pl.get_log())
@@ -949,27 +1042,29 @@ public:
 		}
 	}
 };
-std::unordered_map<std::string,std::unique_ptr<CommandMaker>> init_commands()
+LogMaker const LogMaker::singleton;
+
+std::unordered_map<std::string,CommandMaker const*> const init_commands()
 {
-	std::unordered_map<std::string,std::unique_ptr<CommandMaker>> commands;
-	commands.emplace("-fg",make_unique<FilterGrayMaker>());
-	commands.emplace("-cg",make_unique<ConvertGrayMaker>());
-	commands.emplace("-ccg",make_unique<ClusterClearMaker>());
-	commands.emplace("-hp",make_unique<HorizontalPaddingMaker>());
-	commands.emplace("-vp",make_unique<VerticalPaddingMaker>());
-	commands.emplace("-o",make_unique<OutputMaker>());
-	commands.emplace("-ap",make_unique<AutoPaddingMaker>());
-	commands.emplace("-cut",make_unique<CutMaker>());
-	commands.emplace("-spl",make_unique<SpliceMaker>());
-	commands.emplace("-bl",make_unique<BlurMaker>());
-	commands.emplace("-rcg",make_unique<RescaleGrayMaker>());
-	commands.emplace("-rb",make_unique<RemoveBorderMaker>());
-	commands.emplace("-vb",make_unique<LogMaker>());
-	commands.emplace("-str",make_unique<StraightenMaker>());
-	commands.emplace("-rs",make_unique<RescaleMaker>());
+	std::unordered_map<std::string,CommandMaker const*> commands;
+	commands.emplace("-fg",&FilterGrayMaker::get());
+	commands.emplace("-cg",&ConvertGrayMaker::get());
+	commands.emplace("-ccg",&ClusterClearMaker::get());
+	commands.emplace("-hp",&HorizontalPaddingMaker::get());
+	commands.emplace("-vp",&VerticalPaddingMaker::get());
+	commands.emplace("-o",&OutputMaker::get());
+	commands.emplace("-ap",&AutoPaddingMaker::get());
+	commands.emplace("-cut",&CutMaker::get());
+	commands.emplace("-spl",&SpliceMaker::get());
+	commands.emplace("-bl",&BlurMaker::get());
+	commands.emplace("-rcg",&RescaleGrayMaker::get());
+	commands.emplace("-rb",&RemoveBorderMaker::get());
+	commands.emplace("-vb",&LogMaker::get());
+	commands.emplace("-str",&StraightenMaker::get());
+	commands.emplace("-rs",&RescaleMaker::get());
 	return commands;
 }
-std::unordered_map<std::string,std::unique_ptr<CommandMaker>> const commands=init_commands();
+auto commands=init_commands();
 std::vector<std::string> conv_strings(int argc,char** argv)
 {
 	std::vector<std::string> ret;
