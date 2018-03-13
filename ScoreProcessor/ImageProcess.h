@@ -491,7 +491,6 @@ namespace ScoreProcessor {
 	inline void SaveRules::assign(char const* tmplt)
 	{
 		parts.clear();
-		size_t i=0;
 		bool found=false;
 		exlib::string str(20);
 		auto put_string=[&]()
@@ -499,12 +498,12 @@ namespace ScoreProcessor {
 			parts.emplace_back(str);
 			str.reserve(20);
 		};
-		while(tmplt[i]!=0)
+		for(;*tmplt!=0;++tmplt)
 		{
 			if(found)
 			{
 				found=false;
-				char letter=tmplt[i];
+				char letter=*tmplt;
 				if(letter>='0'&&letter<='9')
 				{
 					put_string();
@@ -540,18 +539,20 @@ namespace ScoreProcessor {
 			}
 			else
 			{
-				if(tmplt[i]=='%')
+				if(*tmplt=='%')
 				{
 					found=true;
 				}
 				else
 				{
-					str.push_back(tmplt[i]);
+					str.push_back(*tmplt);
 				}
 			}
-			++i;
 		}
-		put_string();
+		if(!str.empty())
+		{
+			parts.emplace_back(str);
+		}
 	}
 
 	template<typename String>
