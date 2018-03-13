@@ -298,7 +298,6 @@ protected:
 		:CommandMaker(min_args,max_args,hm,nm)
 	{}
 	static char const* const mci;
-public:
 	char const* parse_command(iter begin,size_t num_args,delivery& del) const override final
 	{
 		if(del.flag>1)
@@ -336,6 +335,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter argb,size_t n,delivery& del) const override
 	{
 		int params[3];
@@ -366,6 +366,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		del.pl.add_process<ChangeToGrayscale>();
@@ -387,6 +388,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		int max_size,min_size;
@@ -481,6 +483,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		try
@@ -511,6 +514,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		try
@@ -552,6 +556,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
 		if(del.sr.empty())
@@ -590,6 +595,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		int vert,minh,maxh,hoff;
@@ -694,6 +700,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t,delivery& del) const override
 	{
 		char const* const errors[]=
@@ -740,6 +747,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command(iter begin,size_t,delivery& del) const override
 	{
 		if(del.flag)
@@ -768,6 +776,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
 		if(del.flag)
@@ -851,6 +860,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		float radius;
@@ -889,6 +899,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		double pixel_prec,min_angle,max_angle,angle_prec;
@@ -952,6 +963,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		float tolerance;
@@ -989,6 +1001,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command_h(iter begin,size_t,delivery& del) const override
 	{
 		try
@@ -1019,6 +1032,7 @@ public:
 	{
 		return singleton;
 	}
+protected:
 	char const* parse_command(iter begin,size_t,delivery& del) const override
 	{
 		if(del.pl.get_log())

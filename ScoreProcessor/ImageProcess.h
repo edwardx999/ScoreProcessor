@@ -27,6 +27,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <regex>
 #include <functional>
 #include "lib\exstring\exmath.h"
+#include <fstream>
 namespace ScoreProcessor {
 	template<typename T=unsigned char>
 	/*
@@ -85,9 +86,9 @@ namespace ScoreProcessor {
 			Makes a string out of the input, based on the current template.
 		*/
 		template<typename String>
-		exlib::string make_filename(String const& input,unsigned int index=0) const;
+		exlib::string make_filename(String const& input,unsigned int index=1) const;
 
-		exlib::string make_filename(char const* input,unsigned int index=0) const;
+		exlib::string make_filename(char const* input,unsigned int index=1) const;
 		/*
 			%f to match filename
 			%x to match extension
@@ -195,6 +196,7 @@ namespace ScoreProcessor {
 		void add_process(Args&&... args);
 
 		void process_unsafe(cimg_library::CImg<T>& img,char const* output) const;
+		void process_unsafe(char const* input,char const* output) const;
 		/*
 			Processes an image.
 		*/
@@ -207,7 +209,7 @@ namespace ScoreProcessor {
 			Processes an image and saves it to the output, based on the SaveRules.
 			As this method has no information about the input, it passes an empty string to the SaveRules.
 		*/
-		void process(cimg_library::CImg<T>& img,SaveRules const* psr,unsigned int index=0) const;
+		void process(cimg_library::CImg<T>& img,SaveRules const* psr,unsigned int index=1) const;
 
 		/*
 			Processes an image at the given filename, and saves it in place.
@@ -221,7 +223,7 @@ namespace ScoreProcessor {
 			Processes an image at the given filename, and saves it based on the SaveRules.
 			Pass nullptr to SaveRules if you do not want it saved (useless, but ok).
 		*/
-		void process(char const* filename,SaveRules const* psr,unsigned int index=0) const;
+		void process(char const* filename,SaveRules const* psr,unsigned int index=1) const;
 
 		/*
 			Processes all the images in the vector.
@@ -323,9 +325,54 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
+	void ProcessList<T>::process_unsafe(char const* fname,char const* output) const
+	{
+		if(empty())
+		{
+			char const* fname_ext=cimg_library::cimg::split_filename(fname);
+			char const* output_ext=cimg_library::cimg::split_filename(output);
+			if(strcmp(fname_ext,output_ext)==0)
+			{
+				std::ifstream src(fname,std::ios::binary);
+				std::ofstream dst(output,std::ios::binary);
+				if(!dst.is_open())
+				{
+					throw std::invalid_argument((std::string("Failed to open ")+output).c_str());
+				}
+				dst<<src.rdbuf();
+			}
+			else
+			{
+				process_unsafe(cimg_library::CImg<T>(fname),output);
+			}
+		}
+		else
+		{
+			process_unsafe(cimg_library::CImg<T>(fname),output);
+		}
+	}
+
+	template<typename T>
 	void ProcessList<T>::process(char const* fname,char const* output) const
 	{
-		process(cimg_library::CImg<T>(fname),output);
+		try
+		{
+			process_unsafe(fname,output);
+		}
+		catch(std::exception const& ex)
+		{
+			if(plog)
+			{
+				if(vb)
+				{
+					plog->log_error(ex.what(),0);
+				}
+			}
+			else
+			{
+				throw ex;
+			}
+		}
 	}
 
 	template<typename T>
@@ -347,7 +394,7 @@ namespace ScoreProcessor {
 		auto output=psr->make_filename(exlib::weak_string(const_cast<char*>(filename),len),index);
 		try
 		{
-			process_unsafe(cimg_library::CImg<T>(filename),output.c_str());
+			process_unsafe(filename,output.c_str());
 		}
 		catch(std::exception const& ex)
 		{
