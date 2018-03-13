@@ -150,5 +150,56 @@ namespace exlib {
 		return it-input;
 	}
 
+	template<typename Iter>
+	Iter find_extension(Iter begin,Iter end)
+	{
+		--begin;
+		auto it=end-1;
+		while(1)
+		{
+			if(it==begin)
+			{
+				return end;
+			}
+			if(*it=='.')
+			{
+				return it+1;
+			}
+			if(*it=='\\'||*it=='/')
+			{
+				return end;
+			}
+			--it;
+		}
+	}
+
+	template<typename Iter>
+	Iter find_filename(Iter begin,Iter end)
+	{
+		for(;end!=begin;)
+		{
+			--end;
+			if(*end=='/'||*end=='\\')
+			{
+				return end+1;
+			}
+		}
+		return end;
+	}
+
+	template<typename Iter>
+	Iter find_path_end(Iter begin,Iter end)
+	{
+		for(;end!=begin;)
+		{
+			--end;
+			if(*end=='/'||*end=='\\')
+			{
+				return end;
+			}
+		}
+		return end;
+	}
+
 }
 #endif

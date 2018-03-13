@@ -27,6 +27,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <regex>
 #include <functional>
 #include "lib\exstring\exmath.h"
+#include "lib\exstring\exfiles.h"
 #include <fstream>
 namespace ScoreProcessor {
 	template<typename T=unsigned char>
@@ -59,7 +60,10 @@ namespace ScoreProcessor {
 			i,x=10,f,p,c
 		};
 		union part {
-			exlib::weak_string fixed;
+			struct {
+				char* data;
+				size_t size;
+			} fixed;
 			struct {
 				size_t is_fixed;//relies on weak_string having format [data_pointer,size]
 				size_t tmplt;
@@ -71,13 +75,13 @@ namespace ScoreProcessor {
 			part(unsigned int tmplt):is_fixed(0),tmplt(tmplt)
 			{}
 			part(exlib::string& str):
-				fixed(str.data(),str.size())
+				fixed({str.data(),str.size()})
 			{
 				str.release();
 			}
 			~part()
 			{
-				delete[] fixed.data();
+				delete[] fixed.data;
 			}
 		};
 		std::vector<part> parts;
@@ -86,9 +90,9 @@ namespace ScoreProcessor {
 			Makes a string out of the input, based on the current template.
 		*/
 		template<typename String>
-		exlib::string make_filename(String const& input,unsigned int index=1) const;
+		std::string make_filename(String const& input,unsigned int index=1) const;
 
-		exlib::string make_filename(char const* input,unsigned int index=1) const;
+		std::string make_filename(char const* input,unsigned int index=1) const;
 		/*
 			%f to match filename
 			%x to match extension
@@ -334,6 +338,10 @@ namespace ScoreProcessor {
 			if(strcmp(fname_ext,output_ext)==0)
 			{
 				std::ifstream src(fname,std::ios::binary);
+				if(!src.is_open())
+				{
+					throw std::invalid_argument((std::string("Failed to open ")+fname).c_str());
+				}
 				std::ofstream dst(output,std::ios::binary);
 				if(!dst.is_open())
 				{
@@ -556,63 +564,52 @@ namespace ScoreProcessor {
 	}
 
 	template<typename String>
-	exlib::string SaveRules::make_filename(String const& input,unsigned int index) const
+	std::string SaveRules::make_filename(String const& input,unsigned int index) const
 	{
-		exlib::string out(30L);
-		exlib::weak_string ext(nullptr,0);
-		exlib::weak_string filename(nullptr,0);
-		exlib::weak_string path(nullptr,0);
-		auto find_filename=[](String const& in)
-		{
-			char* it=const_cast<char*>(&(*(in.cend()-1)));
-			while(1)
-			{
-				if(*it=='\\'||*it=='/')
-				{
-					return it+1;
-				}
-				if(it==(&(*in.cbegin())))
-				{
-					return it;
-				}
-				--it;
-			}
+		std::string out;
+		struct basic_string {
+			char const* data;
+			size_t size;
 		};
+		basic_string ext{nullptr,0};
+		basic_string filename{nullptr,0};
+		basic_string path{nullptr,0};
 		auto check_ext=[&]()
 		{
-			if(ext.data()==nullptr)
+			if(ext.data==nullptr)
 			{
-				ext=exlib::weak_string(const_cast<char*>(::cimg_library::cimg::split_filename(input.c_str())));
+				ext.data=&*exlib::find_extension(input.cbegin(),input.cend());
+				ext.size=&*input.cend()-ext.data;
 			}
 		};
 		auto check_filename=[&]()
 		{
-			if(filename.data()==nullptr)
+			if(filename.data==nullptr)
 			{
 				check_ext();
-				char* fstart=find_filename(input);
-				size_t fsize=ext.data()-fstart;
-				if(ext.data()!=(&(*input.cend())))
+				filename.data=exlib::find_filename(&*input.cbegin(),ext.data);
+				size_t fsize=ext.data-filename.data;
+				if(*(ext.data-1)=='.')
 				{
 					--fsize;
 				}
-				filename=exlib::weak_string(fstart,fsize);
+				filename.size=fsize;
 			}
 		};
 		auto check_path=[&]()
 		{
-			if(path.data()==nullptr)
+			if(path.data==nullptr)
 			{
 				check_filename();
-				size_t psize=filename.data()-input.data();
-				path=exlib::weak_string(const_cast<char*>(input.data()),psize);
+				path.data=input.data();
+				path.size=exlib::find_path_end(path.data,filename.data)-path.data;
 			}
 		};
 		for(auto const& p:parts)
 		{
 			if(p.is_fixed)
 			{
-				out+=p.fixed;
+				out.append(p.fixed.data,p.fixed.size);
 			}
 			else
 			{
@@ -626,18 +623,18 @@ namespace ScoreProcessor {
 					{
 						case SaveRules::template_symbol::x:
 							check_ext();
-							out+=ext;
+							out.append(ext.data,ext.size);
 							break;
 						case SaveRules::template_symbol::f:
 							check_filename();
-							out+=filename;
+							out.append(filename.data,filename.size);
 							break;
 						case SaveRules::template_symbol::p:
 							check_path();
-							out+=path;
+							out.append(path.data,path.size);
 							break;
 						case SaveRules::template_symbol::c:
-							out+=input;
+							out.append(input.data(),input.size());
 							break;
 					}
 				}
@@ -646,7 +643,7 @@ namespace ScoreProcessor {
 		return out;
 	}
 
-	inline exlib::string SaveRules::make_filename(char const* input,unsigned int index) const
+	inline std::string SaveRules::make_filename(char const* input,unsigned int index) const
 	{
 		return make_filename(exlib::weak_string(const_cast<char*>(input)),index);
 	}

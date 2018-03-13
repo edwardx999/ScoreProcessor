@@ -546,7 +546,7 @@ class OutputMaker:public CommandMaker {
 			1,1,
 			"Pattern templates:\n"
 			"  %c copy whole filename\n"
-			"  %p copy path (includes trailing slash)\n"
+			"  %p copy path (does not include trailing slash)\n"
 			"  %x copy extension (does not include dot)\n"
 			"  %f copy filename (does not include path, dot, or extension)\n"
 			"  %0 any number from 0-9, index of file with specified number of padding\n"

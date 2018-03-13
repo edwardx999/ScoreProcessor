@@ -61411,32 +61411,34 @@ res(x,y,z,c)=max_val;
 		#endif
 			  // Ascii formats
 			if(!cimg::strcasecmp(ext,"asc")) return save_ascii(fn);
-			else if(!cimg::strcasecmp(ext,"dlm")||
+			if(!cimg::strcasecmp(ext,"dlm")||
 				!cimg::strcasecmp(ext,"txt")) return save_dlm(fn);
-			else if(!cimg::strcasecmp(ext,"cpp")||
+			if(!cimg::strcasecmp(ext,"cpp")||
 				!cimg::strcasecmp(ext,"hpp")||
 				!cimg::strcasecmp(ext,"h")||
 				!cimg::strcasecmp(ext,"c")) return save_cpp(fn);
 
 	   // 2d binary formats
-			else if(!cimg::strcasecmp(ext,"bmp")) return save_bmp(fn);
-			else if(!cimg::strcasecmp(ext,"jpg")||
+			if(!cimg::strcasecmp(ext,"bmp")) return save_bmp(fn);
+			if(!cimg::strcasecmp(ext,"jpg")||
 				!cimg::strcasecmp(ext,"jpeg")||
 				!cimg::strcasecmp(ext,"jpe")||
 				!cimg::strcasecmp(ext,"jfif")||
 				!cimg::strcasecmp(ext,"jif")) return save_jpeg(fn);
-			else if(!cimg::strcasecmp(ext,"rgb")) return save_rgb(fn);
-			else if(!cimg::strcasecmp(ext,"rgba")) return save_rgba(fn);
-			else if(!cimg::strcasecmp(ext,"png")) return save_png(fn);
-			else if(!cimg::strcasecmp(ext,"pgm")||
+			if(!cimg::strcasecmp(ext,"png")) return save_png(fn);
+			throw std::invalid_argument(std::string("Invalid save format ")+ext);
+			/*
+			if(!cimg::strcasecmp(ext,"rgb")) return save_rgb(fn);
+			if(!cimg::strcasecmp(ext,"rgba")) return save_rgba(fn);
+			if(!cimg::strcasecmp(ext,"pgm")||
 				!cimg::strcasecmp(ext,"ppm")||
 				!cimg::strcasecmp(ext,"pnm")) return save_pnm(fn);
-			else if(!cimg::strcasecmp(ext,"pnk")) return save_pnk(fn);
-			else if(!cimg::strcasecmp(ext,"pfm")) return save_pfm(fn);
-			else if(!cimg::strcasecmp(ext,"exr")) return save_exr(fn);
-			else if(!cimg::strcasecmp(ext,"tif")||
+			if(!cimg::strcasecmp(ext,"pnk")) return save_pnk(fn);
+			if(!cimg::strcasecmp(ext,"pfm")) return save_pfm(fn);
+			if(!cimg::strcasecmp(ext,"exr")) return save_exr(fn);
+			if(!cimg::strcasecmp(ext,"tif")||
 				!cimg::strcasecmp(ext,"tiff")) return save_tiff(fn);
-
+			
 	   // 3d binary formats
 			else if(!cimg::strcasecmp(ext,"cimgz")) return save_cimg(fn,true);
 			else if(!cimg::strcasecmp(ext,"cimg")||!*ext) return save_cimg(fn,false);
@@ -61477,6 +61479,7 @@ res(x,y,z,c)=max_val;
 				!cimg::strcasecmp(ext,"xvid")||
 				!cimg::strcasecmp(ext,"mpeg")) return save_video(fn);
 			return save_other(fn);
+			*/
 		}
 
 		//! Save image as an ascii file.
