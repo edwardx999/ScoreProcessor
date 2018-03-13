@@ -1174,8 +1174,7 @@ std::vector<std::string> images_in_path(std::string const& path,std::regex const
 	auto ret=exlib::files_in_dir(path);
 	if(rgxst)
 	{
-		bool keep=rgxst==CommandMaker::delivery::normal;
-		auto filter=[&rgx,keep](std::string const& a)
+		auto filter=[&rgx,keep=rgxst==CommandMaker::delivery::normal](std::string const& a)
 		{
 			return std::regex_match(a,rgx)!=keep;
 		};
