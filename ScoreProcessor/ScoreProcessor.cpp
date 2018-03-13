@@ -253,6 +253,11 @@ public:
 			unsigned int min_padding;
 			unsigned int optimal_height;
 		} splice_args;
+		std::regex rgx;
+		enum regex_state {
+			unassigned,normal,inverted
+		};
+		regex_state rgxst;
 	};
 private:
 	unsigned int min_args;
@@ -1058,6 +1063,56 @@ protected:
 };
 LogMaker const LogMaker::singleton;
 
+class RegexMaker:public CommandMaker {
+	RegexMaker():
+		CommandMaker(
+			1,2,
+			"Filters the folder of files using a regex pattern\n"
+			"Files that match are kept, unless inversion option is given\n"
+			"Giving a string starting with 0 or f is false, otherwise is true",
+			"Filter Files")
+	{}
+	static RegexMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command(iter begin,size_t n,delivery& del) const override
+	{
+		if(del.rgxst)
+		{
+			return "Filter pattern already given";
+		}
+		try
+		{
+			del.rgx.assign(begin[0]);
+			if(n>1)
+			{
+				if(begin[1][0]=='0'||begin[1][0]=='f')
+				{
+					del.rgxst=del.normal;
+				}
+				else
+				{
+					del.rgxst=del.inverted;
+				}
+			}
+			else
+			{
+				del.rgxst=del.normal;
+			}
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid regex pattern";
+		}
+		return nullptr;
+	}
+};
+RegexMaker const RegexMaker::singleton;
+
 std::unordered_map<std::string,CommandMaker const*> const init_commands()
 {
 	std::unordered_map<std::string,CommandMaker const*> commands;
@@ -1096,6 +1151,7 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-rs",&RescaleMaker::get());
 	commands.emplace("-rescale",&RescaleMaker::get());
 
+	commands.emplace("-flt",&RegexMaker::get());
 	return commands;
 }
 
@@ -1112,9 +1168,18 @@ std::vector<std::string> conv_strings(int argc,char** argv)
 	ret.emplace_back("-duMmMwMd");//dummy used to trigger analyzing the last function input
 	return ret;
 }
-std::vector<std::string> images_in_path(std::string const& path)
+std::vector<std::string> images_in_path(std::string const& path,std::regex const& rgx,CommandMaker::delivery::regex_state rgxst)
 {
 	auto ret=exlib::files_in_dir(path);
+	if(rgxst)
+	{
+		bool keep=rgxst==CommandMaker::delivery::normal;
+		auto filter=[&rgx,keep](std::string const& a)
+		{
+			return std::regex_match(a,rgx)!=keep;
+		};
+		ret.erase(std::remove_if(ret.begin(),ret.end(),filter),ret.end());
+	}
 	for(auto& f:ret)
 	{
 		f=path+f;
@@ -1171,6 +1236,7 @@ int main(int argc,char** argv)
 			"  Options:\n"
 			"    Output:                   -o format\n"
 			"    Verbosity:                -vb level\n"
+			"    Filter Files:             -flt regex remove=false\n"
 			"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
 			"A Multi Page Operation can not be done with other operations.\n"
 			;
@@ -1196,6 +1262,7 @@ int main(int argc,char** argv)
 
 	CommandMaker::delivery del;
 	del.flag=del.do_nothing;
+	del.rgxst=del.unassigned;
 	auto& output=del.sr;
 	auto& processes=del.pl;
 
@@ -1249,7 +1316,7 @@ int main(int argc,char** argv)
 		{
 			if(is_folder)
 			{
-				auto files=images_in_path(arg1);
+				auto files=images_in_path(arg1,del.rgx,del.rgxst);
 				if(files.empty())
 				{
 					std::cout<<"No files found\n";
@@ -1267,7 +1334,7 @@ int main(int argc,char** argv)
 		{
 			if(is_folder)
 			{
-				auto files=images_in_path(arg1);
+				auto files=images_in_path(arg1,del.rgx,del.rgxst);
 				if(files.empty())
 				{
 					std::cout<<"No files found\n";
@@ -1320,7 +1387,7 @@ int main(int argc,char** argv)
 		{
 			if(is_folder)
 			{
-				auto files=images_in_path(arg1);
+				auto files=images_in_path(arg1,del.rgx,del.rgxst);
 				if(files.empty())
 				{
 					std::cout<<"No files found\n";
