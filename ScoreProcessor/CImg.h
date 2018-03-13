@@ -56296,20 +56296,17 @@ res(x,y,z,c)=max_val;
 					"load(): Specified filename is (null).",
 					cimg_instance);
 
-			if(!cimg::strncasecmp(filename,"http://",7)||!cimg::strncasecmp(filename,"https://",8))
+			/*if(!cimg::strncasecmp(filename,"http://",7)||!cimg::strncasecmp(filename,"https://",8))
 			{
 				CImg<charT> filename_local(256);
 				load(cimg::load_network(filename,filename_local));
 				std::remove(filename_local);
 				return *this;
-			}
-
-			const char *const ext=exlib::find_filename(filename,filename+strlen(filename));
+			}*/
+			const char *const ext=exlib::find_extension(filename,filename+strlen(filename));
 			const unsigned int omode=cimg::exception_mode();
 			cimg::exception_mode(0);
 			bool is_loaded=true;
-			try
-			{
 			#ifdef cimg_load_plugin
 				cimg_load_plugin(filename);
 			#endif
@@ -56351,16 +56348,16 @@ res(x,y,z,c)=max_val;
 				!cimg::strcasecmp(ext,"jfif")||
 				!cimg::strcasecmp(ext,"jif")) load_jpeg(filename);
 			else if(!cimg::strcasecmp(ext,"png")) load_png(filename);
-			else if(!cimg::strcasecmp(ext,"ppm")||
+			/*else if(!cimg::strcasecmp(ext,"ppm")||
 				!cimg::strcasecmp(ext,"pgm")||
 				!cimg::strcasecmp(ext,"pnm")||
 				!cimg::strcasecmp(ext,"pbm")||
-				!cimg::strcasecmp(ext,"pnk")) load_pnm(filename);
-			else if(!cimg::strcasecmp(ext,"pfm")) load_pfm(filename);
-			else if(!cimg::strcasecmp(ext,"tif")||
-				!cimg::strcasecmp(ext,"tiff")) load_tiff(filename);
-			else if(!cimg::strcasecmp(ext,"exr")) load_exr(filename);
-			else if(!cimg::strcasecmp(ext,"cr2")||
+				!cimg::strcasecmp(ext,"pnk")) load_pnm(filename);*/
+			/*else if(!cimg::strcasecmp(ext,"pfm")) load_pfm(filename);*/
+			/*else if(!cimg::strcasecmp(ext,"tif")||
+				!cimg::strcasecmp(ext,"tiff")) load_tiff(filename);*/
+			/*else if(!cimg::strcasecmp(ext,"exr")) load_exr(filename);*/
+			/*else if(!cimg::strcasecmp(ext,"cr2")||
 				!cimg::strcasecmp(ext,"crw")||
 				!cimg::strcasecmp(ext,"dcr")||
 				!cimg::strcasecmp(ext,"mrw")||
@@ -56370,10 +56367,10 @@ res(x,y,z,c)=max_val;
 				!cimg::strcasecmp(ext,"ptx")||
 				!cimg::strcasecmp(ext,"raf")||
 				!cimg::strcasecmp(ext,"srf")) load_dcraw_external(filename);
-			else if(!cimg::strcasecmp(ext,"gif")) load_gif_external(filename);
+			else if(!cimg::strcasecmp(ext,"gif")) load_gif_external(filename);*/
 
 			// 3d binary formats
-			else if(!cimg::strcasecmp(ext,"dcm")||
+			/*else if(!cimg::strcasecmp(ext,"dcm")||
 				!cimg::strcasecmp(ext,"dicom")) load_medcon_external(filename);
 			else if(!cimg::strcasecmp(ext,"hdr")||
 				!cimg::strcasecmp(ext,"nii")) load_analyze(filename);
@@ -56384,11 +56381,12 @@ res(x,y,z,c)=max_val;
 			else if(!cimg::strcasecmp(ext,"pan")) load_pandore(filename);
 			else if(!cimg::strcasecmp(ext,"cimg")||
 				!cimg::strcasecmp(ext,"cimgz")||
-				!*ext)  return load_cimg(filename);
-
+				!*ext)  return load_cimg(filename);*/
+			else throw std::invalid_argument(std::string("Unsupported file format ")+ext);
+			/*
 	   // Archive files
 			else if(!cimg::strcasecmp(ext,"gz")) load_gzip_external(filename);
-
+			
 			// Image sequences
 			else if(!cimg::strcasecmp(ext,"avi")||
 				!cimg::strcasecmp(ext,"mov")||
@@ -56414,12 +56412,8 @@ res(x,y,z,c)=max_val;
 				!cimg::strcasecmp(ext,"xvid")||
 				!cimg::strcasecmp(ext,"mpeg")) load_video(filename);
 			else is_loaded=false;
-			}
-			catch(CImgIOException&)
-			{
-				is_loaded=false;
-			}
-
+			*/
+			/*
   // If nothing loaded, try to guess file format from magic number in file.
 			if(!is_loaded)
 			{
@@ -56472,6 +56466,7 @@ res(x,y,z,c)=max_val;
 						filename);
 				}
 			}
+			*/
 			cimg::exception_mode(omode);
 			return *this;
 		}
@@ -61379,7 +61374,7 @@ res(x,y,z,c)=max_val;
 					cimg_instance);
 // Do not test for empty instances, since .cimg format is able to manage empty instances.
 			const bool is_stdout=*filename=='-'&&(!filename[1]||filename[1]=='.');
-			const char *const ext=cimg::split_filename(filename);
+			const char *const ext=exlib::find_extension(filename,filename+strlen(filename));
 			CImg<charT> nfilename(1024);
 			const char *const fn=is_stdout?filename:(number>=0)?cimg::number_filename(filename,number,digits,nfilename):
 				filename;
@@ -61428,7 +61423,7 @@ res(x,y,z,c)=max_val;
 				!cimg::strcasecmp(ext,"jfif")||
 				!cimg::strcasecmp(ext,"jif")) return save_jpeg(fn);
 			if(!cimg::strcasecmp(ext,"png")) return save_png(fn);
-			throw std::invalid_argument(std::string("Invalid save format ")+ext);
+			throw std::invalid_argument(std::string("Unsupported save format ")+ext);
 			/*
 			if(!cimg::strcasecmp(ext,"rgb")) return save_rgb(fn);
 			if(!cimg::strcasecmp(ext,"rgba")) return save_rgba(fn);
