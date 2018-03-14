@@ -799,5 +799,41 @@ namespace exlib {
 		}
 		return out;
 	}
+
+	template<typename T>
+	T lowercase(T);
+
+	inline char lowercase(char a)
+	{
+		if(a>='A'&&a<='Z')
+		{
+			return a+32;
+		}
+		return a;
+	}
+
+	template<typename T>
+	int strncmp_nocase(T const* a,T const* b)
+	{
+		for(;;++a,++b)
+		{
+			if(*b==0)
+			{
+				return *a;
+			}
+			else if(*a==0)
+			{
+				return -*b;
+			}
+			else if(*b!=*a)
+			{
+				if(int res=lowercase(*a)-lowercase(*b))
+				{
+					return res;
+				}
+			}
+		}
+		return 0;
+	}
 }
 #endif

@@ -333,9 +333,11 @@ namespace ScoreProcessor {
 	{
 		if(empty())
 		{
-			char const* fname_ext=cimg_library::cimg::split_filename(fname);
-			char const* output_ext=cimg_library::cimg::split_filename(output);
-			if(strcmp(fname_ext,output_ext)==0)
+			char const* fname_end=fname+strlen(fname);
+			char const* fname_ext=exlib::find_extension(fname,fname_end);
+			char const* output_end=output+strlen(output);
+			char const* output_ext=exlib::find_extension(output,output_end);
+			if((fname_end-fname_ext)==(output_end-output_ext)&&exlib::strncmp_nocase(fname_ext,output_ext)==0)
 			{
 				std::ifstream src(fname,std::ios::binary);
 				if(!src.is_open())
