@@ -172,14 +172,24 @@ public:
 		}
 	}
 };
-class FillSelection:public ImageProcess<> {
+class FillSelectionGray:public ImageProcess<> {
 	ImageUtils::Rectangle<unsigned int> rect;
+	Grayscale color;
 public:
-	FillSelection(ImageUtils::Rectangle<unsigned int> rect):rect(rect)
+	FillSelectionGray(ImageUtils::Rectangle<unsigned int> rect,Grayscale g):rect(rect),color(g)
 	{}
 	void process(Img& img) override
 	{
-		fill_selection(img,rect,Grayscale::WHITE);
+		auto temp=rect;
+		if(temp.right>img._width)
+		{
+			temp.right=img._width;
+		}
+		if(temp.bottom>img._height)
+		{
+			temp.bottom=img._height;
+		}
+		fill_selection(img,temp,color);
 	}
 };
 class Blur:public ImageProcess<> {
@@ -700,6 +710,7 @@ class RescaleGrayMaker:public SingleCommandMaker {
 			"Rescale Gray")
 	{}
 	static RescaleGrayMaker const singleton;
+	static char const* const errors[3];
 public:
 	static CommandMaker const& get()
 	{
@@ -708,10 +719,6 @@ public:
 protected:
 	char const* parse_command_h(iter begin,size_t,delivery& del) const override
 	{
-		char const* const errors[]=
-		{"Invalid argument for min value",
-			"Invalid argument for mid value",
-			"Invalid argument for max value"};
 		int params[3];
 		for(size_t i=0;i<3;++i)
 		{
@@ -741,6 +748,7 @@ protected:
 	}
 };
 RescaleGrayMaker const RescaleGrayMaker::singleton;
+char const* const RescaleGrayMaker::errors[3]={"Invalid argument for min value","Invalid argument for mid value","Invalid argument for max value"};
 
 class CutMaker:public CommandMaker {
 	CutMaker()
@@ -1114,6 +1122,80 @@ protected:
 };
 RegexMaker const RegexMaker::singleton;
 
+class FillRectangleGrayMaker:public SingleCommandMaker {
+	FillRectangleGrayMaker():SingleCommandMaker(4,5,"Fills given rectangle with given color","Fill Rectangle Gray")
+	{}
+	static FillRectangleGrayMaker const singleton;
+	static char const* const invalids[4];
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		int coords[4];
+		for(size_t i=0;i<4;++i)
+		{
+			try
+			{
+				coords[i]=std::stoi(begin[i]);
+				if(coords[i]<0)
+				{
+					return "Coordinates must be non-negative";
+				}
+			}
+			catch(std::exception const&)
+			{
+				return invalids[i];
+			}
+		}
+		int color;
+		if(n>4)
+		{
+			try
+			{
+				color=std::stoi(begin[4]);
+				if(color<0||color>255)
+				{
+					return "Color must be in range [0,255]";
+				}
+			}
+			catch(std::exception const&)
+			{
+				return "Invalid argument for color";
+			}
+		}
+		else
+		{
+			color=255;
+		}
+		if(coords[0]>=coords[2])
+		{
+			return "Left must be less than right";
+		}
+		if(coords[1]>=coords[3])
+		{
+			return "Top must be less than bottom";
+		}
+		del.pl.add_process<FillSelectionGray>(
+			ImageUtils::Rectangle<uint>(
+				{
+					scast<uint>(coords[0]),
+					scast<uint>(coords[2]),
+					scast<uint>(coords[1]),
+					scast<uint>(coords[3])
+				}),
+			Grayscale(color));
+		return nullptr;
+	}
+};
+FillRectangleGrayMaker const FillRectangleGrayMaker::singleton;
+#define minv(name) "Invalid argument for " #name
+char const* const FillRectangleGrayMaker::invalids[4]={minv(left),minv(top),minv(right),minv(bottom)};
+#undef minv
+
 std::unordered_map<std::string,CommandMaker const*> const init_commands()
 {
 	std::unordered_map<std::string,CommandMaker const*> commands;
@@ -1153,6 +1235,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-rescale",&RescaleMaker::get());
 
 	commands.emplace("-flt",&RegexMaker::get());
+
+	commands.emplace("-fr",&FillRectangleGrayMaker::get());
 	return commands;
 }
 
@@ -1230,6 +1314,7 @@ int main(int argc,char** argv)
 			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1\n"
 			"    Remove Border (DANGER):   -rb tolerance=0.5\n"
 			"    Rescale:                  -rs factor\n"
+			"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(6/11 width of first page)\n"

@@ -512,11 +512,31 @@ void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& image,ImageUtils::R
 }
 inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::ColorRGB const color)
 {
-	ScoreProcessor::fill_selection(image,selection,reinterpret_cast<unsigned char const*>(&color));
+	assert(image._spectrum>=3);
+	assert(selection.right<image._width);
+	assert(selection.bottom<image._height);
+	for(unsigned int x=selection.left;x<selection.right;++x)
+	{
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			image(x,y,0)=color.r;
+			image(x,y,1)=color.g;
+			image(x,y,2)=color.b;
+		}
+	}
 }
 inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::Grayscale const gray)
 {
-	ScoreProcessor::fill_selection(image,selection,reinterpret_cast<unsigned char const*>(&gray));
+	assert(image._spectrum>=1);
+	assert(selection.right<image._width);
+	assert(selection.bottom<image._height);
+	for(unsigned int x=selection.left;x<selection.right;++x)
+	{
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			image(x,y,0)=gray;
+		}
+	}
 }
 template<typename T>
 void ScoreProcessor::copy_paste(::cimg_library::CImg<T> dest,::cimg_library::CImg<T> src,ImageUtils::Rectangle<unsigned int> selection,ImageUtils::Point<signed int> destloc)
