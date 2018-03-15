@@ -1076,8 +1076,8 @@ class RegexMaker:public CommandMaker {
 		CommandMaker(
 			1,2,
 			"Filters the folder of files using a regex pattern\n"
-			"Files that match are kept, unless inversion option is specified as true\n"
-			"Giving a string starting with 0 or f is false, otherwise is true\n"
+			"Files that match are kept, unless remove option is specified as true\n"
+			"Specifying remove with 0, f, false, null, or nil is false; 1, t, or true is true\n"
 			"Does nothing if you give only a single file",
 			"Filter Files")
 	{}
