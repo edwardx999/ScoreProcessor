@@ -20,15 +20,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <assert.h>
 namespace ScoreProcessor {
 	template<typename T>
-	void replace(cimg_library::CImg<T>& img,cimg_library::CImg<T> const& target,cimg_library::CImg<T> const& replacer);
-
-	template<typename T>
 	void replace(cimg_library::CImg<T>& img,cimg_library::CImg<T> const& target,cimg_library::CImg<T> const& replacer)
 	{
 		assert(replacer._width==target._width);
 		assert(replacer._height==target._height);
 		assert(img._spectrum==target._spectrum);
-		
 	}
+
+	template<typename T>
+	void remove_page_numbers(cimg_library::CImg<T>& img);
+
+	template<typename T>
+	void remove_system_separators(cimg_library::CImg<T>& img);
 }
 #endif

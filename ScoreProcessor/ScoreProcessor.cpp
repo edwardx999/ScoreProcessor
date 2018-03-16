@@ -130,9 +130,9 @@ public:
 		img.resize(
 			scast<int>(std::round(img._width*val)),
 			scast<int>(std::round(img._height*val)),
-			1,
-			1,
-			val>1?5:2);
+			img._depth,
+			img._spectrum,
+			2);
 	}
 };
 class ClusterClearGray:public ImageProcess<> {
@@ -172,11 +172,11 @@ public:
 		}
 	}
 };
-class FillSelectionGray:public ImageProcess<> {
+class FillSelectionAbsGray:public ImageProcess<> {
 	ImageUtils::Rectangle<unsigned int> rect;
 	Grayscale color;
 public:
-	FillSelectionGray(ImageUtils::Rectangle<unsigned int> rect,Grayscale g):rect(rect),color(g)
+	FillSelectionAbsGray(ImageUtils::Rectangle<unsigned int> rect,Grayscale g):rect(rect),color(g)
 	{}
 	void process(Img& img) override
 	{
@@ -1180,7 +1180,7 @@ protected:
 		{
 			return "Top must be less than bottom";
 		}
-		del.pl.add_process<FillSelectionGray>(
+		del.pl.add_process<FillSelectionAbsGray>(
 			ImageUtils::Rectangle<uint>(
 				{
 					scast<uint>(coords[0]),
