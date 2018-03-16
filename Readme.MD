@@ -24,7 +24,8 @@ Available commands:
 &nbsp;&nbsp;Options:  
 &nbsp;&nbsp;&nbsp;&nbsp;Output:                   -o format  
 &nbsp;&nbsp;&nbsp;&nbsp;Verbosity:                -vb level  
-&nbsp;&nbsp;&nbsp;&nbsp;Filter Files:             -flt regex remove=false
+&nbsp;&nbsp;&nbsp;&nbsp;Filter Files:             -flt regex remove=false  
+&nbsp;&nbsp;&nbsp;&nbsp;Number of Threads         -nt num
     
 Multiple Single Page Operations can be done at once. They are performed in the order they are given.  
 A Multi Page Operation can not be done with other operations.
