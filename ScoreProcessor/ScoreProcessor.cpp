@@ -268,6 +268,7 @@ public:
 			unassigned,normal,inverted
 		};
 		regex_state rgxst;
+		unsigned int num_threads;
 	};
 private:
 	unsigned int min_args;
@@ -1196,6 +1197,46 @@ FillRectangleGrayMaker const FillRectangleGrayMaker::singleton;
 char const* const FillRectangleGrayMaker::invalids[4]={minv(left),minv(top),minv(right),minv(bottom)};
 #undef minv
 
+class NumThreadMaker:public CommandMaker {
+private:
+	NumThreadMaker():
+		CommandMaker(
+			1,1,
+			"Controls the number of CPU threads used when processing multiple images\n"
+			"Defaults to max number supported by the CPU"
+			,"Number of Threads")
+	{}
+	static NumThreadMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command(iter begin,size_t,delivery& del) const override
+	{
+		if(del.num_threads)
+		{
+			return "Number of threads already set";
+		}
+		try
+		{
+			int n=std::stoi(*begin);
+			if(n<1)
+			{
+				return "Number of threads must be positive";
+			}
+			del.num_threads=n;
+			return nullptr;
+		}
+		catch(std::exception const&)
+		{
+			return "Invalid argument given for number of threads";
+		}
+	}
+};
+NumThreadMaker const NumThreadMaker::singleton;
+
 std::unordered_map<std::string,CommandMaker const*> const init_commands()
 {
 	std::unordered_map<std::string,CommandMaker const*> commands;
@@ -1237,6 +1278,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-flt",&RegexMaker::get());
 
 	commands.emplace("-fr",&FillRectangleGrayMaker::get());
+
+	commands.emplace("-nt",&NumThreadMaker::get());
 	return commands;
 }
 
@@ -1282,9 +1325,10 @@ std::string pretty_date()
 void test()
 {
 	CImg<unsigned char> test_img("cuttest.jpg");
-	CImg<float> map=create_vertical_energy(test_img);
+	test_img.display();
+	/*CImg<float> map=create_vertical_energy(test_img);
 	add_horizontal_energy(test_img,map);
-	map.display();
+	map.display();*/
 	stop();
 }
 int main(int argc,char** argv)
@@ -1322,6 +1366,7 @@ int main(int argc,char** argv)
 			"    Output:                   -o format\n"
 			"    Verbosity:                -vb level\n"
 			"    Filter Files:             -flt regex remove=false\n"
+			"    Number of Threads:        -nt num\n"
 			"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
 			"A Multi Page Operation can not be done with other operations.\n"
 			;
@@ -1348,6 +1393,7 @@ int main(int argc,char** argv)
 	CommandMaker::delivery del;
 	del.flag=del.do_nothing;
 	del.rgxst=del.unassigned;
+	del.num_threads=0;
 	auto& output=del.sr;
 	auto& processes=del.pl;
 
@@ -1389,8 +1435,12 @@ int main(int argc,char** argv)
 		del.pl.set_log(&CoutLog::get());
 		del.pl.set_verbosity(decltype(del.pl)::errors_only);
 	}
-	auto num_threads=[]()
+	auto num_threads=[def=del.num_threads]()
 	{
+		if(def)
+		{
+			return def;
+		}
 		auto nt=std::thread::hardware_concurrency();
 		return nt==0?2U:nt;
 	};

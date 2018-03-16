@@ -333,6 +333,10 @@ namespace ScoreProcessor {
 	{
 		if(empty())
 		{
+			if(exlib::strncmp_nocase(fname,output)==0)
+			{
+				return;
+			}
 			char const* fname_end=fname+strlen(fname);
 			char const* fname_ext=exlib::find_extension(fname,fname_end);
 			char const* output_end=output+strlen(output);
