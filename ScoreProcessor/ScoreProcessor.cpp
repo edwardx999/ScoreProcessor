@@ -1435,14 +1435,30 @@ int main(int argc,char** argv)
 		del.pl.set_log(&CoutLog::get());
 		del.pl.set_verbosity(decltype(del.pl)::errors_only);
 	}
-	auto num_threads=[def=del.num_threads]()
+	auto num_threads=[def=del.num_threads](size_t num_files)
 	{
+		unsigned int cand;
 		if(def)
 		{
-			return def;
+			cand=def;
 		}
-		auto nt=std::thread::hardware_concurrency();
-		return nt==0?2U:nt;
+		else
+		{
+			auto nt=std::thread::hardware_concurrency();
+			if(nt)
+			{
+				cand=nt;
+			}
+			else
+			{
+				cand=2;
+			}
+		}
+		if(num_files>std::numeric_limits<unsigned int>::max())
+		{
+			num_files=std::numeric_limits<unsigned int>::max();
+		}
+		return std::min(cand,static_cast<unsigned int>(num_files));
 	};
 	switch(del.flag)
 	{
@@ -1457,7 +1473,7 @@ int main(int argc,char** argv)
 					std::cout<<"No files found\n";
 					return 0;
 				}
-				processes.process(files,&output,num_threads());
+				processes.process(files,&output,num_threads(files.size()));
 			}
 			else
 			{
@@ -1496,7 +1512,7 @@ int main(int argc,char** argv)
 						}
 					}
 				};
-				exlib::ThreadPool tp(num_threads());
+				exlib::ThreadPool tp(num_threads(files.size()));
 				for(auto const& f:files)
 				{
 					tp.add_task<CutProcess>(&f,&output);
