@@ -563,6 +563,10 @@ namespace ScoreProcessor {
 				}
 			}
 		}
+		if(found)
+		{
+			throw std::invalid_argument("Trailing escape symbol");
+		}
 		if(!str.empty())
 		{
 			parts.emplace_back(str);

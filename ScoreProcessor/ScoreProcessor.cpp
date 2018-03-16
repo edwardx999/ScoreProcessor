@@ -581,9 +581,9 @@ protected:
 			{
 				del.sr.assign(*begin);
 			}
-			catch(std::exception const&)
+			catch(std::exception const& ex)
 			{
-				return "Invalid filename template";
+				return ex.what();
 			}
 		}
 		else
