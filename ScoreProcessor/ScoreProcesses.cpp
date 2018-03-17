@@ -92,17 +92,15 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void replace_range(CImg<unsigned char>& image,Grayscale const lower,ImageUtils::Grayscale const upper,Grayscale replacer)
+	void replace_range(CImg<unsigned char>& image,Grayscale const lower,ImageUtils::Grayscale const upper,Grayscale const replacer)
 	{
 		assert(image._spectrum==1);
-		for(unsigned int x=0;x<image._width;++x)
+		unsigned char* const limit=image.end();
+		for(auto it=image.begin();it!=limit;++it)
 		{
-			for(unsigned int y=0;y<image._height;++y)
+			if(*it>=lower&&*it<=upper)
 			{
-				if(image(x,y)>=lower&&image(x,y)<=upper)
-				{
-					image(x,y)=replacer;
-				}
+				*it=replacer;
 			}
 		}
 	}
@@ -365,12 +363,15 @@ namespace ScoreProcessor {
 	unsigned int find_top(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance)
 	{
 		unsigned int num=0;
-		for(unsigned int y=0;y<image._height;++y)
+		auto const data=image.data();
+		auto const width=image._width;
+		auto const height=image._height;
+		for(unsigned int y=0;y<height;++y)
 		{
-			//num=0;
-			for(unsigned int x=0;x<image._width;++x)
+			auto const row=data+y*width;
+			for(unsigned int x=0;x<width;++x)
 			{
-				if(gray_diff(image(x,y),background)>.5f)
+				if(gray_diff(*(row+x),background)>.5f)
 					++num;
 			}
 			if(num>tolerance)
@@ -406,12 +407,15 @@ namespace ScoreProcessor {
 	unsigned int find_bottom(CImg<unsigned char> const& image,Grayscale const background,unsigned int const tolerance)
 	{
 		unsigned int num=0;
-		for(unsigned int y=image._height-1;y<image._height;--y)
+		auto const data=image.data();
+		auto const width=image._width;
+		auto const height=image._height;
+		for(unsigned int y=height-1;y<height;--y)
 		{
-			//num=0;
+			auto const row=data+width*y;
 			for(unsigned int x=0;x<image._width;++x)
 			{
-				if(gray_diff(image(x,y),background)>.5f)
+				if(gray_diff(*(row+x),background)>.5f)
 					++num;
 			}
 			if(num>tolerance)
@@ -720,7 +724,7 @@ namespace ScoreProcessor {
 		}
 		return resultContainer;
 	}
-	
+
 	float const HORIZONTAL_ENERGY_CONSTANT=200.0f;
 	void add_horizontal_energy(CImg<unsigned char> const& ref,CImg<float>& map)
 	{
@@ -1902,33 +1906,31 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	{
 		assert(min<mid);
 		assert(mid<max);
-		double scale_up=scast<double>(255-mid)/scast<double>(max-mid),
-			scale_down=scast<double>(mid)/scast<double>(mid-min);
-		for(uint x=0;x<img._width;++x)
+		double const scale_up=scast<double>(255-mid)/scast<double>(max-mid);
+		double const scale_down=scast<double>(mid)/scast<double>(mid-min);
+		unsigned char* const limit=img.end();
+		for(unsigned char* it=img.begin();it!=limit;++it)
 		{
-			for(uint y=0;y<img._height;++y)
+			unsigned char& pixel=*it;
+			if(pixel<=min)
 			{
-				unsigned char& pixel=img(x,y);
-				if(pixel<=min)
+				pixel=0;
+			}
+			else if(pixel>=max)
+			{
+				pixel=255;
+			}
+			else
+			{
+				if(pixel>mid)
 				{
-					pixel=0;
-				}
-				else if(pixel>=max)
-				{
-					pixel=255;
+					pixel=mid+(pixel-mid)*scale_up;
+					assert(pixel>mid);
 				}
 				else
 				{
-					if(pixel>mid)
-					{
-						pixel=mid+(pixel-mid)*scale_up;
-						assert(pixel>mid);
-					}
-					else
-					{
-						pixel=mid-(mid-pixel)*scale_down;
-						assert(pixel<=mid);
-					}
+					pixel=mid-(mid-pixel)*scale_down;
+					assert(pixel<=mid);
 				}
 			}
 		}

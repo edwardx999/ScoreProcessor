@@ -75,6 +75,7 @@ namespace cimg_library {
 		}
 		return grad_img;
 	}
+
 	CImg<signed char> get_absolute_gradient(::cimg_library::CImg<unsigned char> const& img)
 	{
 		CImg<signed char> grad_img(img._width,img._height,2);
@@ -113,6 +114,7 @@ namespace cimg_library {
 		{
 			grad_img(x,y)=scast<schar>(img(x,y)/2-img(x-1,y)/2);
 		}
+		return grad_img;
 	}
 	CImg<unsigned char> get_brightness_spectrum(cimg_library::CImg<unsigned char> const& refImage)
 	{
@@ -258,12 +260,14 @@ namespace cimg_library {
 	CImg<unsigned char> get_grayscale_simple(CImg<unsigned char> const& image)
 	{
 		CImg<unsigned char> ret(image._width,image._height,1,1);
-		for(unsigned int x=0;x<image._width;++x)
+		unsigned int const size=image._width*image._height;
+		unsigned char* const ret_start=ret._data;
+		unsigned char* const rstart=image._data;
+		unsigned char* const gstart=image._data+size;
+		unsigned char* const bstart=image._data+2*size;
+		for(unsigned int i=0;i<size;++i)
 		{
-			for(unsigned int y=0;y<image._height;++y)
-			{
-				ret(x,y)=(uint16_t(image(x,y,0))+uint16_t(image(x,y,1))+uint16_t(image(x,y,2)))/3;
-			}
+			ret_start[i]=(uint16_t(rstart[i])+gstart[i]+bstart[i])/3;
 		}
 		return ret;
 	}
@@ -306,7 +310,7 @@ namespace cimg_library {
 			{
 				if(std::abs(gradient(x,y))>threshold)
 				{
-					
+
 					for(uint f=0;f<=angle_steps;++f)
 					{
 						double theta=angle_dif*f/angle_steps+theta_min;

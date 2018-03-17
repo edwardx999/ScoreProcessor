@@ -48,7 +48,7 @@ namespace ScoreProcessor {
 		Replaces grays in a range with another gray
 		@param image, must be 1 channel grayscale image
 	*/
-	void replace_range(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const lower,ImageUtils::Grayscale const upper=255,ImageUtils::Grayscale replacer=ImageUtils::Grayscale::WHITE);
+	void replace_range(::cimg_library::CImg<unsigned char>& image,ImageUtils::Grayscale const lower,ImageUtils::Grayscale const upper=255,ImageUtils::Grayscale const replacer=ImageUtils::Grayscale::WHITE);
 	/*
 		Replaces certainly bright pixels with a color
 		@param image, must be 3 channel RGB
@@ -86,14 +86,14 @@ namespace ScoreProcessor {
 		@param selection, the rectangle that will be filled
 		@param color, the color the selection will be filled with
 	*/
-	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::ColorRGB const color);
+	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::ColorRGB const color);
 	/*
 		Fills selection with a certain color
 		@param image, must be 1 channel grayscale
 		@param selection, the rectangle that will be filled
 		@param gray, the gray the selection will be filled with
 	*/
-	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::Grayscale const gray);
+	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::Grayscale const gray);
 	/*
 		Fills selection with values found at the pointer
 		@param image
@@ -101,7 +101,7 @@ namespace ScoreProcessor {
 		@param values
 	*/
 	template<typename T>
-	void fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const& selection,T const* values);
+	void fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const selection,T const* values);
 	/*
 		Automatically centers the image horizontally
 		@param image
@@ -497,20 +497,21 @@ void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtil
 	}
 }
 template<typename T>
-void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const& selection,T const* values)
+void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const selection,T const* values)
 {
+	auto const sl=image._spectrum;
 	for(unsigned int x=selection.left;x<selection.right;++x)
 	{
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
 		{
-			for(unsigned int s=0;s<image._spectrum;++s)
+			for(unsigned int s=0;s<sl;++s)
 			{
 				image(x,y,s)=values[s];
 			}
 		}
 	}
 }
-inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::ColorRGB const color)
+inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::ColorRGB const color)
 {
 	assert(image._spectrum>=3);
 	assert(selection.right<image._width);
@@ -525,16 +526,19 @@ inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& 
 		}
 	}
 }
-inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const& selection,ImageUtils::Grayscale const gray)
+inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::Grayscale const gray)
 {
 	assert(image._spectrum>=1);
 	assert(selection.right<image._width);
 	assert(selection.bottom<image._height);
-	for(unsigned int x=selection.left;x<selection.right;++x)
+	unsigned char* const data=image.data();
+	unsigned int const width=image._width;
+	for(unsigned int y=selection.top;y<selection.bottom;++y)
 	{
-		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		auto const row=data+y*width;
+		for(unsigned int x=selection.left;x<selection.right;++x)
 		{
-			image(x,y,0)=gray;
+			*(row+x)=gray;
 		}
 	}
 }

@@ -1400,8 +1400,7 @@ int main(int argc,char** argv)
 	entry cmdpair;
 	typedef decltype(args.cbegin()) iter;
 	iter arg_start=args.cbegin()+2;
-	iter it=arg_start+1;
-	for(it=arg_start+1;it!=args.cend();++it)
+	for(iter it=arg_start+1;it!=args.cend();++it)
 	{
 		if(it->front()=='-'&&it->size()>1&&(*it)[1]>='a'&&(*it)[1]<='z')
 		{
