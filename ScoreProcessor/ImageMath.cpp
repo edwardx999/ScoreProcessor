@@ -304,20 +304,22 @@ namespace cimg_library {
 		threshold=std::abs(threshold);
 		fill(0);
 		double step=(_height-1)/precision;
-		for(uint x=0;x<gradient._width;++x)
+		signed char const* const data=gradient.data();
+		for(uint y=0;y<gradient._height;++y)
 		{
-			for(uint y=0;y<gradient._height;++y)
+			signed char const* const row=data+y*gradient._width;
+			for(uint x=0;x<gradient._width;++x)
 			{
-				if(std::abs(gradient(x,y))>threshold)
+				if(std::abs(*(row+x))>threshold)
 				{
-
 					for(uint f=0;f<=angle_steps;++f)
 					{
 						double theta=angle_dif*f/angle_steps+theta_min;
 						double r=x*std::cos(theta)+y*std::sin(theta);
 						unsigned int y=((r+rmax)/(2*rmax))*step;
-						++CImg<unsigned int>::operator()(f,y);
-						++CImg<unsigned int>::operator()(f,y+1);
+						unsigned int* const inc=this->data()+y*_width+f;
+						++(*inc);
+						++(*(inc+_width));
 					}
 				}
 			}

@@ -35,7 +35,7 @@ class ChangeToGrayscale:public ImageProcess<> {
 public:
 	void process(Img& image)
 	{
-		if(image._spectrum==3||image._spectrum==4)
+		if(image._spectrum>=3)
 		{
 			image=get_grayscale_simple(image);
 		}
