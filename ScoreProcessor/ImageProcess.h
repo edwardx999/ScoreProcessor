@@ -30,6 +30,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "lib\exstring\exfiles.h"
 #include <fstream>
 #include <filesystem>
+#include "support.h"
 namespace ScoreProcessor {
 	template<typename T=unsigned char>
 	/*
@@ -58,7 +59,7 @@ namespace ScoreProcessor {
 	class SaveRules {
 	private:
 		enum template_symbol:unsigned int {
-			i,x=10,f,p,c
+			i,x=10,f,p,c,w
 		};
 		union part {
 			struct {
@@ -135,6 +136,7 @@ namespace ScoreProcessor {
 			loud
 		};
 	private:
+
 		class ProcessTaskImg:public exlib::ThreadTask {
 		private:
 			cimg_library::CImg<T>* pimg;
@@ -332,35 +334,82 @@ namespace ScoreProcessor {
 	template<typename T>
 	void ProcessList<T>::process_unsafe(char const* fname,char const* output) const
 	{
+		std::experimental::filesystem::path in(fname),out(output);
+		auto const& instr=in.native();
+		auto in_ext=exlib::find_extension(instr.cbegin(),instr.cend());
+		auto const& outstr=out.native();
+		auto out_ext=exlib::find_extension(outstr.cbegin(),outstr.cend());
+		auto proc=[this,fname,output,in_ext,in_end=instr.cend(),out_ext,out_end=outstr.cend()]()
+		{
+			auto s=supported(&*out_ext);
+			auto sin=supported(&*in_ext);
+			auto make_ext_string=[](auto begin,auto end)
+			{
+				size_t shorts=std::distance(begin,end);
+				std::string ext;ext.resize(shorts);
+				auto eit=ext.begin();
+				for(auto it=begin;it!=end;++eit,++it)
+				{
+					*eit=*it;
+				}
+				return ext;
+			};
+			if(s==support_type::no)
+			{
+				auto ext=make_ext_string(out_ext,out_end);
+				throw std::invalid_argument(std::string("Unsupported file type ")+ext);
+			}
+			if(sin==support_type::no)
+			{
+				auto ext=make_ext_string(in_ext,in_end);
+				throw std::invalid_argument(std::string("Unsupported file type ")+ext);
+			}
+			cil::CImg<T> img(fname);
+			for(auto& pprocess:*this)
+			{
+				pprocess->process(img);
+			}
+			switch(s)
+			{
+				case support_type::png:
+					img.save_png(output);
+					break;
+				case support_type::jpeg:
+					img.save_jpeg(output);
+					break;
+				case support_type::bmp:
+					img.save_bmp(output);
+					break;
+			}
+		};
 		if(empty())
 		{
-			std::experimental::filesystem::path in(fname),out(output);
-			if(std::experimental::filesystem::equivalent(in,out))
+			if(!exlib::strncmp_nocase(in_ext,out_ext))
 			{
-				return;
-			}
-			if(exlib::strncmp_nocase(in.extension().c_str(),out.extension().c_str()))
-			{
-				std::fstream src(fname);
+				std::ifstream src(fname,std::ios::binary);
 				if(!src)
 				{
-					throw std::invalid_argument((std::string("Failed to open ")+fname).c_str());
+					throw std::invalid_argument((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
 				}
-				std::ofstream dst(output);
-
+				std::ofstream dst(output,std::ios::binary);
 				if(!dst)
 				{
-					throw std::invalid_argument((std::string("Failed to save to ")+output).c_str());
+					throw std::invalid_argument((std::string("Failed to save to ").append(output,out.native().size()).c_str()));
 				}
+				if(std::experimental::filesystem::equivalent(in,out))
+				{
+					return;
+				}
+				dst<<src.rdbuf();
 			}
 			else
 			{
-				process_unsafe(cimg_library::CImg<T>(fname),output);
+				proc();
 			}
 		}
 		else
 		{
-			process_unsafe(cimg_library::CImg<T>(fname),output);
+			proc();
 		}
 	}
 
@@ -486,12 +535,12 @@ namespace ScoreProcessor {
 		assign(tmplt.c_str());
 	}
 
-	SaveRules::SaveRules(char const* tmplt)
+	inline SaveRules::SaveRules(char const* tmplt)
 	{
 		assign(tmplt);
 	}
 
-	SaveRules::SaveRules()
+	inline SaveRules::SaveRules()
 	{}
 
 	template<typename String>
@@ -541,6 +590,10 @@ namespace ScoreProcessor {
 							put_string();
 							parts.emplace_back(template_symbol::c);
 							break;
+						case 'w':
+							put_string();
+							parts.emplace_back(template_symbol::w);
+							break;
 						case '%':
 							str.push_back('%');
 							break;
@@ -575,13 +628,14 @@ namespace ScoreProcessor {
 	std::string SaveRules::make_filename(String const& input,unsigned int index) const
 	{
 		std::string out;
-		struct basic_string {
+		struct string_view {
 			char const* data;
 			size_t size;
 		};
-		basic_string ext{nullptr,0};
-		basic_string filename{nullptr,0};
-		basic_string path{nullptr,0};
+		string_view ext{nullptr,0};
+		string_view filename{nullptr,0};
+		string_view path{nullptr,0};
+		string_view whole{nullptr,0};
 		auto check_ext=[&]()
 		{
 			if(ext.data==nullptr)
@@ -602,6 +656,8 @@ namespace ScoreProcessor {
 					--fsize;
 				}
 				filename.size=fsize;
+				whole.data=filename.data;
+				whole.size=(&*input.cend())-whole.data;
 			}
 		};
 		auto check_path=[&]()
@@ -640,6 +696,10 @@ namespace ScoreProcessor {
 						case SaveRules::template_symbol::p:
 							check_path();
 							out.append(path.data,path.size);
+							break;
+						case SaveRules::template_symbol::w:
+							check_filename();
+							out.append(whole.data,whole.size);
 							break;
 						case SaveRules::template_symbol::c:
 							out.append(input.data(),input.size());

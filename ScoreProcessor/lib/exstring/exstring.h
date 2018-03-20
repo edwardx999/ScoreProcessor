@@ -814,9 +814,10 @@ namespace exlib {
 
 	inline wchar_t lowercase(wchar_t a)
 	{
+		constexpr wchar_t const dif='a'-'A';
 		if(a>=L'A'&&a<=L'Z')
 		{
-			return a+32;
+			return a+dif;
 		}
 		return a;
 	}

@@ -26,6 +26,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "shorthand.h"
 #include "ImageProcess.h"
 #include <algorithm>
+#include "support.h"
 #include <unordered_map>
 using namespace cimg_library;
 using namespace std;
@@ -1501,13 +1502,19 @@ int main(int argc,char** argv)
 					{
 						try
 						{
-							CImg<unsigned char> in(input->c_str());
 							auto out=output->make_filename(*input);
+							auto ext=exlib::find_extension(out.begin(),out.end());
+							auto s=supported(&*ext);
+							if(s==support_type::no)
+							{
+								throw std::invalid_argument(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())));
+							}
+							CImg<unsigned char> in(input->c_str());
 							cut_page(in,out.c_str());
 						}
 						catch(std::exception const& ex)
 						{
-							std::cout<<ex.what()<<'\n';
+							std::cout<<std::string(ex.what()).append(1,'\n');
 						}
 					}
 				};
@@ -1543,9 +1550,15 @@ int main(int argc,char** argv)
 					std::cout<<"No files found\n";
 					return 0;
 				}
-				auto save=output.make_filename(files[0]);
 				try
 				{
+
+					auto save=output.make_filename(files[0]);
+					auto ext=exlib::find_extension(save.begin(),save.end());
+					if(supported(&*ext)==support_type::no)
+					{
+						throw std::invalid_argument(std::string("Unsupported file type ").append(&*ext,std::distance(ext,save.end())));
+					}
 					splice_pages(
 						files,
 						del.splice_args.horiz_padding,
