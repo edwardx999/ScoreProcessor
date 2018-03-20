@@ -561,6 +561,7 @@ class OutputMaker:public CommandMaker {
 			"  %p copy path (does not include trailing slash)\n"
 			"  %x copy extension (does not include dot)\n"
 			"  %f copy filename (does not include path, dot, or extension)\n"
+			"  %w copy whole name (filename with extension)\n"
 			"  %0 any number from 0-9, index of file with specified number of padding\n"
 			"  %% literal percent\n"
 			"Anything else will be interpreted as a literal character\n"
@@ -576,6 +577,10 @@ public:
 protected:
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
+		if(begin->empty())
+		{
+			return "Output format cannot be empty";
+		}
 		if(del.sr.empty())
 		{
 			try
@@ -1294,7 +1299,7 @@ std::vector<std::string> conv_strings(int argc,char** argv)
 	{
 		ret.emplace_back(argv[i]);
 	}
-	ret.emplace_back("-duMmMwMd");//dummy used to trigger analyzing the last function input
+	ret.emplace_back("-a");
 	return ret;
 }
 std::vector<std::string> images_in_path(std::string const& path,std::regex const& rgx,CommandMaker::delivery::regex_state rgxst)
@@ -1377,20 +1382,26 @@ int main(int argc,char** argv)
 	typedef decltype(commands.end()) entry;
 
 	std::string& arg1=args[1];
-	if(arg1.front()=='-')
+	if(arg1.empty())
 	{
-		entry cmd=commands.find(arg1);
-		if(cmd==commands.end())
-		{
-			std::cout<<"Unknown command\n";
-			return 1;
-		}
+		std::cout<<"Invalid argument\n";
+		return 0;
+	}
+
+	entry cmd=commands.find(arg1);
+	if(cmd!=commands.end())
+	{
 		auto& m=cmd->second;
 		std::cout<<m->name()<<":\n"<<m->help_message()<<'\n';
 		return 0;
 	}
 	bool is_folder=arg1.back()=='\\'||arg1.back()=='/';
 
+	if(argc<3)
+	{
+		std::cout<<"No commands given\n";
+		return 0;
+	}
 	CommandMaker::delivery del;
 	del.flag=del.do_nothing;
 	del.rgxst=del.unassigned;
@@ -1398,24 +1409,28 @@ int main(int argc,char** argv)
 	auto& output=del.sr;
 	auto& processes=del.pl;
 
-	entry cmdpair;
 	typedef decltype(args.cbegin()) iter;
 	iter arg_start=args.cbegin()+2;
-	for(iter it=arg_start+1;it!=args.cend();++it)
+	iter it=arg_start+1;
+	auto could_be_command=[](std::string const& str)
 	{
-		if(it->front()=='-'&&it->size()>1&&(*it)[1]>='a'&&(*it)[1]<='z')
+		return str.size()>1&&str.front()=='-'&&str[1]>='a'&&str[1]<='z';
+	};
+	for(;it!=args.cend();++it)
+	{
+		if(could_be_command(*it))
 		{
 			entry cmd=commands.find(*arg_start);
 			if(cmd==commands.end())
 			{
 				std::cout<<"Unknown command: "<<*arg_start<<'\n';
-				return 1;
+				return 0;
 			}
 			auto& m=cmd->second;
 			if(auto res=m->make_command(arg_start+1,it,del))
 			{
 				std::cout<<m->name()<<" Error:\n"<<res<<'\n';
-				return 1;
+				return 0;
 			}
 			arg_start=it;
 		}
@@ -1507,10 +1522,11 @@ int main(int argc,char** argv)
 							auto s=supported(&*ext);
 							if(s==support_type::no)
 							{
-								throw std::invalid_argument(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())));
+								std::cout<<(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())));
+								return;
 							}
 							CImg<unsigned char> in(input->c_str());
-							cut_page(in,out.c_str());
+							ScoreProcessor::cut_page(in,out.c_str());
 						}
 						catch(std::exception const& ex)
 						{
@@ -1527,10 +1543,17 @@ int main(int argc,char** argv)
 			}
 			else
 			{
-				auto out=output.make_filename(arg1);
 				try
 				{
-					cut_page(CImg<unsigned char>(arg1.c_str()),out.c_str());
+					auto out=output.make_filename(arg1);
+					auto ext=exlib::find_extension(out.begin(),out.end());
+					auto s=supported(&*ext);
+					if(s==support_type::no)
+					{
+						std::cout<<"Unsupported file type"<<&*ext<<'\n';
+						return 0;
+					}
+					CImg<unsigned char> in(arg1.c_str());
 				}
 				catch(std::exception const& ex)
 				{
@@ -1557,7 +1580,8 @@ int main(int argc,char** argv)
 					auto ext=exlib::find_extension(save.begin(),save.end());
 					if(supported(&*ext)==support_type::no)
 					{
-						throw std::invalid_argument(std::string("Unsupported file type ").append(&*ext,std::distance(ext,save.end())));
+						std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
+						return 0;
 					}
 					splice_pages(
 						files,

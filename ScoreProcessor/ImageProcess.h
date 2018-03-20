@@ -334,7 +334,12 @@ namespace ScoreProcessor {
 	template<typename T>
 	void ProcessList<T>::process_unsafe(char const* fname,char const* output) const
 	{
-		std::experimental::filesystem::path in(fname),out(output);
+		using namespace std::experimental::filesystem;
+		path in(fname),out(output);
+		if(!exists(in))
+		{
+			throw std::invalid_argument((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
+		}
 		auto const& instr=in.native();
 		auto in_ext=exlib::find_extension(instr.cbegin(),instr.cend());
 		auto const& outstr=out.native();
@@ -384,6 +389,10 @@ namespace ScoreProcessor {
 		};
 		if(empty())
 		{
+			if(std::experimental::filesystem::equivalent(in,out))
+			{
+				return;
+			}
 			if(!exlib::strncmp_nocase(in_ext,out_ext))
 			{
 				std::ifstream src(fname,std::ios::binary);
@@ -395,10 +404,6 @@ namespace ScoreProcessor {
 				if(!dst)
 				{
 					throw std::invalid_argument((std::string("Failed to save to ").append(output,out.native().size()).c_str()));
-				}
-				if(std::experimental::filesystem::equivalent(in,out))
-				{
-					return;
 				}
 				dst<<src.rdbuf();
 			}
@@ -551,12 +556,12 @@ namespace ScoreProcessor {
 
 	inline void SaveRules::assign(char const* tmplt)
 	{
-		parts.clear();
+		std::vector<part> repl;
 		bool found=false;
 		exlib::string str(20);
 		auto put_string=[&]()
 		{
-			parts.emplace_back(str);
+			repl.emplace_back(str);
 			str.reserve(20);
 		};
 		for(;*tmplt!=0;++tmplt)
@@ -568,7 +573,7 @@ namespace ScoreProcessor {
 				if(letter>='0'&&letter<='9')
 				{
 					put_string();
-					parts.emplace_back(letter-'0');
+					repl.emplace_back(letter-'0');
 				}
 				else
 				{
@@ -576,23 +581,23 @@ namespace ScoreProcessor {
 					{
 						case 'x':
 							put_string();
-							parts.emplace_back(template_symbol::x);
+							repl.emplace_back(template_symbol::x);
 							break;
 						case 'f':
 							put_string();
-							parts.emplace_back(template_symbol::f);
+							repl.emplace_back(template_symbol::f);
 							break;
 						case 'p':
 							put_string();
-							parts.emplace_back(template_symbol::p);
+							repl.emplace_back(template_symbol::p);
 							break;
 						case 'c':
 							put_string();
-							parts.emplace_back(template_symbol::c);
+							repl.emplace_back(template_symbol::c);
 							break;
 						case 'w':
 							put_string();
-							parts.emplace_back(template_symbol::w);
+							repl.emplace_back(template_symbol::w);
 							break;
 						case '%':
 							str.push_back('%');
@@ -620,8 +625,9 @@ namespace ScoreProcessor {
 		}
 		if(!str.empty())
 		{
-			parts.emplace_back(str);
+			repl.emplace_back(str);
 		}
+		parts=std::move(repl);
 	}
 
 	template<typename String>
