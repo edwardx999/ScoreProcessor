@@ -200,6 +200,5 @@ namespace exlib {
 		}
 		return end;
 	}
-
 }
 #endif

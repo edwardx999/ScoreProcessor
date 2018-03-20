@@ -812,8 +812,17 @@ namespace exlib {
 		return a;
 	}
 
-	template<typename T>
-	int strncmp_nocase(T const* a,T const* b)
+	inline wchar_t lowercase(wchar_t a)
+	{
+		if(a>=L'A'&&a<=L'Z')
+		{
+			return a+32;
+		}
+		return a;
+	}
+
+	template<typename iter>
+	int strncmp_nocase(iter a,iter b)
 	{
 		for(;;++a,++b)
 		{
