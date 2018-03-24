@@ -13,3 +13,4 @@ Debug/
 ScoreProcessor/x64/
 ScoreProcessor/Release/
 Release/test/
+*.user

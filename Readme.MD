@@ -3,8 +3,8 @@ An application useful in editing musical scores.
 Syntax:  
 filename_or_folder command params... ...  
 Type command alone to get readme  
-"parameters that require multiple values are notated with a comma"  
-"examples: -fg 180 -ccga 20,50 ,30"  
+Parameters that require multiple values are notated with a comma  
+Example: myimage.png -cg -fg 180 -ccga 0,50 ,30 -o myimage2.jpg  
   
 Available commands:  
 &nbsp;&nbsp;Single Page Operations:  
