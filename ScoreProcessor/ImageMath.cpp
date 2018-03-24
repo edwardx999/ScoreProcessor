@@ -24,6 +24,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "shorthand.h"
 #include <assert.h>
 #include <functional>
+#include "lib\exstring\exmath.h"
 using namespace ImageUtils;
 using namespace std;
 using namespace misc_alg;
@@ -347,5 +348,29 @@ namespace cimg_library {
 			}
 		}
 		return std::distance(begin(),max_it)%_width*angle_dif/angle_steps+theta_min;
+	}
+	std::vector<ImageUtils::line_norm<double>> HoughArray::top_lines(size_t n) const
+	{
+		exlib::LimitedSet<decltype(begin())> top;
+		auto comp=[](auto a,auto b)
+		{
+			return *a>*b;
+		};
+		for(auto it=begin();it!=end();++it)
+		{
+			top.insert(it,comp);
+		}
+		double step=angle_dif/angle_steps;
+		std::vector<ImageUtils::line_norm<double>> lines(top.size());
+		auto il=lines.begin();
+		for(auto it:top)
+		{
+			auto d=std::distance(begin(),it);
+			auto x=d%_width;
+			auto y=d/_width;
+			(*il).theta=x*step+theta_min;
+			(*il).r=2*rmax*y*precision/(_height-1)-rmax;
+		}
+		return lines;
 	}
 }

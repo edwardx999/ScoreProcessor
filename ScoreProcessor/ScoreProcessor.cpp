@@ -28,10 +28,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "support.h"
 #include <unordered_map>
+#include <optional>
+#include <array>
+#include <numeric>
+#include "parse.h"
 using namespace cimg_library;
 using namespace std;
 using namespace ScoreProcessor;
 using namespace ImageUtils;
+
 class ChangeToGrayscale:public ImageProcess<> {
 public:
 	void process(Img& image)
@@ -156,6 +161,57 @@ public:
 		}
 	}
 };
+class ClusterClearGrayAlt:public ImageProcess<> {
+	unsigned char required_min,required_max;
+	unsigned int min_size,max_size;
+	unsigned char sel_min;
+	unsigned char sel_max;
+	unsigned char background;
+public:
+	ClusterClearGrayAlt(unsigned char rcmi,unsigned char rcma,unsigned int mis,unsigned mas,unsigned char smi,unsigned char sma,unsigned char back):
+		required_min(rcmi),required_max(rcma),min_size(mis),max_size(mas),sel_min(smi),sel_max(sma),background(back)
+	{
+	}
+	void process(Img& img)
+	{
+		if(img._spectrum==1)
+		{
+			clear_clusters(img,background,
+				[this](unsigned char v)
+			{
+				return v>=sel_min&&v<=sel_max;
+			},
+				[this,&img](Cluster const& c)
+			{
+				auto size=c.size();
+				if(size>=min_size&&size<=max_size)
+				{
+					return true;
+				}
+				for(auto const& rect:c.get_ranges())
+				{
+					for(unsigned int y=rect.top;y<rect.bottom;++y)
+					{
+						auto row=img._data+y*img._width;
+						for(unsigned int x=rect.left;x<rect.right;++x)
+						{
+							auto pix=*(row+x);
+							if(pix>=required_min&&pix<=required_max)
+							{
+								return false;
+							}
+						}
+					}
+				}
+				return true;
+			});
+		}
+		else
+		{
+			throw std::invalid_argument("Cluster Clear Gray requires grayscale image");
+		}
+	}
+};
 class RescaleGray:public ImageProcess<> {
 	unsigned char min,mid,max;
 public:
@@ -203,7 +259,6 @@ public:
 		img.blur(radius);
 	}
 };
-
 class Straighten:public ImageProcess<> {
 	double pixel_prec;
 	unsigned int num_steps;
@@ -247,7 +302,7 @@ CoutLog CoutLog::singleton;
 
 class CommandMaker {
 public:
-	typedef std::vector<std::string>::const_iterator iter;
+	typedef std::vector<std::string>::iterator iter;
 	struct delivery {
 		SaveRules sr;
 		ProcessList<unsigned char> pl;
@@ -489,6 +544,124 @@ protected:
 	}
 };
 ClusterClearMaker const ClusterClearMaker::singleton;
+
+class ClusterClearAltMaker:public SingleCommandMaker {
+	ClusterClearAltMaker()
+		:SingleCommandMaker(2,4,
+			"Pixels are selected that are in sel_range inclusive and cluster.\n"
+			"Clusters that are in the bad_size_range inclusive\n"
+			"or which do not contain a color in required_color_range\n"
+			"are replaced by the background color",
+			"Cluster Clear Grayscale")
+	{}
+	static ClusterClearAltMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		static char const* const rcr_errors[]={
+			"Range not given for required_color_range",
+			"Too many arguments for required_color_range",
+			"Should not have happened",
+			"Missing argument for upper bound of required_color_range",
+			"Invalid argument for lower bound of required_color_range",
+			"Invalid argument for upper bound of required_color_range",
+			"Lower bound cannot be greater than upper bound of required_color_range"
+		};
+		std::array<unsigned char,2> required_color_range;
+		constexpr std::array<std::optional<unsigned char>,2> const rcr_def={std::optional<unsigned char>(0),std::optional<unsigned char>()};
+		auto ordered=[](std::array<unsigned char,2> const& arr)
+		{
+			if(arr[0]>arr[1])
+			{
+				return 6;
+			}
+			return -1;
+		};
+		auto res=parse_range(
+			required_color_range,
+			begin[0],
+			rcr_def,
+			ordered);
+		if(res!=-1)
+		{
+			return rcr_errors[res];
+		}
+		static char const* const bsr_errors[]={
+			"Range not given for bad_size_range",
+			"Too many arguments for bad_size_range",
+			"Should not have happened",
+			"Missing argument for upper bound of bad_size_range",
+			"Invalid argument for lower bound of bad_size_range",
+			"Invalid argument for upper bound of bad_size_range",
+			"Lower bound cannot be greater than upper bound of bad_size_range"
+		};
+		constexpr std::array<std::optional<unsigned int>,2> const bsr_def={std::optional<unsigned int>(0),std::optional<unsigned int>()};
+		std::array<unsigned int,2> bad_size_range;
+		auto bres=parse_range(bad_size_range,begin[1],bsr_def,[](decltype(bad_size_range) const& arr)
+		{
+			if(arr[0]>arr[1])
+			{
+				return 6;
+			}
+			return -1;
+		});
+		if(bres!=-1)
+		{
+			return bsr_errors[bres];
+		}
+		std::array<unsigned char,2> sel_range;
+		if(n>2)
+		{
+			static char const* const sr_errors[]={
+				"Range not given for sel_range",
+				"Too many arguments for sel_range",
+				"Should not have happened",
+				"Should not have happened",
+				"Invalid argument for lower bound of sel_range",
+				"Invalid argument for upper bound of sel_range",
+				"Lower bound cannot be greater than upper bound of sel_range"
+			};
+			std::array<std::optional<unsigned char>,2> sr_def={std::optional<unsigned char>(0),std::optional<unsigned char>(200)};
+			auto sres=parse_range(sel_range,begin[2],sr_def,ordered);
+			if(sres!=-1)
+			{
+				return sr_errors[sres];
+			}
+		}
+		else
+		{
+			goto init_sel_range;
+		}
+		unsigned char background;
+		if(n>3)
+		{
+			auto bres=parse_str(background,begin[3].c_str());
+			if(bres)
+			{
+				return "Invalid argument for background";
+			}
+		}
+	end:
+		del.pl.add_process<ClusterClearGrayAlt>(
+			required_color_range[0],required_color_range[1],
+			bad_size_range[0],bad_size_range[1],
+			sel_range[0],sel_range[1],
+			background);
+		return nullptr;
+	init_sel_range:
+		sel_range[0]=0;
+		sel_range[1]=200;
+	init_background:
+		background=255;
+		goto end;
+	}
+};
+ClusterClearAltMaker const ClusterClearAltMaker::singleton;
 
 class HorizontalPaddingMaker:public SingleCommandMaker {
 	HorizontalPaddingMaker():
@@ -923,7 +1096,7 @@ protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		double pixel_prec,min_angle,max_angle,angle_prec;
-	#define assign_val(val,index,cond,check_statement,error_statement)\
+#define assign_val(val,index,cond,check_statement,error_statement)\
 		if(n>##index##)\
 		{\
 			try\
@@ -947,7 +1120,7 @@ protected:
 		assign_val(max_angle,1,false,"","maximum angle");
 		assign_val(angle_prec,2,angle_prec<=0,"Angle precision must be positive","angle precision");
 		assign_val(pixel_prec,3,pixel_prec<=0,"Pixel precision must be positive","pixel precision");
-	#undef assign_val
+#undef assign_val
 		;
 	end:
 		if(min_angle>max_angle)
@@ -1252,6 +1425,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 
 	commands.emplace("-ccg",&ClusterClearMaker::get());
 
+	commands.emplace("-ccga",&ClusterClearAltMaker::get());
+
 	commands.emplace("-hp",&HorizontalPaddingMaker::get());
 
 	commands.emplace("-vp",&VerticalPaddingMaker::get());
@@ -1330,7 +1505,22 @@ std::string pretty_date()
 }
 void test()
 {
-	CImg<unsigned char> test_img("cuttest.jpg");
+	CImg<unsigned char> test_img("C:\\Users\\edwar\\Videos\\Score\\ppm\\base\\006.png");
+	if(test_img._spectrum>1)
+	{
+		test_img=get_grayscale_simple(test_img);
+	}
+	auto rects=global_select(test_img,[](unsigned char v)
+	{
+		return v>200;
+	});
+	for(auto const& rect:rects)
+	{
+		fill_selection(test_img,rect,240);
+	}
+	test_img.display();
+	ClusterClearGrayAlt ccga(0,60,0,60,0,200,255);
+	ccga.process(test_img);
 	test_img.display();
 	/*CImg<float> map=create_vertical_energy(test_img);
 	add_horizontal_energy(test_img,map);
@@ -1339,6 +1529,7 @@ void test()
 }
 int main(int argc,char** argv)
 {
+	//test();
 	cimg::exception_mode(0);
 	if(argc==1)
 	{
@@ -1350,12 +1541,15 @@ int main(int argc,char** argv)
 			" Copyright 2017-2018 Edward Xie"
 			"\n"
 			"filename_or_folder command params... ...\n"
+			"parameters that require multiple values are notated with a comma\n"
+			"examples: -fg 180 -ccga 20,50 ,30\n"
 			"Type command alone to get readme\n"
 			"Available commands:\n"
 			"  Single Page Operations:\n"
 			"    Convert to Grayscale:     -cg\n"
 			"    Filter Gray:              -fg min_value max_value=255 replacer=255\n"
-			"    Cluster Clear Grayscale:  -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
+			"    Cluster Clear Gray:       -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
+			"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
 			"    Horizontal Padding:       -hp amount\n"
 			"    Vertical Padding:         -vp amount\n"
 			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777778\n"
@@ -1409,14 +1603,14 @@ int main(int argc,char** argv)
 	auto& output=del.sr;
 	auto& processes=del.pl;
 
-	typedef decltype(args.cbegin()) iter;
-	iter arg_start=args.cbegin()+2;
+	typedef CommandMaker::iter iter;
+	iter arg_start=args.begin()+2;
 	iter it=arg_start+1;
 	auto could_be_command=[](std::string const& str)
 	{
 		return str.size()>1&&str.front()=='-'&&str[1]>='a'&&str[1]<='z';
 	};
-	for(;it!=args.cend();++it)
+	for(;it!=args.end();++it)
 	{
 		if(could_be_command(*it))
 		{

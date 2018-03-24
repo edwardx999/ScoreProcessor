@@ -344,7 +344,7 @@ namespace ScoreProcessor {
 		auto in_ext=exlib::find_extension(instr.cbegin(),instr.cend());
 		auto const& outstr=out.native();
 		auto out_ext=exlib::find_extension(outstr.cbegin(),outstr.cend());
-		auto proc=[this,fname,output,in_ext,in_end=instr.cend(),out_ext,out_end=outstr.cend()]()
+		auto proc=[this,fname,output,in_ext,in_end=instr.cend(),out_ext,out_end=outstr.cend(),&out]()
 		{
 			auto s=supported(&*out_ext);
 			auto sin=supported(&*in_ext);
@@ -368,6 +368,10 @@ namespace ScoreProcessor {
 			{
 				auto ext=make_ext_string(in_ext,in_end);
 				throw std::invalid_argument(std::string("Unsupported file type ")+ext);
+			}
+			if(!std::ofstream(output,std::ios::app))
+			{
+				throw std::runtime_error(std::string("Failed to save to ").append(output,out.native().size()));
 			}
 			cil::CImg<T> img(fname);
 			for(auto& pprocess:*this)

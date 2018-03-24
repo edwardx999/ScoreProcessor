@@ -66,6 +66,9 @@
     <ClInclude Include="support.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="parse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

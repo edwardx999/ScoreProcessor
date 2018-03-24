@@ -22,6 +22,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include "Cluster.h"
 #include <assert.h>
+#include <functional>
 namespace ScoreProcessor {
 	/*
 		Reduces colors to two colors
@@ -588,7 +589,154 @@ void ScoreProcessor::clear_clusters(
 		}
 	}
 }
+
 namespace ScoreProcessor {
+	inline std::vector<ImageUtils::Rectangle<unsigned int>> global_select
+	(::cil::CImg<unsigned char> const& image,std::function<bool(unsigned char)> const& keep)
+	{
+		assert(image._spectrum>0);
+		std::vector<ImageUtils::Rectangle<unsigned int>> container;
+		unsigned int range_found=0,range_start=0,range_end=0;
+		for(unsigned int y=0;y<image._height;++y)
+		{
+			auto row=image._data+y*image._width;
+			for(unsigned int x=0;x<image._width;++x)
+			{
+				switch(range_found)
+				{
+					case 0:
+					{
+						if(keep(*(row+x)))
+						{
+							range_found=1;
+							range_start=x;
+						}
+						break;
+					}
+					case 1:
+					{
+						if(!keep(*(row+x)))
+						{
+							range_found=2;
+							range_end=x;
+						}
+						else
+						{
+							break;
+						}
+					}
+					case 2:
+					{
+						container.push_back(ImageUtils::RectangleUINT{range_start,range_end,y,y+1});
+						range_found=0;
+						break;
+					}
+				}
+			}
+			if(1==range_found)
+			{
+				container.push_back(ImageUtils::RectangleUINT{range_start,image._width,y,y+1});
+				range_found=0;
+			}
+		}
+		ImageUtils::compress_rectangles(container);
+		return container;
+	}
+	inline std::vector<ImageUtils::Rectangle<unsigned int>> global_select
+	(::cil::CImg<unsigned char> const& image,std::function<bool(ImageUtils::ColorRGB)> const& keep)
+	{
+		assert(image._spectrum>2);
+		std::vector<ImageUtils::Rectangle<unsigned int>> container;
+		unsigned int range_found=0,range_start=0,range_end=0;
+		auto size=image._height*image._width;
+		for(unsigned int y=0;y<image._height;++y)
+		{
+			auto row=image._data+y*image._width;
+			for(unsigned int x=0;x<image._width;++x)
+			{
+				auto pix=row+x;
+				switch(range_found)
+				{
+					case 0:
+					{
+						if(keep(ImageUtils::ColorRGB{*pix,*(pix+size),*(pix+2*size)}))
+						{
+							range_found=1;
+							range_start=x;
+						}
+						break;
+					}
+					case 1:
+					{
+						if(!keep(ImageUtils::ColorRGB{*pix,*(pix+size),*(pix+2*size)}))
+						{
+							range_found=2;
+							range_end=x;
+						}
+						else
+						{
+							break;
+						}
+					}
+					case 2:
+					{
+						container.push_back(ImageUtils::RectangleUINT{range_start,range_end,y,y+1});
+						range_found=0;
+						break;
+					}
+				}
+			}
+			if(1==range_found)
+			{
+				container.push_back(ImageUtils::RectangleUINT{range_start,image._width,y,y+1});
+				range_found=0;
+			}
+		}
+		ImageUtils::compress_rectangles(container);
+		return container;
+	}
+	inline void clear_clusters(
+		::cil::CImg<unsigned char>& image,
+		unsigned char background,
+		std::function<bool(unsigned char)> const& selector,
+		std::function<bool(ScoreProcessor::Cluster const&)> const& clear
+	)
+	{
+		assert(image._spectrum>0);
+		auto rects=global_select(image,selector);
+		auto clusters=ScoreProcessor::Cluster::cluster_ranges(rects);
+		for(auto const& cl:clusters)
+		{
+			if(clear(*cl))
+			{
+				for(auto const& rect:cl->get_ranges())
+				{
+					ScoreProcessor::fill_selection(image,rect,background);
+				}
+			}
+		}
+	}
+	inline void clear_clusters(
+		::cil::CImg<unsigned char>& image,
+		unsigned char background,
+		std::function<bool(ImageUtils::ColorRGB)> const& selector,
+		std::function<bool(ScoreProcessor::Cluster const&)> const& clear
+	)
+	{
+		assert(image._spectrum>0);
+		auto rects=global_select(image,selector);
+		auto clusters=ScoreProcessor::Cluster::cluster_ranges(rects);
+		for(auto const& cl:clusters)
+		{
+			if(clear(*cl))
+			{
+				for(auto const& rect:cl->get_ranges())
+				{
+					ScoreProcessor::fill_selection(image,rect,background);
+				}
+			}
+		}
+	}
 	inline void clear_clusters(
 		::cimg_library::CImg<unsigned char>& img,
 		ImageUtils::Grayscale color,

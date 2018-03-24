@@ -102,7 +102,7 @@ namespace cimg_library {
 			signed char threshold=64);
 		unsigned int& operator()(double theta,double r);
 		double angle() const;
-		std::vector<ImageUtils::line<>> top_lines(size_t num);
+		std::vector<ImageUtils::line_norm<double>> top_lines(size_t num) const;
 	};
 }
 #endif // !IMAGE_MATH_H

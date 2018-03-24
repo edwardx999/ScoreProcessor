@@ -138,7 +138,6 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <StringPooling>true</StringPooling>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>/Qpar /Qvec-report:2 /Qpar-report:2 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,6 +161,7 @@
     <ClInclude Include="moreAlgorithms.h" />
     <ClInclude Include="neuralnet.h" />
     <ClInclude Include="old.txt" />
+    <ClInclude Include="parse.h" />
     <ClInclude Include="ScoreProcesses.h" />
     <ClInclude Include="shorthand.h" />
     <ClInclude Include="stdafx.h" />
