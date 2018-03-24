@@ -2,13 +2,16 @@ An application useful in editing musical scores.
 
 Syntax:  
 filename_or_folder command params... ...  
-Type command alone to get readme
-
+Type command alone to get readme  
+"parameters that require multiple values are notated with a comma"  
+"examples: -fg 180 -ccga 20,50 ,30"  
+  
 Available commands:  
 &nbsp;&nbsp;Single Page Operations:  
 &nbsp;&nbsp;&nbsp;&nbsp;Convert to Grayscale:     -cg  
 &nbsp;&nbsp;&nbsp;&nbsp;Filter Gray:              -fg min_value max_value=255 replacer=255  
 &nbsp;&nbsp;&nbsp;&nbsp;Cluster Clear Grayscale:  -ccg max_size min_size=0 background_color=255 tolerance=0.042  
+&nbsp;&nbsp;&nbsp;&nbsp;Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255  
 &nbsp;&nbsp;&nbsp;&nbsp;Horizontal Padding:       -hp amount  
 &nbsp;&nbsp;&nbsp;&nbsp;Vertical Padding:         -vp amount  
 &nbsp;&nbsp;&nbsp;&nbsp;Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777778  

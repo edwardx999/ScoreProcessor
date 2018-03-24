@@ -1,6 +1,7 @@
 #ifndef SCORE_PARSE_H
 #define SCORE_PARSE_H
 #include <numeric>
+#include <cctype>
 namespace ScoreProcessor {
 	//I really need MSVC to implement from_chars.
 	int parse_str(double& out,char const* str)
@@ -9,7 +10,7 @@ namespace ScoreProcessor {
 		errno_ref=0;
 		char* end;
 		out=std::strtod(str,&end);
-		return errno_ref||str==end||*end!='\0';
+		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
 	int parse_str(float& out,char const* str)
 	{
@@ -17,7 +18,7 @@ namespace ScoreProcessor {
 		errno_ref=0;
 		char* end;
 		out=std::strtof(str,&end);
-		return errno_ref||str==end||*end!='\0';
+		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
 	int parse_str(unsigned long& out,char const* str)
 	{
@@ -25,7 +26,7 @@ namespace ScoreProcessor {
 		errno_ref=0;
 		char* end;
 		out=std::strtoul(str,&end,10);
-		return errno_ref||str==end||*end!='\0';
+		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
 	int parse_str(long& out,char const* str)
 	{
@@ -33,7 +34,7 @@ namespace ScoreProcessor {
 		errno_ref=0;
 		char* end;
 		out=std::strtol(str,&end,10);
-		return errno_ref||str==end||*end!='\0';
+		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
 #define make_parse_str_signed(type)\
 	int parse_str(##type##& out,char const* str){\
@@ -45,7 +46,7 @@ namespace ScoreProcessor {
 		{\
 			return errno_ref;\
 		}\
-		if(end==str||*end!='\0'||temp>std::numeric_limits<##type##>::max()||temp<std::numeric_limits<##type>::min())\
+		if(end==str||(*end!='\0'&&!std::isspace(*end))||temp>std::numeric_limits<##type##>::max()||temp<std::numeric_limits<##type>::min())\
 		{\
 			return 1;\
 		}\
@@ -66,7 +67,7 @@ namespace ScoreProcessor {
 		{\
 			return errno_ref;\
 		}\
-		if(end==str||*end!='\0'||temp>std::numeric_limits<##type##>::max())\
+		if(end==str||(*end!='\0'&&!std::isspace(*end))||temp>std::numeric_limits<##type##>::max())\
 		{\
 			return 1;\
 		}\
