@@ -4,7 +4,7 @@ Syntax:
 filename_or_folder command params... ...  
 Type command alone to get readme  
 Parameters that require multiple values are notated with a comma  
-Example: myimage.png -cg -fg 180 -ccga 0,50 ,30 -o myimage2.jpg  
+Example: myimage.png -cg -fg 180 -ccga 0,50 ,30 -o %f2.jpg  
   
 Available commands:  
 &nbsp;&nbsp;Single Page Operations:  

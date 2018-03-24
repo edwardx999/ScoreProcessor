@@ -1,3 +1,19 @@
+/*
+Copyright(C) 2017-2018 Edward Xie
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
 #ifndef SCORE_PARSE_H
 #define SCORE_PARSE_H
 #include <numeric>
@@ -81,14 +97,14 @@ namespace ScoreProcessor {
 	//err val 0 is too few arguments
 	//err val 1 is too many arguments
 	//err val n in [2,num_args+1] mean missing (n-2)th argument 
-	//err val [num_args+2,2*num_args+1] means invalid (n-num_args-2)th argument
+	//err val n in [num_args+2,2*num_args+1] means invalid (n-num_args-2)th argument
 	//other err vals are defined by the given constraints function
-	template<typename T,size_t num_args,typename Comp>
+	template<typename T,size_t num_args,typename Func>
 	int parse_range(
 		std::array<T,num_args>& out,
 		std::string& str,
 		std::array<std::optional<T>,num_args> const& default_values,
-		Comp constraints) noexcept
+		Func constraints) noexcept
 	{
 		static_assert(num_args,"Must have positive number of args");
 		size_t comma_pos=0;

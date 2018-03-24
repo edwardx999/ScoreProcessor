@@ -88,6 +88,7 @@ namespace cimg_library {
 
 	inline void convert_grayscale_simple(cil::CImg<unsigned char>& img)
 	{
+		assert(img._spectrum>=3);
 		unsigned int const size=img._width*img._height;
 		unsigned char* const rstart=img._data;
 		unsigned char* const gstart=img._data+size;
