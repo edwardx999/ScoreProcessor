@@ -719,8 +719,8 @@ namespace ScoreProcessor {
 	inline void clear_clusters(
 		::cil::CImg<unsigned char>& image,
 		unsigned char background,
-		std::function<bool(ImageUtils::ColorRGB)> const& selector,
-		std::function<bool(ScoreProcessor::Cluster const&)> const& clear
+		std::function<bool(ImageUtils::ColorRGB)> selector,
+		std::function<bool(ScoreProcessor::Cluster const&)> clear
 	)
 	{
 		assert(image._spectrum>0);

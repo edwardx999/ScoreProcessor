@@ -43,7 +43,15 @@ public:
 	{
 		if(image._spectrum>=3)
 		{
-			image=get_grayscale_simple(image);
+			convert_grayscale_simple(image);
+		}
+		else if(image._spectrum==1)
+		{
+			return;
+		}
+		else
+		{
+			throw std::invalid_argument("Invalid image spectrum");
 		}
 	}
 };
@@ -170,8 +178,7 @@ class ClusterClearGrayAlt:public ImageProcess<> {
 public:
 	ClusterClearGrayAlt(unsigned char rcmi,unsigned char rcma,unsigned int mis,unsigned mas,unsigned char smi,unsigned char sma,unsigned char back):
 		required_min(rcmi),required_max(rcma),min_size(mis),max_size(mas),sel_min(smi),sel_max(sma),background(back)
-	{
-	}
+	{}
 	void process(Img& img)
 	{
 		if(img._spectrum==1)
@@ -548,9 +555,9 @@ ClusterClearMaker const ClusterClearMaker::singleton;
 class ClusterClearAltMaker:public SingleCommandMaker {
 	ClusterClearAltMaker()
 		:SingleCommandMaker(2,4,
-			"Pixels are selected that are in sel_range inclusive and cluster.\n"
+			"Pixels are selected that are in sel_range inclusive and clustered.\n"
 			"Clusters that are in the bad_size_range inclusive\n"
-			"or which do not contain a color in required_color_range\n"
+			"or which do not contain a color in required_color_range inclusive\n"
 			"are replaced by the background color",
 			"Cluster Clear Grayscale")
 	{}
@@ -645,6 +652,10 @@ protected:
 			{
 				return "Invalid argument for background";
 			}
+		}
+		else
+		{
+			goto init_background;
 		}
 	end:
 		del.pl.add_process<ClusterClearGrayAlt>(

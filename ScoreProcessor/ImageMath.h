@@ -18,6 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #define IMAGE_MATH_H
 #include "CImg.h"
 #include "ImageUtils.h"
+#include <assert.h>
 #define M_PI	3.14159265358979323846
 #define M_PI_2	1.57079632679489661923
 #define M_PI_4	0.78539816339744830962
@@ -84,6 +85,20 @@ namespace cimg_library {
 	Converts image to a 1 channel grayscale image, just takes average of 3.
 	*/
 	::cimg_library::CImg<unsigned char> get_grayscale_simple(::cimg_library::CImg<unsigned char> const& image);
+
+	inline void convert_grayscale_simple(cil::CImg<unsigned char>& img)
+	{
+		unsigned int const size=img._width*img._height;
+		unsigned char* const rstart=img._data;
+		unsigned char* const gstart=img._data+size;
+		unsigned char* const bstart=img._data+2*size;
+		for(unsigned int i=0;i<size;++i)
+		{
+			rstart[i]=(uint16_t(rstart[i])+gstart[i]+bstart[i])/3;
+		}
+		img._spectrum=1;
+	}
+
 	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer);
 
 	class HoughArray:public CImg<unsigned int> {

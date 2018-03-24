@@ -165,9 +165,9 @@ namespace ImageUtils {
 		static ColorRGB const BLACK;
 
 		unsigned char r,g,b;
-		explicit operator ColorRGBA() const;
-		explicit operator ColorHSV() const;
-		explicit operator Grayscale() const;
+		operator ColorRGBA() const;
+		operator ColorHSV() const;
+		operator Grayscale() const;
 		unsigned char brightness() const;
 		float difference(ColorRGB other);
 
@@ -197,7 +197,7 @@ namespace ImageUtils {
 		}
 		Grayscale(unsigned char const val):value(val)
 		{}
-		Grayscale():Grayscale(0)
+		Grayscale()
 		{}
 
 		inline Grayscale& operator=(unsigned char const val)
