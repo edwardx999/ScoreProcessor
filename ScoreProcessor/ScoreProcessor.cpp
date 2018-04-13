@@ -1792,6 +1792,7 @@ int main(int argc,char** argv)
 						return 0;
 					}
 					CImg<unsigned char> in(arg1.c_str());
+					cut_page(in,out.c_str());
 				}
 				catch(std::exception const& ex)
 				{
