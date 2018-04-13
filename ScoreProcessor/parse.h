@@ -83,7 +83,7 @@ namespace ScoreProcessor {
 		{\
 			return errno_ref;\
 		}\
-		if(end==str||(*end!='\0'&&!std::isspace(*end))||temp>std::numeric_limits<##type##>::max())\
+		if(end==str||(*end!='\0'&&!std::isspace(*end))||*str=='-'||temp>std::numeric_limits<##type##>::max())\
 		{\
 			return 1;\
 		}\

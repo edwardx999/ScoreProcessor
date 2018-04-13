@@ -43,7 +43,7 @@ public:
 	{
 		if(image._spectrum>=3)
 		{
-			convert_grayscale_simple(image);
+			image=get_grayscale_simple(image);
 		}
 		else if(image._spectrum==1)
 		{
@@ -312,6 +312,7 @@ public:
 	typedef std::vector<std::string>::iterator iter;
 	struct delivery {
 		SaveRules sr;
+		unsigned int starting_index=1;
 		ProcessList<unsigned char> pl;
 		enum do_state {
 			do_nothing,
@@ -325,6 +326,7 @@ public:
 			unsigned int optimal_padding;
 			unsigned int min_padding;
 			unsigned int optimal_height;
+			float excess_weight;
 		} splice_args;
 		std::regex rgx;
 		enum regex_state {
@@ -773,7 +775,7 @@ protected:
 			}
 			catch(std::exception const& ex)
 			{
-				return ex.what();
+				return "Invalid template";
 			}
 		}
 		else
@@ -784,6 +786,29 @@ protected:
 	}
 };
 OutputMaker const OutputMaker::singleton;
+
+class StartingIndexMaker:public CommandMaker {
+	StartingIndexMaker():CommandMaker(1,1,"The starting index to label template names and spliced pages","Starting Index")
+	{}
+	static StartingIndexMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+	char const* parse_command(iter begin,size_t n,delivery& del) const override
+	{
+		unsigned int num;
+		auto err=ScoreProcessor::parse_str(num,begin[0].c_str());
+		if(err)
+		{
+			return "Invalid starting index input";
+		}
+		del.starting_index=num;
+		return nullptr;
+	}
+};
+StartingIndexMaker const StartingIndexMaker::singleton;
 
 class AutoPaddingMaker:public SingleCommandMaker {
 	AutoPaddingMaker()
@@ -967,11 +992,12 @@ CutMaker const CutMaker::singleton;
 class SpliceMaker:public CommandMaker {
 	SpliceMaker():
 		CommandMaker(
-			3,4,
+			3,5,
 			"Splices the pages together assuming right alignment.\n"
-			"Greedy algorithm that tries to minimize deviation from optimal height and optimal padding.\n"
+			"Knuth algorithm that tries to minimize deviation from optimal height and optimal padding.\n"
 			"Horizontal padding is the padding placed between elements of the page horizontally.\n"
-			"Min padding is the minimal vertical padding between pages.",
+			"Min padding is the minimal vertical padding between pages.\n"
+			"Excess weight is the penalty weight applied to height deviation above optimal",
 			"Splice")
 	{}
 	static SpliceMaker const singleton;
@@ -988,7 +1014,8 @@ protected:
 			return "Splice can not be done along with other commands";
 		}
 		del.flag=del.do_splice;
-		int hpadding,opadding,mpadding,oheight;
+		int hpadding,opadding,mpadding,oheight=-1;
+		float excess_weight=10;
 		try
 		{
 			hpadding=std::stoi(begin[0]);
@@ -1025,11 +1052,7 @@ protected:
 		{
 			return "Invalid input for minimum padding";
 		}
-		if(n==3)
-		{
-			oheight=-1;
-		}
-		else
+		if(n>3)
 		{
 			try
 			{
@@ -1043,12 +1066,28 @@ protected:
 			{
 				return "Invalid input for optimal height";
 			}
+			if(n>4)
+			{
+				try
+				{
+					excess_weight=std::stof(begin[4]);
+				}
+				catch(std::exception const&)
+				{
+					return "Invald input for excess height penalty";
+				}
+				if(excess_weight<0)
+				{
+					return "Penalty for excess height must be positive";
+				}
+			}
 		}
 		del.flag=delivery::do_splice;
 		del.splice_args.horiz_padding=hpadding;
 		del.splice_args.min_padding=mpadding;
 		del.splice_args.optimal_padding=opadding;
 		del.splice_args.optimal_height=oheight;
+		del.splice_args.excess_weight=excess_weight;
 		return nullptr;
 	}
 };
@@ -1472,6 +1511,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-fr",&FillRectangleGrayMaker::get());
 
 	commands.emplace("-nt",&NumThreadMaker::get());
+
+	commands.emplace("-si",&StartingIndexMaker::get());
 	return commands;
 }
 
@@ -1493,11 +1534,11 @@ std::vector<std::string> images_in_path(std::string const& path,std::regex const
 	auto ret=exlib::files_in_dir(path);
 	if(rgxst)
 	{
-		auto filter=[&rgx,keep=rgxst==CommandMaker::delivery::normal](std::string const& a)
+		ret.erase(std::remove_if(ret.begin(),ret.end(),
+			[&rgx,keep=rgxst==CommandMaker::delivery::normal](auto const& a)
 		{
 			return std::regex_match(a,rgx)!=keep;
-		};
-		ret.erase(std::remove_if(ret.begin(),ret.end(),filter),ret.end());
+		}),ret.end());
 	}
 	for(auto& f:ret)
 	{
@@ -1516,31 +1557,20 @@ std::string pretty_date()
 }
 void test()
 {
-	CImg<unsigned char> test_img("C:\\Users\\edwar\\Videos\\Score\\ppm\\base\\006.png");
-	if(test_img._spectrum>1)
-	{
-		test_img=get_grayscale_simple(test_img);
-	}
-	auto rects=global_select(test_img,[](unsigned char v)
-	{
-		return v>200;
-	});
-	for(auto const& rect:rects)
-	{
-		fill_selection(test_img,rect,240);
-	}
-	test_img.display();
-	ClusterClearGrayAlt ccga(0,60,0,60,0,200,255);
-	ccga.process(test_img);
-	test_img.display();
-	/*CImg<float> map=create_vertical_energy(test_img);
-	add_horizontal_energy(test_img,map);
-	map.display();*/
+	auto files=images_in_path(
+		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gcut\\",
+		std::regex(".*"),
+		CommandMaker::delivery::regex_state::normal);
+	splice_pages_nongreedy(files,100,-1,300,150,10,
+		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gtogether\\p.png",
+		1);
 	stop();
 }
 int main(int argc,char** argv)
 {
-	//test();
+#ifndef NDEBUG
+	test();
+#endif
 	cimg::exception_mode(0);
 	if(argc==1)
 	{
@@ -1572,12 +1602,13 @@ int main(int argc,char** argv)
 			"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
-			"    Splice:                   -spl horiz_padding optimal_padding min_vert_padding optimal_height=(6/11 width of first page)\n"
+			"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excess_weight=10\n"
 			"  Options:\n"
 			"    Output:                   -o format\n"
 			"    Verbosity:                -vb level\n"
 			"    Filter Files:             -flt regex remove=false\n"
 			"    Number of Threads:        -nt num\n"
+			"    Starting index            -si num\n"
 			"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
 			"A Multi Page Operation can not be done with other operations.\n"
 			;
@@ -1693,11 +1724,11 @@ int main(int argc,char** argv)
 					std::cout<<"No files found\n";
 					return 0;
 				}
-				processes.process(files,&output,num_threads(files.size()));
+				processes.process(files,&output,num_threads(files.size()),del.starting_index);
 			}
 			else
 			{
-				processes.process(arg1.c_str(),&output);
+				processes.process(arg1.c_str(),&output,del.starting_index);
 			}
 			break;
 		}
@@ -1715,14 +1746,16 @@ int main(int argc,char** argv)
 				private:
 					std::string const* input;
 					SaveRules const* output;
+					unsigned int index;
 				public:
-					CutProcess(std::string const* input,SaveRules const* output):input(input),output(output)
+					CutProcess(std::string const* input,SaveRules const* output,unsigned int index):
+						input(input),output(output),index(index)
 					{}
 					void execute() override
 					{
 						try
 						{
-							auto out=output->make_filename(*input);
+							auto out=output->make_filename(*input,index);
 							auto ext=exlib::find_extension(out.begin(),out.end());
 							auto s=supported(&*ext);
 							if(s==support_type::no)
@@ -1740,9 +1773,9 @@ int main(int argc,char** argv)
 					}
 				};
 				exlib::ThreadPool tp(num_threads(files.size()));
-				for(auto const& f:files)
+				for(size_t i=0;i<files.size();++i)
 				{
-					tp.add_task<CutProcess>(&f,&output);
+					tp.add_task<CutProcess>(&files[i],&output,i+del.starting_index);
 				}
 				tp.start();
 			}
@@ -1750,7 +1783,7 @@ int main(int argc,char** argv)
 			{
 				try
 				{
-					auto out=output.make_filename(arg1);
+					auto out=output.make_filename(arg1,del.starting_index);
 					auto ext=exlib::find_extension(out.begin(),out.end());
 					auto s=supported(&*ext);
 					if(s==support_type::no)
@@ -1780,21 +1813,22 @@ int main(int argc,char** argv)
 				}
 				try
 				{
-
-					auto save=output.make_filename(files[0]);
+					auto save=output.make_filename(files[0],del.starting_index);
 					auto ext=exlib::find_extension(save.begin(),save.end());
 					if(supported(&*ext)==support_type::no)
 					{
 						std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
 						return 0;
 					}
-					splice_pages(
+					splice_pages_nongreedy(
 						files,
 						del.splice_args.horiz_padding,
+						del.splice_args.optimal_height,
 						del.splice_args.optimal_padding,
 						del.splice_args.min_padding,
-						del.splice_args.optimal_height,
-						save.c_str());
+						del.splice_args.excess_weight,
+						save.c_str(),
+						del.starting_index);
 				}
 				catch(std::exception const& ex)
 				{

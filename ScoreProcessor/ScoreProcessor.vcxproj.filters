@@ -19,6 +19,9 @@
     <Text Include="splice_plan.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Refit.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">

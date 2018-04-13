@@ -82,27 +82,29 @@ namespace exlib {
 				_data.insert(_data.end(),std::forward<U>(in));
 				goto end;
 			}
-			auto b=_data.begin();
-			auto e=_data.end();
-			decltype(b) m;
-			while(b<e)
 			{
-				m=b+std::distance(b,e)/2;
-				if(comp(in,*m))
+				auto b=_data.begin();
+				auto e=_data.end();
+				decltype(b) m;
+				while(b<e)
 				{
-					if(!(comp(in,*(m-1))))
+					m=b+std::distance(b,e)/2;
+					if(comp(in,*m))
 					{
-						_data.insert(m,std::forward<U>(in));
-						goto end;
+						if(!(comp(in,*(m-1))))
+						{
+							_data.insert(m,std::forward<U>(in));
+							break;
+						}
+						else
+						{
+							e=m;
+						}
 					}
 					else
 					{
-						e=m;
+						b=m+1;
 					}
-				}
-				else
-				{
-					b=m+1;
 				}
 			}
 		end:

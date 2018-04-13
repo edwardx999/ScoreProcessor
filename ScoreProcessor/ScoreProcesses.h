@@ -415,8 +415,17 @@ namespace ScoreProcessor {
 		unsigned int optimal_padding,
 		unsigned int min_padding,
 		unsigned int optimal_height,
-		char const* output);
-	unsigned int splice_pages_greedy(std::string const& output,::std::vector<::std::string> const& filenames,unsigned int optimal_height);
+		char const* output,
+		unsigned int const starting_index=1);
+	unsigned int splice_pages_nongreedy(
+		::std::vector<::std::string> const& filenames,
+		unsigned int horiz_padding,
+		unsigned int optimal_height,
+		unsigned int optimal_padding,
+		unsigned int min_padding,
+		float excess_weight,
+		char const* output,
+		unsigned int starting_index=1);
 	void compress(::cimg_library::CImg<unsigned char>& image,unsigned int const minPadding,unsigned int const optimalHeight,float min_energy=0);
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);
@@ -591,6 +600,65 @@ void ScoreProcessor::clear_clusters(
 }
 
 namespace ScoreProcessor {
+	template<typename T,unsigned int num_layers,typename Selector,typename D=unsigned int>
+	std::vector<ImageUtils::Rectangle<D>> global_select(
+		::cil::CImg<T> const& image,
+		Selector keep)
+	{
+		static_assert(num_layers>0,"Positive number of layers required");
+		assert(image._spectrum>=num_layers);
+		std::array<T,num_layers> color;
+		std::vector<ImageUtils::Rectangle<D>> container;
+		for(unsigned int y=0;y<image._height;++y)
+		{
+			auto const row=image._data+y*image._width;
+			for(unsigned int x=0;x<image._width;++x)
+			{
+				auto const pix=row+x;
+				for(unsigned int i=0;i<num_layers;++i)
+				{
+					color[i]=*(pix+i*size);
+				}
+				switch(range_found)
+				{
+					case 0:
+					{
+						if(keep(color))
+						{
+							range_found=1;
+							range_start=x;
+						}
+						break;
+					}
+					case 1:
+					{
+						if(!keep(color))
+						{
+							range_found=2;
+							range_end=x;
+						}
+						else
+						{
+							break;
+						}
+					}
+					case 2:
+					{
+						container.push_back(ImageUtils::Rectangle<D>{range_start,range_end,y,y+1});
+						range_found=0;
+						break;
+					}
+				}
+			}
+			if(1==range_found)
+			{
+				container.push_back(ImageUtils::Rectangle<D>{range_start,image._width,y,y+1});
+				range_found=0;
+			}
+		}
+		ImageUtils::compress_rectangles(container);
+		return container;
+	}
 	inline std::vector<ImageUtils::Rectangle<unsigned int>> global_select
 	(::cil::CImg<unsigned char> const& image,std::function<bool(unsigned char)> const& keep)
 	{
@@ -719,8 +787,8 @@ namespace ScoreProcessor {
 	inline void clear_clusters(
 		::cil::CImg<unsigned char>& image,
 		unsigned char background,
-		std::function<bool(ImageUtils::ColorRGB)> selector,
-		std::function<bool(ScoreProcessor::Cluster const&)> clear
+		std::function<bool(ImageUtils::ColorRGB)> const& selector,
+		std::function<bool(ScoreProcessor::Cluster const&)> const& clear
 	)
 	{
 		assert(image._spectrum>0);

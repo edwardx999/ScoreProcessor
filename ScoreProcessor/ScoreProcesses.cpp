@@ -798,7 +798,9 @@ namespace ScoreProcessor {
 
 		vector<vector<unsigned int>> paths;
 		{
-			typedef ImageUtils::vertical_line<unsigned int> line;
+			struct line {
+				unsigned int top,bottom;
+			};
 			unsigned int right=find_right(image,Grayscale::WHITE,5);
 			CImg<float> map=create_vertical_energy(image);
 			add_horizontal_energy(image,map);
@@ -813,44 +815,29 @@ namespace ScoreProcessor {
 			auto const selections=global_select(map,rcast<float*>(0),float_color::diff,0.5,false);
 			auto const clusters=Cluster::cluster_ranges(selections);
 			vector<line> boxes;
-			unsigned int threshold_width=map._width/2,
+			unsigned int threshold_width=2*map._width/3,
 				threshold_height=map._height/13;
 				//(map._height*map._width)/20;
 
-			for(size_t i=0;i<clusters.size();++i)
+			for(auto c=clusters.cbegin();c!=clusters.cend();++c)
 			{
 				//if(clusters[i]->size()>threshold)
-				auto box=clusters[i]->bounding_box();
+				auto box=(*c)->bounding_box();
 				if(box.width()>threshold_width&&box.height()>threshold_height)
 				{
-					boxes.push_back(clusters[i]->right_side());
+					boxes.push_back(line{box.top,box.bottom});
 				}
 			}
-			std::sort(boxes.begin(),boxes.end(),[](line const& a,line const& b)
+			std::sort(boxes.begin(),boxes.end(),[](line a,line b)
 			{
-				return a.bottom<b.top;
+				return a.top<b.top;
 			});
-/*for(auto const& line:boxes)
-{
-	cout<<line.top<<' '<<line.bottom<<'\n';
-}*/
 			unsigned int last_row=map._width-1;
 			size_t limit=boxes.size()-1;
 			for(size_t i=0;i<limit;++i)
 			{
 				line const& current=boxes[i];
 				line const& next=boxes[i+1];
-				/*unsigned int y_min=current.bottom;
-				float min_val=map(last_row,y_min);
-				for(unsigned int y=y_min;y<next.top;++y)
-				{
-					float val=map(last_row,y);
-					if(val<min_val)
-					{
-						min_val=val;
-						y_min=y;
-					}
-				}*/
 				paths.emplace_back(trace_back_seam(map,(current.bottom+next.top)/2));
 			}
 		}
@@ -1019,7 +1006,7 @@ namespace ScoreProcessor {
 			unsigned int ci;
 			for(ci=lastIndex;ci<candidates.size();++ci)
 			{
-			#define determineLine() \
+#define determineLine() \
 				int error=static_cast<signed int>(test.x-candidates[ci].start.x);\
 				float derror_dy=static_cast<float>(error-candidates[ci].error)/(test.y-candidates[ci].last.y);\
 				if(abs_dif(derror_dy,candidates[ci].derror_dy)<1.1f) {\
@@ -1036,7 +1023,7 @@ namespace ScoreProcessor {
 			{
 				determineLine();
 			}
-		#undef determineLine
+#undef determineLine
 			candidates.push_back({test,test,1,0,0.0f});
 			lastIndex=candidates.size()-1;
 		skipCreatingNewCandidate:;
@@ -1460,6 +1447,8 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		uint bottom;
 		page(char const* filename):CImg(filename)
 		{}
+		page()
+		{}
 		uint height() const
 		{
 			return bottom-top;
@@ -1507,7 +1496,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	}
 	vector<uint> get_top_profile(CImg<uchar> const& img)
 	{
-	#define base_prof(side)\
+#define base_prof(side)\
 		switch(img.spectrum())\
 		{\
 			case 1:\
@@ -1523,7 +1512,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	vector<uint> get_bottom_profile(CImg<uchar> const& img)
 	{
 		base_prof(bottom);
-	#undef base_prof
+#undef base_prof
 	}
 	unsigned int splice_pages(
 		vector<::std::string> const& filenames,
@@ -1531,7 +1520,8 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		unsigned int optimal_padding,
 		unsigned int min_padding,
 		unsigned int optimal_height,
-		char const* output)
+		char const* output,
+		unsigned int const starting_index)
 	{
 		if(filenames.empty())
 		{
@@ -1566,7 +1556,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		{
 			optimal_height=first_page._width*6/11;
 		}
-		function<cost_pad(page const*,size_t)> cost_splice=
+		auto cost_splice=
 			[optimal_padding,min_padding,optimal_height](page const* page,size_t num)
 		{
 			uint height=0;
@@ -1588,13 +1578,14 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 			}
 			height+=padding*(num+1);
-			float height_cost=abs_dif(height,optimal_height);
-			height_cost=powf(height_cost,0.8f);
-			float padding_cost=abs_dif(padding,optimal_padding);
-			padding_cost=powf(padding_cost,0.6f);
+
+			float height_cost=abs_dif(1.0f,float(height)/optimal_height);
+			//height_cost=powf(height_cost,0.8f);
+			float padding_cost=abs_dif(1.0f,float(padding)/optimal_padding);
+			//padding_cost=powf(padding_cost,0.6f);
 			return cost_pad
 			{
-				2*padding_cost+height_cost,
+				padding_cost+height_cost,
 				padding
 			};
 		};
@@ -1632,7 +1623,8 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			{
 				above.bottom=old_bottom;
 				auto tog=splice_images(items.data(),items.size()-1,items.pad_info.padding);
-				tog.save(output,++num_pages,num_digits);
+				tog.save(output,starting_index+num_pages,num_digits);
+				++num_pages;
 				items.erase(items.begin(),items.end()-1);
 				items[0].top=*min_element(below_top_profile.begin(),below_top_profile.end());
 				items.pad_info=cost_splice(items.data(),1);
@@ -1640,8 +1632,8 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			above_bottom_profile=move(below_bottom_profile);
 		}
 		auto tog=splice_images(items.data(),items.size(),items.pad_info.padding);
-		tog.save(output,++num_pages,num_digits);
-		return num_pages;
+		tog.save(output,num_pages+starting_index,num_digits);
+		return num_pages+1;
 	}
 	spacing find_spacing(vector<uint> const& bottom_of_top,uint size_top,vector<uint> const& top_of_bottom)
 	{
@@ -1664,7 +1656,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	}
 	vector<unsigned int> fattened_profile_high(vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
-	#define fatten_base(func)\
+#define fatten_base(func)\
 		vector<unsigned int> res(profile.size());\
 		auto rt=res.begin();\
 		auto pt=profile.begin();\
@@ -1688,33 +1680,212 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
 		fatten_base(std::max_element);
-	#undef fatten_base
+#undef fatten_base
 	}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num);
-	unsigned int splice_pages_greedy(std::string const& output,::std::vector<::std::string> const& filenames,unsigned int optimal_height)
+	unsigned int splice_pages_nongreedy(
+		::std::vector<::std::string> const& filenames,
+		unsigned int horiz_padding,
+		unsigned int optimal_height,
+		unsigned int optimal_padding,
+		unsigned int min_padding,
+		float excess_weight,
+		char const* output,
+		unsigned int starting_index)
 	{
-		unsigned int current_height=0,old_height=0;
-		unsigned int num_pages=0;
-		std::vector<CImg<unsigned char>> fit;
-		for(size_t i=0;i<filenames.size();++i)
+#ifndef NDEBUG
+		std::cout<<excess_weight<<'\n';
+#endif
+		struct item {
+			unsigned int top_raw;
+			unsigned int top_kern;
+			unsigned int bottom_kern;
+			unsigned int bottom_raw;
+		};
+		auto const c=filenames.size();
+		if(c<2)
 		{
-			CImg<unsigned char> last(filenames[i].c_str());
-			if(last._spectrum==3)
-			{
-				last=get_grayscale(last);
-			}
-			current_height+=last._height;
-			if(abs_dif(current_height,optimal_height)>=abs_dif(optimal_height,old_height))
-			{
-				combine_images(output,fit,num_pages);
-				fit.clear();
-				current_height=last._height;
-			}
-			old_height=current_height;
-			fit.emplace_back(std::move(last));
+			throw std::invalid_argument("Need multiple pages to splice");
 		}
-		combine_images(output,fit,num_pages);
-		return num_pages;
+		vector<item> pages(c);
+		{
+			auto conv=[](CImg<unsigned char>& img)
+			{
+				if(img._spectrum==3||img._spectrum==4)
+				{
+					img=get_grayscale_simple(img);
+				}
+				else if(img._spectrum!=1)
+				{
+					throw std::invalid_argument("Image had wrong number of layers");
+				}
+			};
+			CImg<unsigned char> top(filenames[0].c_str());
+			CImg<unsigned char> bottom(filenames[1].c_str());
+			if(optimal_height==-1)
+			{
+				optimal_height=top._width*6/11;
+			}
+			conv(top);
+			conv(bottom);
+			pages[0].top_kern=(pages[0].top_raw=find_top(top,255,top._width/1024+1));
+#ifndef NDEBUG
+			std::cout<<"Initializing page info"<<'\n';
+#endif
+			for(size_t i=0;;++i)
+			{
+#ifndef NDEBUG
+				std::cout<<i<<'\n';
+#endif
+				auto bot=build_bottom_profile(top,255);
+				bot=fattened_profile_low(bot,horiz_padding);
+				auto tob=build_top_profile(bottom,255);
+				tob=fattened_profile_high(tob,horiz_padding);
+				auto const sp=find_spacing(bot,top._height,tob);
+				pages[i].bottom_raw=*std::max_element(bot.cbegin(),bot.cend());
+				pages[i].bottom_kern=sp.bottom_sg;
+				pages[i+1].top_kern=sp.top_sg;
+				pages[i+1].top_raw=*std::min_element(tob.cbegin(),tob.cend());
+				if(i>=c-2)
+				{
+					break;
+				}
+				top=std::move(bottom);
+				conv(bottom.assign(filenames[i+2].c_str()));
+			}
+			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
+		}
+		struct page_layout {
+			unsigned int padding;
+			unsigned int height;
+		};
+		auto create_layout=[=](item const* const items,size_t const n)
+		{
+			assert(n!=0);
+			unsigned int total_height;
+			if(n==1)
+			{
+				total_height=items[0].bottom_raw-items[0].top_raw;
+			}
+			else
+			{
+				total_height=items[0].bottom_kern-items[0].top_raw;
+				for(size_t i=1;i<n-1;++i)
+				{
+					total_height+=items[i].bottom_kern-items[i].top_kern;
+				}
+				total_height+=items[n-1].bottom_raw-items[n-1].top_kern;
+			}
+			unsigned int minned=total_height+(n+1)*min_padding;
+			if(minned>optimal_height)
+			{
+				return page_layout{min_padding,minned};
+			}
+			else
+			{
+				return page_layout{scast<uint>((optimal_height-total_height)/(n+1)),optimal_height};
+			}
+		};
+		auto cost=[=](page_layout const p)
+		{
+			float numer;
+			if(p.height>optimal_height)
+			{
+				numer=excess_weight*(p.height-optimal_height);
+			}
+			else
+			{
+				numer=optimal_height-p.height;
+			}
+			float height_cost=numer/optimal_height;
+			height_cost*=height_cost;
+			float padding_cost=abs_dif(float(p.padding),optimal_padding)/optimal_padding;
+			padding_cost*=padding_cost;
+			return height_cost+padding_cost;
+		};
+		struct node {
+			float cost;
+			page_layout layout;
+			size_t previous;
+		};
+#ifndef NDEBUG
+		std::cout<<"Initalizing nodes\n"<<"c="<<c<<'\n';
+#endif
+		vector<node> nodes(c+1);
+		nodes[0].cost=0;
+		for(size_t i=1;i<=c;++i)
+		{
+			nodes[i].cost=INFINITY;
+#ifndef NDEBUG
+			std::cout<<"i="<<i<<'\n';
+#endif
+			for(size_t j=i-1;;) //make this a binary search?
+			{
+#ifndef NDEBUG
+				//std::cout<<"j="<<j<<'\n';
+#endif
+				auto layout=create_layout(pages.data()+j,i-j);
+				auto local_cost=cost(layout);
+				auto total_cost=local_cost+nodes[j].cost;
+				if(total_cost<nodes[i].cost)
+				{
+					nodes[i].cost=total_cost;
+					nodes[i].previous=j;
+					nodes[i].layout=layout;
+				}
+				if(j==0)
+				{
+					break;
+				}
+				--j;
+			}
+#ifndef NDEBUG
+			std::cout<<"prev="<<nodes[i].previous<<'\n';
+#endif
+		}
+		vector<size_t> breakpoints;
+		size_t index=c;
+		do
+		{
+			breakpoints.push_back(index);
+			index=nodes[index].previous;
+		} while(index);
+		breakpoints.push_back(0);
+		unsigned int num_digs=exlib::num_digits(filenames.size());
+		size_t num_imgs=0;
+		for(size_t i=breakpoints.size()-1;i>0;--i)
+		{
+			auto const start=breakpoints[i];
+			auto const end=breakpoints[i-1];
+#ifndef NDEBUG
+			std::cout<<start<<" <> "<<end<<'\n';
+#endif
+			auto const s=end-start;
+			vector<page> imgs(s);
+			assert(s>0);
+			imgs[0].assign(filenames[start].c_str());
+			imgs[0].top=pages[start].top_raw;
+			if(s==1)
+			{
+				imgs[0].bottom=pages[start].bottom_raw;
+			}
+			else
+			{
+				imgs[0].bottom=pages[start].bottom_kern;
+				for(size_t j=1;j<s-1;++j)
+				{
+					imgs[j].assign(filenames[start+j].c_str());
+					imgs[j].top=pages[start+j].top_kern;
+					imgs[j].bottom=pages[start+j].bottom_kern;
+				}
+				imgs[s-1].assign(filenames[start+s-1].c_str());
+				imgs[s-1].top=pages[start+s-1].top_kern;
+				imgs[s-1].bottom=pages[start+s-1].bottom_raw;
+			}
+			splice_images(imgs.data(),s,nodes[end].layout.padding).save(output,num_imgs+starting_index,num_digs);
+			++num_imgs;
+		}
+		return num_imgs;
 	}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
@@ -1753,10 +1924,22 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	}
 	void compress(CImg<unsigned char>& image,unsigned int const min_padding,unsigned int const optimal_height,float min_energy)
 	{
-		if(image._height<=optimal_height)
+		auto copy=image;
+		if(image._spectrum==1)
 		{
-			return;
+			clear_clusters(copy,255,[](unsigned char val)
+			{
+				return val<220;
+			},[threshold=2*copy._width/3](Cluster const& c){
+				return c.bounding_box().width()<threshold;
+			});
 		}
+		else
+		{
+			throw "Bad spectrum";
+		}
+		copy.display();
+		/*
 		uint num_seams=image._height-optimal_height;
 		for(uint i=0;i<num_seams;++i)
 		{
@@ -1771,6 +1954,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 			image.crop(0,0,image._width-1,image._height-2);
 		}
+		*/
 	}
 	float const VERTICAL_ENERGY_CONSTANT=100.0f;
 	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref)
@@ -1784,7 +1968,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			bool node_found;
 			auto assign_node_found=[&]()
 			{
-				return node_found=gray_diff(Grayscale::WHITE,ref(x,y))<.2f;
+				return node_found=ref(x,y)>220;
 			};
 			auto place_values=[&]()
 			{

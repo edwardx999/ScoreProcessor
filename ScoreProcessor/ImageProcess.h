@@ -196,9 +196,9 @@ namespace ScoreProcessor {
 		{
 			this->vb=vb;
 		}
-/*
-	Adds a process to the list.
-*/
+		/*
+			Adds a process to the list.
+		*/
 		template<typename U,typename... Args>
 		void add_process(Args&&... args);
 
@@ -239,7 +239,8 @@ namespace ScoreProcessor {
 		*/
 		void process(std::vector<cimg_library::CImg<T>>& files,
 			SaveRules const* psr,
-			unsigned int num_threads=std::thread::hardware_concurrency()) const;
+			unsigned int const num_threads=std::thread::hardware_concurrency(),
+			unsigned int const starting_index=1) const;
 
 		/*
 			Processes all the images in the vector.
@@ -248,7 +249,8 @@ namespace ScoreProcessor {
 		template<typename String>
 		void process(std::vector<String> const& filenames,
 			SaveRules const* psr,
-			unsigned int num_threads=std::thread::hardware_concurrency()) const;
+			unsigned int const num_threads=std::thread::hardware_concurrency(),
+			unsigned int const starting_index=1) const;
 
 		/*
 			Processes all the images in the vector.
@@ -256,7 +258,8 @@ namespace ScoreProcessor {
 		*/
 		void process(std::vector<char*> const& filenames,
 			SaveRules const* psr,
-			unsigned int num_threads=std::thread::hardware_concurrency()) const;
+			unsigned int const num_threads=std::thread::hardware_concurrency(),
+			unsigned int const starting_index=1) const;
 	};
 	typedef ProcessList<unsigned char> IPList;
 
@@ -499,12 +502,13 @@ namespace ScoreProcessor {
 	void ProcessList<T>::process(
 		std::vector<char*> const& imgs,
 		SaveRules const* psr,
-		unsigned int num_threads) const
+		unsigned int const num_threads,
+		unsigned int const starting_index) const
 	{
 		exlib::ThreadPool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
 		{
-			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i],this,psr,i+1);
+			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i],this,psr,i+starting_index);
 		}
 		tp.start();
 	}
@@ -514,12 +518,13 @@ namespace ScoreProcessor {
 	void ProcessList<T>::process(
 		std::vector<String> const& imgs,
 		SaveRules const* psr,
-		unsigned int num_threads) const
+		unsigned int const num_threads,
+		unsigned int const starting_index) const
 	{
 		exlib::ThreadPool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
 		{
-			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].c_str(),this,psr,i+1);
+			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].c_str(),this,psr,i+starting_index);
 		}
 		tp.start();
 	}
@@ -528,12 +533,13 @@ namespace ScoreProcessor {
 	void ProcessList<T>::process(
 		std::vector<cimg_library::CImg<T>>& imgs,
 		SaveRules const* psr,
-		unsigned int num_threads) const
+		unsigned int const num_threads,
+		unsigned int const starting_index) const
 	{
 		exlib::ThreadPool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
 		{
-			tp.add_task<typename ProcessList<T>::ProcessTaskImg>(imgs[i],this,psr,i+1);
+			tp.add_task<typename ProcessList<T>::ProcessTaskImg>(imgs[i],this,psr,i+starting_index);
 		}
 		tp.start();
 	}

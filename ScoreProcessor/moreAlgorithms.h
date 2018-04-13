@@ -26,7 +26,7 @@ namespace misc_alg {
 /*
 	Returns absolute difference of two numbers
 */
-	template<typename T1,typename T2> inline auto abs_dif(T1 const& x,T2 const& y) ->
+	template<typename T1,typename T2> constexpr auto abs_dif(T1 x,T2 y) ->
 		decltype(x-y)
 	{
 		return (x>y?x-y:y-x);
@@ -57,16 +57,16 @@ namespace misc_alg {
 	*/
 	int shortest_path_one_dir(::std::vector<T,::std::allocator<T>>& resultContainer,::std::vector<::std::vector<T,::std::allocator<T>>,::std::allocator<::std::vector<T,::std::allocator<T>>>>& nodes,val(*nodeDistance)(T&,T&))
 	{
-	#ifdef USESAFETYCHECKS
+#ifdef USESAFETYCHECKS
 		if(nodes.size()<1||nodes[0].size()<1)
 		{
 			return 1;
 		}
-	#endif // USESAFETYCHECKS
+#endif // USESAFETYCHECKS
 		struct DynamicNode {
 			val distance;
 			unsigned int prevNodeIndex;
-	};
+		};
 		::std::vector<::std::vector<DynamicNode>> dynamicPather;
 		dynamicPather.resize(nodes.size());
 		dynamicPather[0].resize(nodes[0].size());
@@ -76,12 +76,12 @@ namespace misc_alg {
 		}
 		for(unsigned int x=1;x<nodes.size();++x)
 		{
-		#ifdef USESAFETYCHECKS
+#ifdef USESAFETYCHECKS
 			if(nodes[x].size()<1)
 			{
 				return 1;
 			}
-		#endif // USESAFETYCHECKS
+#endif // USESAFETYCHECKS
 			dynamicPather[x].resize(nodes[x].size());
 			for(unsigned int n=0;n<nodes[x].size();++n)
 			{
@@ -119,7 +119,7 @@ namespace misc_alg {
 			nextIndex=dynamicPather[x][nextIndex].prevNodeIndex;
 		}
 		return 0;
-}
+	}
 	template<typename T,typename alloc> ::std::vector<unsigned int> min_n_ind(::std::vector<T,alloc> const& values,size_t const num_values)
 	{
 		vector<unsigned int> mins;
@@ -164,8 +164,9 @@ namespace cimg_library {
 	/*
 		MAP IS MODIFIED
 	*/
-	template<typename T> int min_energy_to_right(CImg<T>& map);
-	template<typename T> int min_energy_to_right(CImg<T>& map,ImageUtils::Rectangle<unsigned int> const& area);
+	template<typename T> void min_energy_to_right(CImg<T>& map);
+	template<typename T,typename Selector> 
+	void accumulate_to_right(CImg<T>& dst,CImg<T> const& src,ImageUtils::Rectangle<unsigned int> const area,Selector s);
 	template<typename T> void sandpile(CImg<T>& sandPiles,T maxSize);
 
 	template<typename T>
@@ -185,28 +186,44 @@ namespace cimg_library {
 		return trace_back_seam(energyMap,index);
 	}
 	template<typename T>
-	int min_energy_to_right(CImg<T>& energyGraph)
+	void min_energy_to_right(CImg<T>& energyGraph)
 	{
 		ImageUtils::Rectangle<unsigned int> area={0,energyGraph._width,0,energyGraph._height};
-		return min_energy_to_right(energyGraph,area);
-	}
-	template<typename T>
-	int min_energy_to_right(CImg<T>& energyGraph,ImageUtils::Rectangle<unsigned int> const& area)
-	{
-	#ifdef USESAFETYCHECKS
-		if(map._height<3)
-			return 1;
-	#endif // USESAFETYCHECKS
-		for(unsigned int x=1;x<area.right;++x)
+		accumulate_to_right(energyGraph,energyGraph,area,[](T a,T b)
 		{
-			energyGraph(x,area.top)+=::std::min({energyGraph(x-1,area.top),energyGraph(x-1,area.top+1)});
-			for(unsigned int y=area.bottom-2;y>area.top;--y)
+			return std::min(a,b);
+		});
+	}
+	template<typename T,typename Selector>
+	void accumulate_to_right(CImg<T>& dst,CImg<T> const& src,ImageUtils::Rectangle<unsigned int> const area,Selector s)
+	{
+		unsigned int const width=dst._width;
+		unsigned int const foffset=area.top*width;
+		T* const dst_first_row=dst._data+foffset;
+		T const* const src_first_row=src._data+foffset;
+		T const* const src_first_row1=src_first_row+width;
+		unsigned int const offset=(area.bottom-1)*width;
+		T* const dst_last_row=dst._data+offset;
+		T const* const src_last_row=src._data+offset;
+		T const* const src_last_row1=src_last_row-width;
+		for(unsigned int x=area.left+1;x<area.right;++x)
+		{
+			unsigned int const prev=x-1;
+			dst_first_row[x]=src_first_row[x]+s(src_first_row[prev],src_first_row1[prev]);
+			T* drow=dst_first_row+width+x;
+			T const* srow=src_first_row1+prev;
+			for(;;)
 			{
-				energyGraph(x,y)+=::std::min({energyGraph(x-1,y),energyGraph(x-1,y-1),energyGraph(x-1,y+1)});
+				*drow=srow[1]+s(s(*(srow-width),*srow),*(srow+width));
+				drow+=width;
+				if(drow>=dst_last_row)
+				{
+					break;
+				}
+				srow+=width;
 			}
-			energyGraph(x,area.bottom-1)+=::std::min({energyGraph(x-1,area.bottom-1),energyGraph(x-1,area.bottom-2)});
+			dst_last_row[x]=src_last_row[x]+s(src_last_row[prev],src_last_row1[prev]);
 		}
-		return 0;
 	}
 	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energyMap,unsigned int startIndex)
 	{

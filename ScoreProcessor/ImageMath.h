@@ -38,6 +38,19 @@ namespace cimg_library {
 	Returns an image that has the absolute brightness gradient at each point, in 2 layers
 	*/
 	cimg_library::CImg<signed char> get_absolute_gradient(::cimg_library::CImg<unsigned char> const&);
+
+	/*
+	Returns an image that has the vertical brightness gradient at each point
+	*/
+	::cimg_library::CImg<signed char> get_vertical_gradient_sobel(::cimg_library::CImg<unsigned char> const&);
+	/*
+	Returns an image that has the absolute horizontal brightness gradient at each point
+	*/
+	::cimg_library::CImg<signed char> get_horizontal_gradient_sobel(::cimg_library::CImg<unsigned char> const&);
+	/*
+	Returns an image that has the absolute brightness gradient at each point, in 2 layers
+	*/
+	cimg_library::CImg<signed char> get_absolute_gradient_sobel(::cimg_library::CImg<unsigned char> const&);
 	/*
 	Returns an image that has the absolute brightness gradient at each point
 	*/

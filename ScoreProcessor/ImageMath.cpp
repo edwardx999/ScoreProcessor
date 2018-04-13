@@ -30,27 +30,64 @@ using namespace std;
 using namespace misc_alg;
 namespace cimg_library {
 
+	void place_vertical_gradient(unsigned char const* const __restrict img,unsigned int const width,unsigned int const height,signed char * const place)
+	{
+		typedef unsigned char const* const uccpc;
+		typedef signed char* const scpc;
+		constexpr unsigned char const f=2;
+		{
+			uccpc row_next=img+width;
+			for(uint x=0;x<width;++x)
+			{
+				place[x]=row_next[x]/f-img[x]/f;
+			}
+		}
+		uint const limit=(height-2)*width;
+		unsigned int dif;
+		for(dif=0;dif<limit;)
+		{
+			uccpc row_prev=img+dif;
+			uccpc row_next=row_prev+2*width;
+			dif+=width;
+			scpc p=place+dif;
+			for(uint x=0;x<width;++x)
+			{
+				p[x]=row_next[x]/f-row_prev[x]/f;
+			}
+		}
+		{
+			uccpc row_prev=img+dif;
+			uccpc row_next=row_prev+width;
+			dif+=width;
+			scpc p=place+dif;
+			for(uint x=0;x<width;++x)
+			{
+				p[x]=row_next[x]/f-row_prev[x]/f;
+			}
+		}
+	}
+	void place_horizontal_gradient(unsigned char const* const __restrict img,unsigned int const width,unsigned int const height,signed char * const place)
+	{
+		uint const limit=width-1;
+		for(uint y=0;y<height;++y)
+		{
+			unsigned int const off=y*width;
+			unsigned char const* const row=img+off;
+			signed char* const prow=place+off;
+			prow[0]=row[1]/2-img[0]/2;
+			for(uint x=1;x<limit;++x)
+			{
+				prow[x]=row[x+1]/2-row[x-1]/2;
+			}
+			prow[limit]=row[limit]/2-row[limit-1]/2;
+		}
+	}
+
 	CImg<signed char> get_vertical_gradient(::cimg_library::CImg<unsigned char> const& img)
 	{
 		assert(img._height>2);
 		CImg<signed char> grad_img(img._width,img._height);
-		for(uint x=0;x<img._width;++x)
-		{
-			grad_img(x,0)=scast<schar>((img(x,1)/2-img(x,0)/2));
-		}
-		uint y;
-		uint limit=img._height-1;
-		for(y=1;y<limit;++y)
-		{
-			for(uint x=0;x<img._width;++x)
-			{
-				grad_img(x,y)=scast<schar>(img(x,y+1)/2-img(x,y-1)/2);
-			}
-		}
-		for(uint x=0;x<img._width;++x)
-		{
-			grad_img(x,y)=scast<schar>(img(x,y)/2-img(x,y-1)/2);
-		}
+		place_vertical_gradient(img._data,img._width,img._height,grad_img._data);
 		return grad_img;
 	}
 
@@ -58,65 +95,52 @@ namespace cimg_library {
 	{
 		assert(img._width>1);
 		CImg<signed char> grad_img(img._width,img._height);
-		for(uint y=0;y<img._height;++y)
-		{
-			grad_img(0,y)=scast<schar>((img(1,y)/2-img(0,y)/2));
-		}
-		uint x;uint limit=img._width-1;
-		for(uint x=1;x<limit;++x)
-		{
-			for(uint y=0;y<img._height;++y)
-			{
-				grad_img(x,y)=scast<schar>(img(x+1,y)/2-img(x-1,y)/2);
-			}
-		}
-		for(uint y=0;y<img._height;++y)
-		{
-			grad_img(x,y)=scast<schar>(img(x,y)/2-img(x-1,y)/2);
-		}
+		place_horizontal_gradient(img._data,img._width,img._height,grad_img._data);
 		return grad_img;
 	}
 
 	CImg<signed char> get_absolute_gradient(::cimg_library::CImg<unsigned char> const& img)
 	{
-		CImg<signed char> grad_img(img._width,img._height,2);
-		//vertical
-		for(uint x=0;x<img._width;++x)
-		{
-			grad_img(x,0,1)=scast<schar>((img(x,1)/2-img(x,0)/2));
-		}
-		uint y;uint limit=img._height-1;
-		for(uint y=1;y<limit;++y)
-		{
-			for(uint x=0;x<img._width;++x)
-			{
-				grad_img(x,y,1)=scast<schar>(img(x,y+1)/2-img(x,y-1)/2);
-			}
-		}
-		for(uint x=0;x<img._width;++x)
-		{
-			grad_img(x,y,1)=scast<schar>(img(x,y)/2-img(x,y-1)/2);
-		}
-
-		//horizontal
-		for(uint y=0;y<img._height;++y)
-		{
-			grad_img(0,y)=scast<schar>((img(1,y)/2-img(0,y)/2));
-		}
-		uint x;limit=img._width-1;
-		for(uint x=1;x<limit;++x)
-		{
-			for(uint y=0;y<img._height;++y)
-			{
-				grad_img(x,y)=scast<schar>(img(x+1,y)/2-img(x-1,y)/2);
-			}
-		}
-		for(uint y=0;y<img._height;++y)
-		{
-			grad_img(x,y)=scast<schar>(img(x,y)/2-img(x-1,y)/2);
-		}
+		CImg<signed char> grad_img(img._width,img._height,1,2);
+		place_vertical_gradient(img._data,img._width,img._height,grad_img._data);
+		place_horizontal_gradient(img._data,img._width,img._height,grad_img._data+img._height*img._width);
 		return grad_img;
 	}
+
+	CImg<float> make_sobel_kernel()
+	{
+		CImg<float> ret(3,3,1,2);
+		auto& r=ret._data;
+		constexpr float const sw=0.09375f;
+		constexpr float const bw=0.3125f;
+		static_assert(2*sw+bw==0.5f,"Incorrect weight scale");
+		r[0]=-sw;r[1]=-bw;r[2]=-sw;
+		r[3]=0;r[4]=0;r[5]=0;
+		r[6]=sw;r[7]=bw;r[8]=sw;
+		r[9]=-sw;r[10]=0;r[11]=sw;
+		r[12]=-bw;r[13]=0;r[14]=bw;
+		r[15]=-sw;r[16]=0;r[17]=sw;
+		return ret;
+	}
+	CImg<float> const sobel_kernel=make_sobel_kernel();
+
+	CImg<signed char> get_vertical_gradient_sobel(::cimg_library::CImg<unsigned char> const& img)
+	{
+		static auto const k=sobel_kernel.get_shared_channel(0);
+		return img.get_convolve(k,false,false);
+	}
+
+	CImg<signed char> get_horizontal_gradient_sobel(::cimg_library::CImg<unsigned char> const& img)
+	{
+		static auto const k=sobel_kernel.get_shared_channel(1);
+		return img.get_convolve(k,false,false);
+	}
+
+	CImg<signed char> get_absolute_gradient_sobel(::cimg_library::CImg<unsigned char> const& img)
+	{
+		return img.get_convolve(sobel_kernel,false,false);
+	}
+
 	CImg<unsigned char> get_brightness_spectrum(cimg_library::CImg<unsigned char> const& refImage)
 	{
 		CImg<unsigned char> image(refImage._width,refImage._height);
@@ -129,22 +153,6 @@ namespace cimg_library {
 		}
 		return image;
 	}
-	/*CImg<unsigned char> vertGradKernelInit() {
-	CImg<unsigned char> vgk(3,3);
-	vgk(0,0)=+1;	vgk(1,0)=+2;	vgk(2,0)=+1;
-	vgk(0,1)=0;		vgk(1,1)=0;		vgk(2,1)=0;
-	vgk(0,0)=-1;	vgk(1,0)=-2;	vgk(2,0)=-1;
-	return vgk;
-	}
-	CImg<unsigned char> const vertGradKernel=vertGradKernelInit();
-	CImg<unsigned char> horizGradKernelInit() {
-	CImg<unsigned char> vgk(3,3);
-	vgk(0,0)=+1;	vgk(1,0)=0;		vgk(2,0)=-1;
-	vgk(0,1)=+2;	vgk(1,1)=0;		vgk(2,1)=-2;
-	vgk(0,0)=+1;	vgk(1,0)=0;		vgk(2,0)=-1;
-	return vgk;
-	}
-	CImg<unsigned char> const horizGradKernel=horizGradKernelInit();*/
 	cimg_library::CImg<unsigned char> get_gradient(::cimg_library::CImg<unsigned char> const& refImage)
 	{
 		return get_absolute_gradient(refImage);
