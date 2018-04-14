@@ -147,7 +147,7 @@ namespace ScoreProcessor {
 		@param image
 		@return 0 if successful shift, 1 if no shift, 2 if invalid image
 	*/
-	int auto_center_vert(::cimg_library::CImg<unsigned char>& image);
+	void auto_center_vert(::cimg_library::CImg<unsigned char>& image);
 	/*
 		Finds the top of the the image
 		@param image, must 3 channel RGB
@@ -423,8 +423,9 @@ namespace ScoreProcessor {
 		unsigned int optimal_height,
 		unsigned int optimal_padding,
 		unsigned int min_padding,
-		float excess_weight,
 		char const* output,
+		float excess_weight=10,
+		float padding_weight=1,
 		unsigned int starting_index=1);
 	void compress(::cimg_library::CImg<unsigned char>& image,unsigned int const minPadding,unsigned int const optimalHeight,float min_energy=0);
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);

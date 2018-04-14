@@ -327,6 +327,7 @@ public:
 			unsigned int min_padding;
 			unsigned int optimal_height;
 			float excess_weight;
+			float padding_weight;
 		} splice_args;
 		std::regex rgx;
 		enum regex_state {
@@ -773,7 +774,7 @@ protected:
 			{
 				del.sr.assign(*begin);
 			}
-			catch(std::exception const& ex)
+			catch(std::exception const&)
 			{
 				return "Invalid template";
 			}
@@ -992,12 +993,20 @@ CutMaker const CutMaker::singleton;
 class SpliceMaker:public CommandMaker {
 	SpliceMaker():
 		CommandMaker(
-			3,5,
+			3,6,
 			"Splices the pages together assuming right alignment.\n"
 			"Knuth algorithm that tries to minimize deviation from optimal height and optimal padding.\n"
 			"Horizontal padding is the padding placed between elements of the page horizontally.\n"
 			"Min padding is the minimal vertical padding between pages.\n"
-			"Excess weight is the penalty weight applied to height deviation above optimal",
+			"Excess weight is the penalty weight applied to height deviation above optimal\n"
+			"Pad weight is weight of pad deviation relative to height deviation\n"
+			"Cost function is\n"
+			"  if(height>opt_height)\n" 
+			"    (excess_weight*(height-opt_height)/opt_height)^2+\n"
+			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^2\n"
+			"  else\n"
+			"    ((opt_height-height)/opt_height)^2+\n"
+			"    pad_weight*(abs_dif(padding,opt_padding)/opt_padding)^2",
 			"Splice")
 	{}
 	static SpliceMaker const singleton;
@@ -1016,6 +1025,7 @@ protected:
 		del.flag=del.do_splice;
 		int hpadding,opadding,mpadding,oheight=-1;
 		float excess_weight=10;
+		float padding_weight=1;
 		try
 		{
 			hpadding=std::stoi(begin[0]);
@@ -1080,6 +1090,21 @@ protected:
 				{
 					return "Penalty for excess height must be positive";
 				}
+				if(n>5)
+				{
+					try
+					{
+						padding_weight=std::stof(begin[5]);
+					}
+					catch(std::exception const&)
+					{
+						return "Invalid input for padding weight";
+					}
+					if(padding_weight<0)
+					{
+						return "Padding weight must be positive";
+					}
+				}
 			}
 		}
 		del.flag=delivery::do_splice;
@@ -1088,6 +1113,7 @@ protected:
 		del.splice_args.optimal_padding=opadding;
 		del.splice_args.optimal_height=oheight;
 		del.splice_args.excess_weight=excess_weight;
+		del.splice_args.padding_weight=padding_weight;
 		return nullptr;
 	}
 };
@@ -1132,7 +1158,7 @@ class StraightenMaker:public SingleCommandMaker {
 			"Straightens the image\n"
 			"Min angle is minimum angle of range to consider rotation (in degrees)\n"
 			"Max angle is maximum angle of range to consider rotation (in degrees)\n"
-			"Angle precision is the precision in measuring angle (in degrees)\n"
+			"Angle precision is precision in measuring angle (in degrees)\n"
 			"Pixel precision is precision when measuring distance from origin",
 			"Straighten")
 	{}
@@ -1561,8 +1587,9 @@ void test()
 		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gcut\\",
 		std::regex(".*"),
 		CommandMaker::delivery::regex_state::normal);
-	splice_pages_nongreedy(files,100,-1,300,150,10,
+	splice_pages_nongreedy(files,100,-1,300,150,
 		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gtogether\\p.png",
+		10,1,
 		1);
 	stop();
 }
@@ -1593,7 +1620,7 @@ int main(int argc,char** argv)
 			"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
 			"    Horizontal Padding:       -hp amount\n"
 			"    Vertical Padding:         -vp amount\n"
-			"    Auto Padding:             -ap vert_padding min_horiz_padding max_horiz_padding horiz_offset=0 optimal_ratio=1.777778\n"
+			"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
 			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1\n"
@@ -1602,7 +1629,7 @@ int main(int argc,char** argv)
 			"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
-			"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excess_weight=10\n"
+			"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
 			"  Options:\n"
 			"    Output:                   -o format\n"
 			"    Verbosity:                -vb level\n"
@@ -1827,8 +1854,9 @@ int main(int argc,char** argv)
 						del.splice_args.optimal_height,
 						del.splice_args.optimal_padding,
 						del.splice_args.min_padding,
-						del.splice_args.excess_weight,
 						save.c_str(),
+						del.splice_args.excess_weight,
+						del.splice_args.padding_weight,
 						del.starting_index);
 				}
 				catch(std::exception const& ex)

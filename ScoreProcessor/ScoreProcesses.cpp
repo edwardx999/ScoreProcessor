@@ -276,7 +276,7 @@ namespace ScoreProcessor {
 		return 0;
 	}
 
-	int auto_center_vert(CImg<unsigned char>& image)
+	void auto_center_vert(CImg<unsigned char>& image)
 	{
 		bool isRgb;
 		switch(image._spectrum)
@@ -288,7 +288,7 @@ namespace ScoreProcessor {
 				isRgb=false;
 				break;
 			default:
-				return 2;
+				throw std::invalid_argument("Invalid spectrum");
 		}
 		int top,bottom;
 		unsigned int tolerance=image._height>>4;
@@ -312,7 +312,7 @@ namespace ScoreProcessor {
 		//std::cout<<shift<<'\n';
 		if(0==shift)
 		{
-			return 1;
+			return;
 		}
 		RectangleUINT toShift,toFill;
 		toShift={0,image._width,0,image._height};
@@ -335,7 +335,6 @@ namespace ScoreProcessor {
 		{
 			fill_selection(image,toFill,Grayscale::WHITE);
 		}
-		return 0;
 	}
 	unsigned int find_top(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance)
 	{
@@ -1689,8 +1688,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		unsigned int optimal_height,
 		unsigned int optimal_padding,
 		unsigned int min_padding,
-		float excess_weight,
 		char const* output,
+		float excess_weight,
+		float padding_weight,
 		unsigned int starting_index)
 	{
 #ifndef NDEBUG
@@ -1801,7 +1801,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			height_cost*=height_cost;
 			float padding_cost=abs_dif(float(p.padding),optimal_padding)/optimal_padding;
 			padding_cost*=padding_cost;
-			return height_cost+padding_cost;
+			return height_cost+padding_weight*padding_cost;
 		};
 		struct node {
 			float cost;
@@ -1833,6 +1833,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
 				}
+#ifndef NDEBUG
+				std::cout<<"i: "<<i<<" j: "<<j<<" cost: "<<total_cost<<'\n';
+#endif
 				if(j==0)
 				{
 					break;
