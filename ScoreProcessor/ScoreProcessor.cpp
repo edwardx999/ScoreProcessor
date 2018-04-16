@@ -744,7 +744,7 @@ class OutputMaker:public CommandMaker {
 		CommandMaker(
 			1,1,
 			"Pattern templates:\n"
-			"  %c copy whole filename\n"
+			"  %c copy whole filename (includes path)\n"
 			"  %p copy path (does not include trailing slash)\n"
 			"  %x copy extension (does not include dot)\n"
 			"  %f copy filename (does not include path, dot, or extension)\n"
@@ -752,7 +752,7 @@ class OutputMaker:public CommandMaker {
 			"  %0 any number from 0-9, index of file with specified number of padding\n"
 			"  %% literal percent\n"
 			"Anything else will be interpreted as a literal character\n"
-			"Pattern is %c if no output is specified",
+			"Pattern is %w if no output is specified",
 			"Output Pattern")
 	{}
 	static OutputMaker const singleton;
@@ -1706,7 +1706,7 @@ int main(int argc,char** argv)
 			std::cout<<"No commands given\n";
 			return 0;
 		}
-		output.assign("%c");
+		output.assign("%w");
 	}
 	if(!del.pl.get_log())
 	{
