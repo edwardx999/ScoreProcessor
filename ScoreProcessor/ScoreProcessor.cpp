@@ -312,7 +312,7 @@ public:
 	typedef std::vector<std::string>::iterator iter;
 	struct delivery {
 		SaveRules sr;
-		unsigned int starting_index=1;
+		unsigned int starting_index;
 		ProcessList<unsigned char> pl;
 		enum do_state {
 			do_nothing,
@@ -335,6 +335,8 @@ public:
 		};
 		regex_state rgxst;
 		unsigned int num_threads;
+		delivery():starting_index(1),flag(do_nothing),num_threads(0),rgxst(unassigned)
+		{}
 	};
 private:
 	unsigned int min_args;
@@ -1001,7 +1003,7 @@ class SpliceMaker:public CommandMaker {
 			"Excess weight is the penalty weight applied to height deviation above optimal\n"
 			"Pad weight is weight of pad deviation relative to height deviation\n"
 			"Cost function is\n"
-			"  if(height>opt_height)\n" 
+			"  if(height>opt_height)\n"
 			"    (excess_weight*(height-opt_height)/opt_height)^2+\n"
 			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^2\n"
 			"  else\n"
@@ -1067,7 +1069,7 @@ protected:
 			try
 			{
 				oheight=std::stoi(begin[3]);
-				if(oheight<0)
+				if(oheight<-1)
 				{
 					return "Optimal height must be non-negative";
 				}
@@ -1666,9 +1668,6 @@ int main(int argc,char** argv)
 		return 0;
 	}
 	CommandMaker::delivery del;
-	del.flag=del.do_nothing;
-	del.rgxst=del.unassigned;
-	del.num_threads=0;
 	auto& output=del.sr;
 	auto& processes=del.pl;
 
@@ -1741,6 +1740,7 @@ int main(int argc,char** argv)
 	switch(del.flag)
 	{
 		case del.do_nothing:
+			[[fallthrough]];
 		case del.do_single:
 		{
 			if(is_folder)

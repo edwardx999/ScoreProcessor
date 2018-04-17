@@ -1711,13 +1711,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		{
 			auto conv=[](CImg<unsigned char>& img)
 			{
-				if(img._spectrum==3||img._spectrum==4)
+				if(img._spectrum>2)
 				{
 					img=get_grayscale_simple(img);
-				}
-				else if(img._spectrum!=1)
-				{
-					throw std::invalid_argument("Image had wrong number of layers");
 				}
 			};
 			CImg<unsigned char> top(filenames[0].c_str());
@@ -1819,7 +1815,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 #ifndef NDEBUG
 			std::cout<<"i="<<i<<'\n';
 #endif
-			for(size_t j=i-1;;) //make this a binary search?
+			for(size_t j=i-1;;) //make this a binary search? no, mininum is almost always a few pages down
 			{
 #ifndef NDEBUG
 				//std::cout<<"j="<<j<<'\n';
@@ -1827,15 +1823,19 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				auto layout=create_layout(pages.data()+j,i-j);
 				auto local_cost=cost(layout);
 				auto total_cost=local_cost+nodes[j].cost;
+#ifndef NDEBUG
+				std::cout<<"i: "<<i<<" j: "<<j<<" cost: "<<total_cost<<'\n';
+#endif
 				if(total_cost<nodes[i].cost)
 				{
 					nodes[i].cost=total_cost;
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
 				}
-#ifndef NDEBUG
-				std::cout<<"i: "<<i<<" j: "<<j<<" cost: "<<total_cost<<'\n';
-#endif
+				else
+				{
+					break;
+				}
 				if(j==0)
 				{
 					break;
