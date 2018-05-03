@@ -1,4 +1,5 @@
 An application useful in editing musical scores.
+Using -o in combination with -flt to mass rename files is a very useful side feature of this program.
 
 Syntax:  
 filename_or_folder command params... ...  
@@ -32,8 +33,6 @@ Available commands:
     
 Multiple Single Page Operations can be done at once. They are performed in the order they are given.  
 A Multi Page Operation can not be done with other operations.
-
-Using -o in combination with -flt to mass rename files is a very useful side feature of this program.
 
 Copyright (C) 2017-2018 Edward Xie
 
