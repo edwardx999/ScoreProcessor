@@ -313,6 +313,7 @@ public:
 	struct delivery {
 		SaveRules sr;
 		unsigned int starting_index;
+		bool do_move;
 		ProcessList<unsigned char> pl;
 		enum do_state {
 			do_nothing,
@@ -335,7 +336,7 @@ public:
 		};
 		regex_state rgxst;
 		unsigned int num_threads;
-		delivery():starting_index(1),flag(do_nothing),num_threads(0),rgxst(unassigned)
+		delivery():starting_index(1),flag(do_nothing),num_threads(0),rgxst(unassigned),do_move(false)
 		{}
 	};
 private:
@@ -744,7 +745,7 @@ VerticalPaddingMaker const VerticalPaddingMaker::singleton;
 class OutputMaker:public CommandMaker {
 	OutputMaker():
 		CommandMaker(
-			1,1,
+			1,2,
 			"Pattern templates:\n"
 			"  %c copy whole filename (includes path)\n"
 			"  %p copy path (does not include trailing slash)\n"
@@ -754,7 +755,8 @@ class OutputMaker:public CommandMaker {
 			"  %0 any number from 0-9, index of file with specified number of padding\n"
 			"  %% literal percent\n"
 			"Anything else will be interpreted as a literal character\n"
-			"Pattern is %w if no output is specified",
+			"Pattern is %w if no output is specified\n"
+			"Move is whether file should be moved or copied (ignored for multi)",
 			"Output Pattern")
 	{}
 	static OutputMaker const singleton;
@@ -779,6 +781,21 @@ protected:
 			catch(std::exception const&)
 			{
 				return "Invalid template";
+			}
+			if(n>1)
+			{
+				if(begin[1][0]=='0'||begin[1][0]=='f')
+				{
+					del.do_move=false;
+				}
+				else
+				{
+					del.do_move=true;
+				}
+			}
+			else
+			{
+				del.do_move=false;
 			}
 		}
 		else
@@ -1633,7 +1650,7 @@ int main(int argc,char** argv)
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
 			"  Options:\n"
-			"    Output:                   -o format\n"
+			"    Output:                   -o format move=false\n"
 			"    Verbosity:                -vb level\n"
 			"    Filter Files:             -flt regex remove=false\n"
 			"    Number of Threads:        -nt num\n"
@@ -1751,11 +1768,11 @@ int main(int argc,char** argv)
 					std::cout<<"No files found\n";
 					return 0;
 				}
-				processes.process(files,&output,num_threads(files.size()),del.starting_index);
+				processes.process(files,&output,num_threads(files.size()),del.starting_index,del.do_move);
 			}
 			else
 			{
-				processes.process(arg1.c_str(),&output,del.starting_index);
+				processes.process(arg1.c_str(),&output,del.starting_index,del.do_move);
 			}
 			break;
 		}

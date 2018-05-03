@@ -58,32 +58,29 @@ namespace ScoreProcessor {
 	*/
 	class SaveRules {
 	private:
-		enum template_symbol:unsigned int {
+		enum template_symbol {
 			i,x=10,f,p,c,w
 		};
-		union part {
-			struct {
-				char* data;
+		struct part {
+			char* data;
+			union {
 				size_t size;
-			} fixed;
-			struct {
-				size_t is_fixed;//relies on weak_string having format [data_pointer,size]
-				size_t tmplt;
+				int tmplt;
 			};
-			part(part&& o):is_fixed(o.is_fixed),tmplt(o.tmplt)
+			part(part&& o):data(o.data),size(o.size)
 			{
-				o.is_fixed=0;
+				o.data=0;
 			}
-			part(unsigned int tmplt):is_fixed(0),tmplt(tmplt)
+			part(int tmplt):data(0),tmplt(tmplt)
 			{}
 			part(exlib::string& str):
-				fixed({str.data(),str.size()})
+				data(str.data()),size(str.size())
 			{
 				str.release();
 			}
 			~part()
 			{
-				delete[] fixed.data;
+				delete[] data;
 			}
 		};
 		std::vector<part> parts;
@@ -158,13 +155,14 @@ namespace ScoreProcessor {
 			ProcessList<T> const* pparent;
 			SaveRules const* output;
 			unsigned int index;
+			bool move;
 		public:
-			ProcessTaskFName(char const* fname,ProcessList<T> const* pparent,SaveRules const* output,unsigned int index):
-				fname(fname),pparent(pparent),output(output),index(index)
+			ProcessTaskFName(char const* fname,ProcessList<T> const* pparent,SaveRules const* output,unsigned int index,bool move):
+				fname(fname),pparent(pparent),output(output),index(index),move(move)
 			{}
 			void execute() override
 			{
-				pparent->process(fname,output,index);
+				pparent->process(fname,output,index,move);
 			}
 		};
 		Log* plog;
@@ -203,7 +201,7 @@ namespace ScoreProcessor {
 		void add_process(Args&&... args);
 
 		void process_unsafe(cimg_library::CImg<T>& img,char const* output) const;
-		void process_unsafe(char const* input,char const* output) const;
+		void process_unsafe(char const* input,char const* output,bool move=false) const;
 		/*
 			Processes an image.
 		*/
@@ -225,12 +223,12 @@ namespace ScoreProcessor {
 		/*
 			Processes an image at the given filename, and saves it to the output.
 		*/
-		void process(char const* filename,char const* output) const;
+		void process(char const* filename,char const* output,bool move=false) const;
 		/*
 			Processes an image at the given filename, and saves it based on the SaveRules.
 			Pass nullptr to SaveRules if you do not want it saved (useless, but ok).
 		*/
-		void process(char const* filename,SaveRules const* psr,unsigned int index=1) const;
+		void process(char const* filename,SaveRules const* psr,unsigned int index=1,bool move=false) const;
 
 		/*
 			Processes all the images in the vector.
@@ -250,7 +248,8 @@ namespace ScoreProcessor {
 		void process(std::vector<String> const& filenames,
 			SaveRules const* psr,
 			unsigned int const num_threads=std::thread::hardware_concurrency(),
-			unsigned int const starting_index=1) const;
+			unsigned int const starting_index=1,
+			bool move=false) const;
 
 		/*
 			Processes all the images in the vector.
@@ -259,7 +258,8 @@ namespace ScoreProcessor {
 		void process(std::vector<char*> const& filenames,
 			SaveRules const* psr,
 			unsigned int const num_threads=std::thread::hardware_concurrency(),
-			unsigned int const starting_index=1) const;
+			unsigned int const starting_index=1,
+			bool move=false) const;
 	};
 	typedef ProcessList<unsigned char> IPList;
 
@@ -335,7 +335,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process_unsafe(char const* fname,char const* output) const
+	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move=false) const
 	{
 		using namespace std::experimental::filesystem;
 		path in(fname),out(output);
@@ -347,7 +347,7 @@ namespace ScoreProcessor {
 		auto in_ext=exlib::find_extension(instr.cbegin(),instr.cend());
 		auto const& outstr=out.native();
 		auto out_ext=exlib::find_extension(outstr.cbegin(),outstr.cend());
-		auto proc=[this,fname,output,in_ext,in_end=instr.cend(),out_ext,out_end=outstr.cend(),&out]()
+		auto proc=[this,fname,output,do_move,in_ext,in_end=instr.cend(),out_ext,out_end=outstr.cend(),&out,&in]()
 		{
 			auto s=supported(&*out_ext);
 			auto sin=supported(&*in_ext);
@@ -393,8 +393,12 @@ namespace ScoreProcessor {
 					img.save_bmp(output);
 					break;
 			}
+			if(do_move)
+			{
+				remove(in);
+			}
 		};
-		if(empty())
+		if(this->empty())
 		{
 			if(std::experimental::filesystem::equivalent(in,out))
 			{
@@ -402,17 +406,24 @@ namespace ScoreProcessor {
 			}
 			if(!exlib::strncmp_nocase(in_ext,out_ext))
 			{
-				std::ifstream src(fname,std::ios::binary);
-				if(!src)
+				if(do_move)
 				{
-					throw std::invalid_argument((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
+					rename(in,out);
 				}
-				std::ofstream dst(output,std::ios::binary);
-				if(!dst)
+				else
 				{
-					throw std::invalid_argument((std::string("Failed to save to ").append(output,out.native().size()).c_str()));
+					std::ifstream src(fname,std::ios::binary);
+					if(!src)
+					{
+						throw std::invalid_argument((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
+					}
+					std::ofstream dst(output,std::ios::binary);
+					if(!dst)
+					{
+						throw std::invalid_argument((std::string("Failed to save to ").append(output,out.native().size()).c_str()));
+					}
+					dst<<src.rdbuf();
 				}
-				dst<<src.rdbuf();
 			}
 			else
 			{
@@ -426,7 +437,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(char const* fname,char const* output) const
+	void ProcessList<T>::process(char const* fname,char const* output,bool move=false) const
 	{
 		try
 		{
@@ -449,7 +460,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index) const
+	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index,bool move) const
 	{
 		size_t len=strlen(filename);
 		bool out_loud=plog&&vb>=decltype(vb)::loud;
@@ -464,29 +475,32 @@ namespace ScoreProcessor {
 		{
 			process(filename);
 		}
-		auto output=psr->make_filename(exlib::weak_string(const_cast<char*>(filename),len),index);
-		try
+		else
 		{
-			process_unsafe(filename,output.c_str());
-		}
-		catch(std::exception const& ex)
-		{
-			if(plog)
+			auto output=psr->make_filename(exlib::weak_string(const_cast<char*>(filename),len),index);
+			try
 			{
-				if(vb)
-				{
-					std::string log("Error processing ");
-					log.append(filename,len);
-					log.append(": ",2);
-					log.append(ex.what());
-					log.push_back('\n');
-					plog->log_error(log.c_str(),index);
-				}
-				return;
+				process_unsafe(filename,output.c_str(),move);
 			}
-			else
+			catch(std::exception const& ex)
 			{
-				throw ex;
+				if(plog)
+				{
+					if(vb)
+					{
+						std::string log("Error processing ");
+						log.append(filename,len);
+						log.append(": ",2);
+						log.append(ex.what());
+						log.push_back('\n');
+						plog->log_error(log.c_str(),index);
+					}
+					return;
+				}
+				else
+				{
+					throw ex;
+				}
 			}
 		}
 		if(out_loud)
@@ -503,7 +517,8 @@ namespace ScoreProcessor {
 		std::vector<char*> const& imgs,
 		SaveRules const* psr,
 		unsigned int const num_threads,
-		unsigned int const starting_index) const
+		unsigned int const starting_index,
+		bool move) const
 	{
 		exlib::ThreadPool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
@@ -519,12 +534,13 @@ namespace ScoreProcessor {
 		std::vector<String> const& imgs,
 		SaveRules const* psr,
 		unsigned int const num_threads,
-		unsigned int const starting_index) const
+		unsigned int const starting_index,
+		bool move) const
 	{
 		exlib::ThreadPool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
 		{
-			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].c_str(),this,psr,i+starting_index);
+			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].c_str(),this,psr,i+starting_index,move);
 		}
 		tp.start();
 	}
@@ -687,9 +703,9 @@ namespace ScoreProcessor {
 		};
 		for(auto const& p:parts)
 		{
-			if(p.is_fixed)
+			if(p.data)
 			{
-				out.append(p.fixed.data,p.fixed.size);
+				out.append(p.data,p.size);
 			}
 			else
 			{

@@ -590,6 +590,45 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
+	vector<unsigned int> fattened_profile_high(vector<unsigned int> const& profile,unsigned int horiz_padding)
+	{
+#define fatten_base(func)\
+		vector<unsigned int> res(profile.size());\
+		auto rt=res.begin();\
+		auto pt=profile.begin();\
+		for(;rt!=res.end();++rt,++pt)\
+		{\
+			auto beg=pt-horiz_padding;\
+			if(beg<profile.begin())\
+			{\
+				beg=profile.begin();\
+			}\
+			auto ed=pt+horiz_padding+1;\
+			if(ed>profile.end())\
+			{\
+				ed=profile.end();\
+			}\
+			*rt=* ##func## (beg,ed);\
+		}\
+		return res;
+		fatten_base(std::min_element);
+	}
+
+	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
+
+	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage,unsigned int const min_padding)
+	{
+		throw std::runtime_error("Not implemented");
+	}
+	CImg<unsigned char> hpixelator(CImg<unsigned char> const& img)
+	{
+		throw std::runtime_error("Not implemented");
+	}
+	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
+	{
+		fatten_base(std::max_element);
+#undef fatten_base
+	}
 	//basically a flood fill that can't go left, assumes top row is completely clear
 	vector<unique_ptr<RectangleUINT>> select_outside(CImg<unsigned char> const& image)
 	{
@@ -1653,34 +1692,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		return ret;
 	}
-	vector<unsigned int> fattened_profile_high(vector<unsigned int> const& profile,unsigned int horiz_padding)
-	{
-#define fatten_base(func)\
-		vector<unsigned int> res(profile.size());\
-		auto rt=res.begin();\
-		auto pt=profile.begin();\
-		for(;rt!=res.end();++rt,++pt)\
-		{\
-			auto beg=pt-horiz_padding;\
-			if(beg<profile.begin())\
-			{\
-				beg=profile.begin();\
-			}\
-			auto ed=pt+horiz_padding+1;\
-			if(ed>profile.end())\
-			{\
-				ed=profile.end();\
-			}\
-			*rt=* ##func## (beg,ed);\
-		}\
-		return res;
-		fatten_base(std::min_element);
-	}
-	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
-	{
-		fatten_base(std::max_element);
-#undef fatten_base
-	}
+
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num);
 	unsigned int splice_pages_nongreedy(
 		::std::vector<::std::string> const& filenames,
@@ -1748,9 +1760,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-			}
-			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
 		}
+			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
+}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1847,6 +1859,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 #endif
 		}
 		vector<size_t> breakpoints;
+		breakpoints.reserve(c);
 		size_t index=c;
 		do
 		{
@@ -1854,7 +1867,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			index=nodes[index].previous;
 		} while(index);
 		breakpoints.push_back(0);
-		unsigned int num_digs=exlib::num_digits(filenames.size());
+		unsigned int const num_digs=exlib::num_digits(filenames.size());
 		size_t num_imgs=0;
 		for(size_t i=breakpoints.size()-1;i>0;--i)
 		{
@@ -1889,7 +1902,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-	}
+		}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())
@@ -1925,9 +1938,17 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		new_image.save(output.c_str(),++num,3);
 	}
-	void compress(CImg<unsigned char>& image,unsigned int const min_padding,unsigned int const optimal_height,float min_energy)
+	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map);
+	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const&,unsigned int horiz_padding);
+	std::vector<unsigned int> fattened_profile_low(std::vector<unsigned int> const&,unsigned int horiz_padding);
+	void compress(
+		CImg<unsigned char>& image,
+		unsigned int const min_padding,
+		unsigned int const optimal_height,
+		unsigned char background_threshold)
 	{
-		auto copy=image;
+		auto copy=hpixelator(image);
+		CImg<float> energy_map=create_compress_energy(copy,min_padding);
 		if(image._spectrum==1)
 		{
 			clear_clusters(copy,255,[](unsigned char val)

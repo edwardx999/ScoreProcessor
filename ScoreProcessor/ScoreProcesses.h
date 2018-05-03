@@ -427,17 +427,16 @@ namespace ScoreProcessor {
 		float excess_weight=10,
 		float padding_weight=1,
 		unsigned int starting_index=1);
-	void compress(::cimg_library::CImg<unsigned char>& image,unsigned int const minPadding,unsigned int const optimalHeight,float min_energy=0);
-	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
-	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage);
-	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map);
+	void compress(
+		::cimg_library::CImg<unsigned char>& image,
+		unsigned int const min_padding,
+		unsigned int const optimal_height,
+		unsigned char background_threshold=254);
 
 	/*
 
 	*/
 	void rescale_colors(::cimg_library::CImg<unsigned char>&,unsigned char min,unsigned char mid,unsigned char max=255);
-	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const&,unsigned int horiz_padding);
-	std::vector<unsigned int> fattened_profile_low(std::vector<unsigned int> const&,unsigned int horiz_padding);
 }
 template<typename T>
 void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> selection,int const shiftx,int const shifty)
