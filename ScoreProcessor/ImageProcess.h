@@ -65,17 +65,20 @@ namespace ScoreProcessor {
 			char* data;
 			union {
 				size_t size;
-				int tmplt;
-			};
-			part(part&& o):data(o.data),size(o.size)
+				unsigned int tmplt;
+			} info;
+			part(part&& o):data(o.data),info(o.info)
 			{
 				o.data=0;
 			}
-			part(int tmplt):data(0),tmplt(tmplt)
-			{}
-			part(exlib::string& str):
-				data(str.data()),size(str.size())
+			part(unsigned int tmplt):data(0)
 			{
+				info.tmplt=tmplt;
+			}
+			part(exlib::string& str):
+				data(str.data())
+			{
+				info.size=str.size();
 				str.release();
 			}
 			~part()
@@ -705,17 +708,17 @@ namespace ScoreProcessor {
 		{
 			if(p.data)
 			{
-				out.append(p.data,p.size);
+				out.append(p.data,p.info.size);
 			}
 			else
 			{
-				if(p.tmplt<10)
+				if(p.info.tmplt<10)
 				{
-					out+=exlib::front_padded_string(std::to_string(index),p.tmplt,'0');
+					out+=exlib::front_padded_string(std::to_string(index),p.info.tmplt,'0');
 				}
 				else
 				{
-					switch(p.tmplt)
+					switch(p.info.tmplt)
 					{
 						case SaveRules::template_symbol::x:
 							check_ext();

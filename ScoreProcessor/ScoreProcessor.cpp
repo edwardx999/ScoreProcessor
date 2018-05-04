@@ -156,7 +156,7 @@ class ClusterClearGray:public ImageProcess<> {
 public:
 	ClusterClearGray(unsigned int min,unsigned int max,Grayscale background,float tolerance):min(min),max(max),background(background),tolerance(tolerance)
 	{}
-	void process(Img& img)
+	void process(Img& img) override
 	{
 		if(img._spectrum==1)
 		{
@@ -279,6 +279,17 @@ public:
 	void process(Img& img) override
 	{
 		auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps);
+	}
+};
+
+class Rotate:public ImageProcess<> {
+	float angle;
+public:
+	Rotate(float angle):angle(angle)
+	{}
+	void process(Img& img) override
+	{
+		img.rotate(angle,2,1);
 	}
 };
 
@@ -1471,6 +1482,38 @@ FillRectangleGrayMaker const FillRectangleGrayMaker::singleton;
 char const* const FillRectangleGrayMaker::invalids[4]={minv(left),minv(top),minv(right),minv(bottom)};
 #undef minv
 
+class RotateMaker:public SingleCommandMaker {
+	RotateMaker():SingleCommandMaker(1,1,
+		"Rotates the image by the specified amount in degrees\n"
+		"Counterclockwise is positive",
+		"Rotate")
+	{}
+	static RotateMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		float angle;
+		auto res=ScoreProcessor::parse_str(angle,(*begin).c_str());
+		if(res)
+		{
+			return "Invalid argument for angle input";
+		}
+		angle=fmod(angle,360);
+		if(angle<0)
+		{
+			angle+=360;
+		}
+		del.pl.add_process<Rotate>(-angle);
+		return nullptr;
+	}
+};
+RotateMaker const RotateMaker::singleton;
+
 class NumThreadMaker:public CommandMaker {
 private:
 	NumThreadMaker():
@@ -1558,6 +1601,9 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-nt",&NumThreadMaker::get());
 
 	commands.emplace("-si",&StartingIndexMaker::get());
+
+	commands.emplace("-rot",&RotateMaker::get());
+	commands.emplace("-rotate",&RotateMaker::get());
 	return commands;
 }
 
@@ -1646,6 +1692,7 @@ int main(int argc,char** argv)
 			"    Remove Border (DANGER):   -rb tolerance=0.5\n"
 			"    Rescale:                  -rs factor\n"
 			"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
+			"    Rotate:                   -rot degrees\n"
 			"  Multi Page Operations:\n"
 			"    Cut:                      -cut\n"
 			"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
