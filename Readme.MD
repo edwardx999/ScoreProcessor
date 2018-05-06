@@ -8,11 +8,12 @@ Parameters that require multiple values are notated with a comma
 Example: myimage.png -cg -fg 180 -ccga 0,50 ,30 -o %f2.jpg  
   
 Available commands:  
-filename_or_folder command params... ...
-parameters that require multiple values are notated with a comma
-examples: -fg 180 -ccga 20,50 ,30
-Type command alone to get readme
-Available commands:
+filename_or_folder command params... ...  
+parameters that require multiple values are notated with a comma  
+examples: -fg 180 -ccga 20,50 ,30  
+Type command alone to get more specific readme  
+
+Available commands:  
 &nbsp;&nbsp;Single Page Operations:  
 &nbsp;&nbsp;&nbsp;&nbsp;Convert to Grayscale:     -cg  
 &nbsp;&nbsp;&nbsp;&nbsp;Filter Gray:              -fg min_value max_value=255 replacer=255  
