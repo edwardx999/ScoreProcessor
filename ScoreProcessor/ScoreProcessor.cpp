@@ -1036,7 +1036,7 @@ class SpliceMaker:public CommandMaker {
 			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^2\n"
 			"  else\n"
 			"    ((opt_height-height)/opt_height)^2+\n"
-			"    pad_weight*(abs_dif(padding,opt_padding)/opt_padding)^2",
+			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^2",
 			"Splice")
 	{}
 	static SpliceMaker const singleton;
