@@ -129,9 +129,53 @@ namespace cimg_library {
 			unsigned int num_steps=300,
 			double precision=1.0f,
 			signed char threshold=64);
+		template<typename Selector>
+		HoughArray(
+			Selector vote_caster,
+			unsigned int width,
+			unsigned int height,
+			double lower_angle=M_PI_2-M_PI_2/18,double upper_angle=M_PI_2+M_PI_2/18,
+			unsigned int num_steps=300,
+			double precision=1.0f);
 		unsigned int& operator()(double theta,double r);
 		double angle() const;
 		std::vector<ImageUtils::line_norm<double>> top_lines(size_t num) const;
 	};
+
+	template<typename Selector>
+	HoughArray::HoughArray(
+		Selector vote_caster,
+		unsigned int width,
+		unsigned int height,
+		double lower_angle,double upper_angle,
+		unsigned int num_steps,
+		double precision):
+		CImg(num_steps+1,(rmax=hypot(width,height))*2/precision),
+		theta_min(lower_angle),
+		angle_dif(upper_angle-lower_angle),
+		angle_steps(num_steps),
+		precision(precision)
+	{
+		fill(0);
+		double step=(_height-1)/precision;
+		for(uint y=0;y<height;++y)
+		{
+			for(uint x=0;x<width;++x)
+			{
+				if(vote_caster(x,y))
+				{
+					for(uint f=0;f<=angle_steps;++f)
+					{
+						double theta=angle_dif*f/angle_steps+theta_min;
+						double r=x*std::cos(theta)+y*std::sin(theta);
+						unsigned int y=((r+rmax)/(2*rmax))*step;
+						unsigned int* const inc=this->data()+y*_width+f;
+						++(*inc);
+						++(*(inc+_width));
+					}
+				}
+			}
+		}
+	}
 }
 #endif // !IMAGE_MATH_H

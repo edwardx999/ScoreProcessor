@@ -270,15 +270,17 @@ class Straighten:public ImageProcess<> {
 	double pixel_prec;
 	unsigned int num_steps;
 	double min_angle,max_angle;
+	unsigned char boundary;
 public:
-	Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec)
+	Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary)
 		:pixel_prec(pixel_prec),
 		min_angle(M_PI_2+min_angle*DEG_RAD),max_angle(M_PI_2+max_angle*DEG_RAD),
-		num_steps(std::ceil((max_angle-min_angle)/angle_prec))
+		num_steps(std::ceil((max_angle-min_angle)/angle_prec)),
+		boundary(boundary)
 	{}
 	void process(Img& img) override
 	{
-		auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps);
+		auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary);
 	}
 };
 
@@ -1184,12 +1186,13 @@ BlurMaker const BlurMaker::singleton;
 class StraightenMaker:public SingleCommandMaker {
 	StraightenMaker()
 		:SingleCommandMaker(
-			0,4,
+			0,5,
 			"Straightens the image\n"
 			"Min angle is minimum angle of range to consider rotation (in degrees)\n"
 			"Max angle is maximum angle of range to consider rotation (in degrees)\n"
 			"Angle precision is precision in measuring angle (in degrees)\n"
-			"Pixel precision is precision when measuring distance from origin",
+			"Pixel precision is precision when measuring distance from origin\n"
+			"A pixel is considered an edge if there is a vertical transition across boundary",
 			"Straighten")
 	{}
 	static StraightenMaker const singleton;
@@ -1202,6 +1205,7 @@ protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		double pixel_prec,min_angle,max_angle,angle_prec;
+		unsigned char boundary;
 #define assign_val(val,index,cond,check_statement,error_statement)\
 		if(n>##index##)\
 		{\
@@ -1228,6 +1232,18 @@ protected:
 		assign_val(pixel_prec,3,pixel_prec<=0,"Pixel precision must be positive","pixel precision");
 #undef assign_val
 		;
+		if(n>4)
+		{
+			auto res=parse_str(boundary,begin[4].c_str());
+			if(res)
+			{
+				return "Invalid input for boundary";
+			}
+		}
+		else
+		{
+			goto init_boundary;
+		}
 	end:
 		if(min_angle>max_angle)
 		{
@@ -1237,7 +1253,7 @@ protected:
 		{
 			return "Difference between angles must be less than or equal to 180";
 		}
-		del.pl.add_process<Straighten>(pixel_prec,min_angle,max_angle,angle_prec);
+		del.pl.add_process<Straighten>(pixel_prec,min_angle,max_angle,angle_prec,boundary);
 		return nullptr;
 	init_min_angle:
 		min_angle=-5.0;
@@ -1247,6 +1263,8 @@ protected:
 		angle_prec=0.1;
 	init_pixel_prec:
 		pixel_prec=1.0;
+	init_boundary:
+		boundary=128;
 		goto end;
 	}
 };
@@ -1645,7 +1663,7 @@ std::string pretty_date()
 		ret[4]='0';
 	}
 	return ret;
-}
+	}
 void test()
 {
 	auto files=images_in_path(
@@ -1688,7 +1706,7 @@ int main(int argc,char** argv)
 			"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"
-			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1\n"
+			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128\n"
 			"    Remove Border (DANGER):   -rb tolerance=0.5\n"
 			"    Rescale:                  -rs factor\n"
 			"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
@@ -1912,7 +1930,7 @@ int main(int argc,char** argv)
 						std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
 						return 0;
 					}
-					splice_pages_nongreedy(
+					auto num=splice_pages_nongreedy(
 						files,
 						del.splice_args.horiz_padding,
 						del.splice_args.optimal_height,
@@ -1922,6 +1940,7 @@ int main(int argc,char** argv)
 						del.splice_args.excess_weight,
 						del.splice_args.padding_weight,
 						del.starting_index);
+					std::cout<<"Created "<<num<<" pages\n";
 				}
 				catch(std::exception const& ex)
 				{

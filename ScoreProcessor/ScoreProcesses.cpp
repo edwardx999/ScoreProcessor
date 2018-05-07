@@ -977,21 +977,32 @@ namespace ScoreProcessor {
 		return num_images;
 	}
 
-	void auto_rotate(CImg<unsigned char>& image,double pixel_prec,double min_angle,double max_angle,double angle_prec)
+	void auto_rotate(CImg<unsigned char>& image,double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary)
 	{
 		assert(angle_prec>0);
 		assert(pixel_prec>0);
 		assert(min_angle<max_angle);
-		auto_rotate_bare(image,pixel_prec,min_angle*DEG_RAD+M_PI_2,max_angle*DEG_RAD+M_PI_2,(max_angle-min_angle)/angle_prec+1);
+		auto_rotate_bare(image,pixel_prec,min_angle*DEG_RAD+M_PI_2,max_angle*DEG_RAD+M_PI_2,(max_angle-min_angle)/angle_prec+1,boundary);
 	}
 
-	void auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps)
+	void auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)
 	{
 		assert(angle_steps>0);
 		assert(pixel_prec>0);
 		assert(min_angle<max_angle);
-		auto grad=get_vertical_gradient(img);
-		HoughArray ha(grad,min_angle,max_angle,angle_steps,pixel_prec);
+		if(img._height==0||img._width==0)
+		{
+			return;
+		}
+		auto selector=[&img,boundary](unsigned int x,unsigned int y)
+		{
+			auto top=img(x,y);
+			auto bottom=img(x,y+1);
+			return
+				(top<=boundary&&bottom>boundary)||
+				(top>boundary&&bottom<=boundary);
+		};
+		HoughArray ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
 		double angle=90.0-ha.angle()*RAD_DEG;
 		img.rotate(angle,2,1);
 	}
@@ -1760,9 +1771,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-		}
+			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-}
+		}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1867,7 +1878,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			index=nodes[index].previous;
 		} while(index);
 		breakpoints.push_back(0);
-		unsigned int const num_digs=exlib::num_digits(filenames.size());
+		unsigned int const num_digs=exlib::num_digits(breakpoints.size()-1);
 		size_t num_imgs=0;
 		for(size_t i=breakpoints.size()-1;i>0;--i)
 		{
@@ -1902,7 +1913,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-		}
+	}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())

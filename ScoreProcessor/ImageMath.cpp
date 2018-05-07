@@ -355,7 +355,7 @@ namespace cimg_library {
 				max_it=it;
 			}
 		}
-		return std::distance(begin(),max_it)%_width*angle_dif/angle_steps+theta_min;
+		return (max_it-begin())%_width*angle_dif/angle_steps+theta_min;
 	}
 	std::vector<ImageUtils::line_norm<double>> HoughArray::top_lines(size_t n) const
 	{
