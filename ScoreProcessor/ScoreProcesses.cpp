@@ -1817,9 +1817,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				numer=optimal_height-p.height;
 			}
 			float height_cost=numer/optimal_height;
-			height_cost*=height_cost;
+			height_cost=height_cost*height_cost*height_cost;
 			float padding_cost=padding_weight*abs_dif(float(p.padding),optimal_padding)/optimal_padding;
-			padding_cost*=padding_cost;
+			padding_cost=padding_cost*padding_cost*padding_cost;
 			return height_cost+padding_cost;
 		};
 		struct node {

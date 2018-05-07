@@ -1034,11 +1034,11 @@ class SpliceMaker:public CommandMaker {
 			"Pad weight is weight of pad deviation relative to height deviation\n"
 			"Cost function is\n"
 			"  if(height>opt_height)\n"
-			"    (excess_weight*(height-opt_height)/opt_height)^2+\n"
-			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^2\n"
+			"    (excess_weight*(height-opt_height)/opt_height)^3+\n"
+			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^3\n"
 			"  else\n"
-			"    ((opt_height-height)/opt_height)^2+\n"
-			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^2",
+			"    ((opt_height-height)/opt_height)^3+\n"
+			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^3",
 			"Splice")
 	{}
 	static SpliceMaker const singleton;
