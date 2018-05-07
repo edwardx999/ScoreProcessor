@@ -999,7 +999,7 @@ namespace ScoreProcessor {
 			auto top=img(x,y);
 			auto bottom=img(x,y+1);
 			return
-				(top<=boundary&&bottom>boundary)||
+				//(top<=boundary&&bottom>boundary)||
 				(top>boundary&&bottom<=boundary);
 		};
 		HoughArray ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
