@@ -396,7 +396,7 @@ namespace ScoreProcessor {
 					img.save_bmp(output);
 					break;
 			}
-			if(do_move)
+			if(do_move&&!std::experimental::filesystem::equivalent(in,out))
 			{
 				remove(in);
 			}
