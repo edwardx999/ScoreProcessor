@@ -31,6 +31,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <optional>
 #include <array>
 #include <numeric>
+#include <sstream>
 #include "parse.h"
 using namespace cimg_library;
 using namespace std;
@@ -102,23 +103,23 @@ public:
 	}
 };
 class PadHoriz:public ImageProcess<> {
-	unsigned int val;
+	unsigned int left,right;
 public:
-	PadHoriz(unsigned int val):val(val)
+	PadHoriz(unsigned int const left,unsigned int const right):left(left),right(right)
 	{}
 	void process(Img& image)
 	{
-		horiz_padding(image,val);
+		horiz_padding(image,left,right);
 	}
 };
 class PadVert:public ImageProcess<> {
-	unsigned int val;
+	unsigned int top,bottom;
 public:
-	PadVert(unsigned int val):val(val)
+	PadVert(unsigned int const top,unsigned int const bottom):top(top),bottom(bottom)
 	{}
 	void process(Img& img)
 	{
-		vert_padding(img,val);
+		vert_padding(img,top,bottom);
 	}
 };
 class PadAuto:public ImageProcess<> {
@@ -695,7 +696,7 @@ ClusterClearAltMaker const ClusterClearAltMaker::singleton;
 
 class HorizontalPaddingMaker:public SingleCommandMaker {
 	HorizontalPaddingMaker():
-		SingleCommandMaker(1,1,"Pads the left and right sides of the image with given number of pixels","Horizontal Padding")
+		SingleCommandMaker(1,2,"Pads the left and right sides of the image with given number of pixels","Horizontal Padding")
 	{}
 	static HorizontalPaddingMaker const singleton;
 public:
@@ -713,7 +714,19 @@ protected:
 			{
 				return "Padding must be non-negative";
 			}
-			del.pl.add_process<PadHoriz>(amount);
+			if(n>1)
+			{
+				int a=std::stoi(begin[1]);
+				if(a<0)
+				{
+					return "Padding must be non-negative";
+				}
+				del.pl.add_process<PadHoriz>(amount,a);
+			}
+			else
+			{
+				del.pl.add_process<PadHoriz>(amount,amount);
+			}
 			return nullptr;
 		}
 		catch(std::exception const&)
@@ -726,7 +739,7 @@ HorizontalPaddingMaker const HorizontalPaddingMaker::singleton;
 
 class VerticalPaddingMaker:public SingleCommandMaker {
 	VerticalPaddingMaker()
-		:SingleCommandMaker(1,1,"Pads the top and bottom of the image with given number of pixels","Vertical Padding")
+		:SingleCommandMaker(1,2,"Pads the top and bottom of the image with given number of pixels","Vertical Padding")
 	{}
 	static VerticalPaddingMaker const singleton;
 public:
@@ -742,10 +755,22 @@ protected:
 			int amount=std::stoi(*begin);
 			if(amount<0)
 			{
-				return "Amount must be non-negative";
+				return "Padding must be non-negative";
 			}
-			del.pl.add_process<PadVert>(amount);
-			return 0;
+			if(n>1)
+			{
+				int a=std::stoi(begin[1]);
+				if(a<0)
+				{
+					return "Padding must be non-negative";
+				}
+				del.pl.add_process<PadVert>(amount,a);
+			}
+			else
+			{
+				del.pl.add_process<PadVert>(amount,amount);
+			}
+			return nullptr;
 		}
 		catch(std::exception const&)
 		{
@@ -1663,7 +1688,7 @@ std::string pretty_date()
 		ret[4]='0';
 	}
 	return ret;
-	}
+}
 void test()
 {
 	auto files=images_in_path(
@@ -1701,8 +1726,8 @@ int main(int argc,char** argv)
 			"    Filter Gray:              -fg min_value max_value=255 replacer=255\n"
 			"    Cluster Clear Gray:       -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
 			"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
-			"    Horizontal Padding:       -hp amount\n"
-			"    Vertical Padding:         -vp amount\n"
+			"    Horizontal Padding:       -hp left right=left\n"
+			"    Vertical Padding:         -vp top bottom=top\n"
 			"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
 			"    Rescale Colors Grayscale: -rcg min mid max\n"
 			"    Blur:                     -bl radius\n"

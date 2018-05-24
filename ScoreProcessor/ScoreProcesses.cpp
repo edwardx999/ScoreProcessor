@@ -23,6 +23,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <stack>
 #include <cmath>
+#include <array>
 #include "moreAlgorithms.h"
 #include "shorthand.h"
 #include <assert.h>
@@ -1337,27 +1338,25 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	*/
 
 	float const _16by9=16.0f/9.0f;
-	int auto_padding(CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const horizontal_padding_max,unsigned int const horizontal_padding_min,signed int horiz_offset,float optimal_ratio)
+	void auto_padding(CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const horizontal_padding_max,unsigned int const horizontal_padding_min,signed int horiz_offset,float optimal_ratio)
 	{
 		auto const tolerance=5U;
 		unsigned int left,right,top,bottom;
 		switch(image._spectrum)
 		{
 			case 1:
+			case 2:
 				left=find_left(image,Grayscale::WHITE,tolerance);
 				right=find_right(image,Grayscale::WHITE,tolerance)+1;
 				top=find_top(image,Grayscale::WHITE,tolerance);
 				bottom=find_bottom(image,Grayscale::WHITE,tolerance)+1;
 				break;
-			case 3:
-			case 4:
+			default:
 				left=find_left(image,ColorRGB::WHITE,tolerance);
 				right=find_right(image,ColorRGB::WHITE,tolerance)+1;
 				top=find_top(image,ColorRGB::WHITE,tolerance);
 				bottom=find_bottom(image,ColorRGB::WHITE,tolerance)+1;
 				break;
-			default:
-				return 2;
 		}
 		unsigned int optimal_width=optimal_ratio*(bottom-top+2*vertical_padding);
 		unsigned int horizontal_padding;
@@ -1384,111 +1383,75 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			right+horizontal_padding-1+horiz_offset,
 			bottom+vertical_padding-1,
 			1);
-		return 0;
 	}
-	int horiz_padding(CImg<unsigned char>& image,unsigned int const paddingSize)
+	void horiz_padding(CImg<unsigned char>& image,unsigned int const left)
+	{
+		horiz_padding(image,left,left);
+	}
+	void horiz_padding(CImg<unsigned char>& image,unsigned int const left_pad,unsigned int const right_pad)
 	{
 		auto const tolerance=5U;
 		unsigned int left,right;
 		switch(image._spectrum)
 		{
 			case 1:
+			case 2:
 			{
 				left=find_left(image,Grayscale::WHITE,tolerance);
-				right=find_right(image,Grayscale::WHITE,tolerance)+1;
-				break;
-			}
-			case 3:
-			{
-				left=find_left(image,ColorRGB::WHITE,tolerance);
-				right=find_right(image,ColorRGB::WHITE,tolerance)+1;
+				right=find_right(image,Grayscale::WHITE,tolerance);
 				break;
 			}
 			default:
 			{
-				return 2;
+				left=find_left(image,ColorRGB::WHITE,tolerance);
+				right=find_right(image,ColorRGB::WHITE,tolerance);
+				break;
 			}
 		}
-		auto& prevLeftPadding=left;
-		unsigned int prevRightPadding=image._width-right;
-
-		if(prevLeftPadding==paddingSize&&prevRightPadding==paddingSize)
+		auto const& prev_left=left;
+		unsigned int const prev_right=image._width-right-1;
+		image.crop(static_cast<signed int>(left-left_pad),0,right+right_pad,image.height()-1,0);
+		std::array<unsigned char,4> color{255,255,255,255};
+		if(prev_left<left_pad)
 		{
-			return 1;
+			fill_selection(image,{0,left_pad-prev_left,0,image._height},color.data());
 		}
-		image.crop(static_cast<signed int>(left-paddingSize),right+paddingSize-1);
-		if(image._spectrum==1)
+		if(prev_right<right_pad)
 		{
-			if(prevLeftPadding<paddingSize)
-			{
-				fill_selection(image,{0,paddingSize-left,0,image._height},Grayscale::WHITE);
-			}
-			if(prevRightPadding<paddingSize)
-			{
-				fill_selection(image,{image._width+prevRightPadding-paddingSize,image._width,0,image._height},Grayscale::WHITE);
-			}
+			fill_selection(image,{image._width+prev_right-right_pad,image._width,0,image._height},color.data());
 		}
-		else if(image._spectrum==3)
-		{
-			if(prevLeftPadding<paddingSize)
-			{
-				fill_selection(image,{0,paddingSize-left,0,image._height},ColorRGB::WHITE);
-			}
-			if(prevRightPadding<paddingSize)
-			{
-				fill_selection(image,{image._width+prevRightPadding-paddingSize,image._width,0,image._height},ColorRGB::WHITE);
-			}
-		}
-		return 0;
 	}
-	int vert_padding(CImg<unsigned char>& image,unsigned int const paddingSize)
+	void vert_padding(CImg<unsigned char>& image,unsigned int const p)
+	{
+		vert_padding(image,p,p);
+	}
+	void vert_padding(CImg<unsigned char>& image,unsigned int const tp,unsigned int const bp)
 	{
 		auto const tolerance=5U;
 		unsigned int top,bottom;
 		switch(image._spectrum)
 		{
 			case 1:
+			case 2:
 				top=find_top(image,Grayscale::WHITE,tolerance);
-				bottom=find_bottom(image,Grayscale::WHITE,tolerance)+1;
-				break;
-			case 3:
-				top=find_top(image,ColorRGB::WHITE,tolerance);
-				bottom=find_bottom(image,ColorRGB::WHITE,tolerance)+1;
+				bottom=find_bottom(image,Grayscale::WHITE,tolerance);
 				break;
 			default:
-				return 2;
+				top=find_top(image,ColorRGB::WHITE,tolerance);
+				bottom=find_bottom(image,ColorRGB::WHITE,tolerance);
 		}
-		auto& prevTopPadding=top;
-		unsigned int prevBottomPadding=image._height-bottom;
-
-		if(prevTopPadding==paddingSize&&prevBottomPadding==paddingSize)
+		auto const& prev_top=top;
+		unsigned int const prev_bottom=image._height-bottom-1;
+		image.crop(0,static_cast<signed int>(top-tp),image._width-1,bottom+bp);
+		std::array<unsigned char,4> color{255,255,255,255};
+		if(prev_top<tp)
 		{
-			return 1;
+			fill_selection(image,{0,image._width,0,tp-top},color.data());
 		}
-		image.crop(0,static_cast<signed int>(top-paddingSize),image._width-1,bottom+paddingSize-1);
-		if(image._spectrum==1)
+		if(prev_bottom<bp)
 		{
-			if(prevTopPadding<paddingSize)
-			{
-				fill_selection(image,{0,image._width,0,paddingSize-top},Grayscale::WHITE);
-			}
-			if(prevBottomPadding<paddingSize)
-			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-paddingSize,image._height},Grayscale::WHITE);
-			}
+			fill_selection(image,{0,image._width,image._height+prev_bottom-bp,image._height},color.data());
 		}
-		else if(image._spectrum==3)
-		{
-			if(prevTopPadding<paddingSize)
-			{
-				fill_selection(image,{0,image._width,0,paddingSize-top},ColorRGB::WHITE);
-			}
-			if(prevBottomPadding<paddingSize)
-			{
-				fill_selection(image,{0,image._width,image._height+prevBottomPadding-paddingSize,image._height},ColorRGB::WHITE);
-			}
-		}
-		return 0;
 	}
 
 	struct page:CImg<unsigned char> {
@@ -1744,7 +1707,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			if(optimal_height==-1)
 			{
 				optimal_height=top._width*6/11;
-			}
+				}
 			conv(top);
 			conv(bottom);
 			pages[0].top_kern=(pages[0].top_raw=find_top(top,255,top._width/1024+1));
@@ -1773,7 +1736,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				conv(bottom.assign(filenames[i+2].c_str()));
 			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-		}
+			}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1864,11 +1827,11 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					break;
 				}
 				--j;
-			}
+				}
 #ifndef NDEBUG
 			std::cout<<"prev="<<nodes[i].previous<<'\n';
 #endif
-		}
+			}
 		vector<size_t> breakpoints;
 		breakpoints.reserve(c);
 		size_t index=c;
@@ -1913,7 +1876,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-	}
+		}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())
@@ -2154,4 +2117,4 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 		}
 	}
-}
+	}

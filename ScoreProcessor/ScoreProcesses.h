@@ -384,23 +384,22 @@ namespace ScoreProcessor {
 		@param max_horizontal_padding
 		@param min_horizontal_padding
 		@param optimal_ratio
-		@return 0 if worked, 1 if already padded, 2 if improper image
 	*/
-	int auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const max_horizontal_padding,unsigned int const min_horizontal_padding,signed int horiz_offset,float optimal_ratio=16.0f/9.0f);
+	void auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const max_horizontal_padding,unsigned int const min_horizontal_padding,signed int horiz_offset,float optimal_ratio=16.0f/9.0f);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
 		@param paddingSize, size in pixels of padding
-		@return 0 if worked, 1 if already padded, 2 if improper image
 	*/
-	int horiz_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const paddingSize);
+	void horiz_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
+	void horiz_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const left,unsigned int const right);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
 		@param paddingSize, size in pixels of padding
-		@return 0 if worked, 1 if already padded, 2 if improper image
 	*/
-	int vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const paddingSize);
+	void vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
+	void vert_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const top,unsigned int const bottom);
 	/*
 		Combines pages together to achieve optimal size for each page
 		Aligns right side of each image
@@ -507,16 +506,44 @@ void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtil
 	}
 }
 template<typename T>
-void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> const selection,T const* values)
+void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& img,ImageUtils::Rectangle<unsigned int> const sel,T const* color)
 {
-	auto const sl=image._spectrum;
-	for(unsigned int x=selection.left;x<selection.right;++x)
+	unsigned int const width=img._width;
+	unsigned int const height=img._height;
+	unsigned int const area=width*height;
+	unsigned int const spectrum=img._spectrum;
+	T* const data=img._data;
+	for(unsigned int y=sel.top;y<sel.bottom;++y)
 	{
-		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		T* const row=data+y*width;
+		for(unsigned int x=sel.left;x<sel.right;++x)
 		{
-			for(unsigned int s=0;s<sl;++s)
+			T* const pixel=row+x;
+			for(unsigned int s=0;s<spectrum;++s)
 			{
-				image(x,y,s)=values[s];
+				*(pixel+s*area)=color[s];
+			}
+		}
+	}
+}
+namespace ScoreProcessor {
+	template<typename T,unsigned int N>
+	void fill_selection(::cimg_library::CImg<T>& img,ImageUtils::Rectangle<unsigned int> const sel,std::array<T,N> color)
+	{
+		unsigned int const width=img._width;
+		unsigned int const height=img._height;
+		unsigned int const area=width*height;
+		T* const data=img._data;
+		for(unsigned int y=sel.top;y<sel.bottom;++y)
+		{
+			T* const row=data+y*width;
+			for(unsigned int x=sel.left;x<sel.right;++x)
+			{
+				T* const pixel=row+x;
+				for(unsigned int s=0;s<N;++s)
+				{
+					*(pixel+s*area)=color[s];
+				}
 			}
 		}
 	}
