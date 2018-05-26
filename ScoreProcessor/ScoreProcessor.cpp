@@ -150,7 +150,9 @@ public:
 		cubic,
 		lanczos
 	};
-	Rescale(double val,int interpolation):val(val),interpolation(interpolation==-2?(val>1?cubic:moving_average):interpolation)
+	Rescale(double val,int interpolation):
+		val(val),
+		interpolation(interpolation==automatic?(val>1?cubic:moving_average):interpolation)
 	{}
 	void process(Img& img)
 	{
@@ -1348,15 +1350,16 @@ RemoveBorderMaker const RemoveBorderMaker::singleton;
 
 class RescaleMaker:public SingleCommandMaker {
 	RescaleMaker():SingleCommandMaker(1,2,
-		"Rescales image by given factor"
+		"Rescales image by given factor\n"
 		"Rescale modes are:\n"
-		"  \033[4ma\033[0muto (moving average if downscaling, else  cubic)\n"
+		"  auto (moving average if downscaling, else  cubic)\n"
 		"  nearest neighbor\n"
 		"  moving average\n"
 		"  linear\n"
 		"  grid\n"
 		"  cubic\n"
-		"  lanczos",
+		"  lanczos\n"
+		"To specify mode, type as many letters as needed to unambiguously identify mode",
 		"Rescale")
 	{}
 	static RescaleMaker const singleton;
