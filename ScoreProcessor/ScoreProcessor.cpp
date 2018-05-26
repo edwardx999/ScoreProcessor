@@ -1352,7 +1352,7 @@ class RescaleMaker:public SingleCommandMaker {
 	RescaleMaker():SingleCommandMaker(1,2,
 		"Rescales image by given factor\n"
 		"Rescale modes are:\n"
-		"  auto (moving average if downscaling, else  cubic)\n"
+		"  auto (moving average if downscaling, else cubic)\n"
 		"  nearest neighbor\n"
 		"  moving average\n"
 		"  linear\n"
@@ -1402,8 +1402,11 @@ protected:
 							case 'a':
 								mode=Rescale::lanczos;
 								break;
-							default:
+							case '\0':
 								return "Ambiguous mode starting with l";
+								break;
+							default:
+								return "Mode does not exist";
 						}
 						break;
 					case 'g':
