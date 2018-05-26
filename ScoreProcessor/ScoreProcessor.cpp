@@ -137,8 +137,20 @@ public:
 };
 class Rescale:public ImageProcess<> {
 	double val;
+	int interpolation;
 public:
-	Rescale(double val):val(val)
+	enum rescale_mode {
+		automatic=-2,
+		raw_mem,
+		boundary_fill,
+		nearest_neighbor,
+		moving_average,
+		linear,
+		grid,
+		cubic,
+		lanczos
+	};
+	Rescale(double val,int interpolation):val(val),interpolation(interpolation==-2?(val>1?cubic:moving_average):interpolation)
 	{}
 	void process(Img& img)
 	{
@@ -147,7 +159,7 @@ public:
 			scast<int>(std::round(img._height*val)),
 			img._depth,
 			img._spectrum,
-			2);
+			interpolation);
 	}
 };
 class ClusterClearGray:public ImageProcess<> {
@@ -1335,7 +1347,17 @@ protected:
 RemoveBorderMaker const RemoveBorderMaker::singleton;
 
 class RescaleMaker:public SingleCommandMaker {
-	RescaleMaker():SingleCommandMaker(1,1,"Rescales image by given factor","Rescale")
+	RescaleMaker():SingleCommandMaker(1,2,
+		"Rescales image by given factor"
+		"Rescale modes are:\n"
+		"  \033[4ma\033[0muto (moving average if downscaling, else  cubic)\n"
+		"  nearest neighbor\n"
+		"  moving average\n"
+		"  linear\n"
+		"  grid\n"
+		"  cubic\n"
+		"  lanczos",
+		"Rescale")
 	{}
 	static RescaleMaker const singleton;
 public:
@@ -1344,7 +1366,7 @@ public:
 		return singleton;
 	}
 protected:
-	char const* parse_command_h(iter begin,size_t,delivery& del) const override
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		try
 		{
@@ -1353,7 +1375,45 @@ protected:
 			{
 				return "Rescale factor must be non-negative";
 			}
-			del.pl.add_process<Rescale>(factor);
+			int mode=Rescale::automatic;
+			if(n>1)
+			{
+				std::string const& mode_string=begin[1];
+				switch(mode_string[0]) //thank you null-termination
+				{
+					case 'a':
+						mode=Rescale::automatic;
+						break;
+					case 'n':
+						mode=Rescale::nearest_neighbor;
+						break;
+					case 'm':
+						mode=Rescale::moving_average;
+						break;
+					case 'l':
+						switch(mode_string[1])
+						{
+							case 'i':
+								mode=Rescale::linear;
+								break;
+							case 'a':
+								mode=Rescale::lanczos;
+								break;
+							default:
+								return "Ambiguous mode starting with l";
+						}
+						break;
+					case 'g':
+						mode=Rescale::grid;
+						break;
+					case 'c':
+						mode=Rescale::cubic;
+						break;
+					default:
+						return "Mode does not exist";
+				}
+			}
+			del.pl.add_process<Rescale>(factor,mode);
 		}
 		catch(std::exception const&)
 		{
@@ -1733,7 +1793,7 @@ int main(int argc,char** argv)
 			"    Blur:                     -bl radius\n"
 			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128\n"
 			"    Remove Border (DANGER):   -rb tolerance=0.5\n"
-			"    Rescale:                  -rs factor\n"
+			"    Rescale:                  -rs factor interpolation_mode=auto\n"
 			"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
 			"    Rotate:                   -rot degrees\n"
 			"  Multi Page Operations:\n"
