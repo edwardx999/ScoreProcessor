@@ -614,7 +614,11 @@ namespace ScoreProcessor {
 		return res;
 		fatten_base(std::min_element);
 	}
-
+	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
+	{
+		fatten_base(std::max_element);
+#undef fatten_base
+	}
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage,unsigned int const min_padding)
@@ -625,11 +629,7 @@ namespace ScoreProcessor {
 	{
 		throw std::runtime_error("Not implemented");
 	}
-	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
-	{
-		fatten_base(std::max_element);
-#undef fatten_base
-	}
+
 	//basically a flood fill that can't go left, assumes top row is completely clear
 	vector<unique_ptr<RectangleUINT>> select_outside(CImg<unsigned char> const& image)
 	{
@@ -1700,14 +1700,14 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				if(img._spectrum>2)
 				{
 					img=get_grayscale_simple(img);
-				}
-			};
+			}
+		};
 			CImg<unsigned char> top(filenames[0].c_str());
 			CImg<unsigned char> bottom(filenames[1].c_str());
 			if(optimal_height==-1)
 			{
 				optimal_height=top._width*6/11;
-				}
+			}
 			conv(top);
 			conv(bottom);
 			pages[0].top_kern=(pages[0].top_raw=find_top(top,255,top._width/1024+1));
@@ -1736,7 +1736,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				conv(bottom.assign(filenames[i+2].c_str()));
 			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-			}
+		}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1774,7 +1774,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			if(p.height>optimal_height)
 			{
 				numer=excess_weight*(p.height-optimal_height);
-			}
+		}
 			else
 			{
 				numer=optimal_height-p.height;
@@ -1789,7 +1789,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			float cost;
 			page_layout layout;
 			size_t previous;
-		};
+	};
 #ifndef NDEBUG
 		std::cout<<"Initalizing nodes\n"<<"c="<<c<<'\n';
 #endif
@@ -1827,11 +1827,11 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					break;
 				}
 				--j;
-				}
+			}
 #ifndef NDEBUG
 			std::cout<<"prev="<<nodes[i].previous<<'\n';
 #endif
-			}
+		}
 		vector<size_t> breakpoints;
 		breakpoints.reserve(c);
 		size_t index=c;
@@ -1841,7 +1841,8 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			index=nodes[index].previous;
 		} while(index);
 		breakpoints.push_back(0);
-		unsigned int const num_digs=exlib::num_digits(breakpoints.size()-1);
+		unsigned int num_digs=exlib::num_digits(breakpoints.size()-1+starting_index);
+		num_digs=num_digs<3?3:num_digs;
 		size_t num_imgs=0;
 		for(size_t i=breakpoints.size()-1;i>0;--i)
 		{
@@ -1876,7 +1877,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-		}
+}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())

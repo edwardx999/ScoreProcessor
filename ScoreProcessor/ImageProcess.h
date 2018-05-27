@@ -338,7 +338,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move=false) const
+	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move) const
 	{
 		using namespace std::experimental::filesystem;
 		path in(fname),out(output);
@@ -440,7 +440,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(char const* fname,char const* output,bool move=false) const
+	void ProcessList<T>::process(char const* fname,char const* output,bool move) const
 	{
 		try
 		{

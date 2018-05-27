@@ -344,6 +344,7 @@ public:
 		bool do_move;
 		ProcessList<unsigned char> pl;
 		enum do_state {
+			do_absolutely_nothing,
 			do_nothing,
 			do_single,
 			do_cut,
@@ -364,7 +365,8 @@ public:
 		};
 		regex_state rgxst;
 		unsigned int num_threads;
-		delivery():starting_index(1),flag(do_nothing),num_threads(0),rgxst(unassigned),do_move(false)
+		bool list_files;
+		delivery():starting_index(1),flag(do_absolutely_nothing),num_threads(0),rgxst(unassigned),do_move(false),list_files(false)
 		{}
 	};
 private:
@@ -413,7 +415,7 @@ protected:
 	static char const* const mci;
 	char const* parse_command(iter begin,size_t num_args,delivery& del) const override final
 	{
-		if(del.flag>1)
+		if(del.flag>del.do_single)
 		{
 			return mci;
 		}
@@ -808,6 +810,9 @@ class OutputMaker:public CommandMaker {
 			"  %% literal percent\n"
 			"Anything else will be interpreted as a literal character\n"
 			"Pattern is %w if no output is specified\n"
+			"If you want the file to start with -, prepend an additional -\n"
+			"  e.g.: \"-my-file.txt\" -> \"--my-file.txt\"\n"
+			"This is only done for starting dashes\n"
 			"Move is whether file should be moved or copied (ignored for multi)",
 			"Output Pattern")
 	{}
@@ -828,7 +833,14 @@ protected:
 		{
 			try
 			{
-				del.sr.assign(*begin);
+				if((*begin).front()=='-')
+				{
+					del.sr.assign((*begin).c_str()+1);
+				}
+				else
+				{
+					del.sr.assign(*begin);
+				}
 			}
 			catch(std::exception const&)
 			{
@@ -853,6 +865,10 @@ protected:
 		else
 		{
 			return "Filename template already given";
+		}
+		if(del.flag<del.do_nothing)
+		{
+			del.flag=del.do_nothing;
 		}
 		return nullptr;
 	}
@@ -881,6 +897,23 @@ public:
 	}
 };
 StartingIndexMaker const StartingIndexMaker::singleton;
+
+class ListFilesMaker:public CommandMaker {
+	ListFilesMaker():CommandMaker(0,0,"Makes program list out files","List Files")
+	{}
+	static ListFilesMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+	char const* parse_command(iter,size_t,delivery& del) const override
+	{
+		del.list_files=true;
+		return nullptr;
+	}
+};
+ListFilesMaker const ListFilesMaker::singleton;
 
 class AutoPaddingMaker:public SingleCommandMaker {
 	AutoPaddingMaker()
@@ -1051,7 +1084,7 @@ public:
 protected:
 	char const* parse_command(iter begin,size_t,delivery& del) const override
 	{
-		if(del.flag)
+		if(del.flag>del.do_nothing)
 		{
 			return "Cut can not be done along with other commands";
 		}
@@ -1089,7 +1122,7 @@ public:
 protected:
 	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
-		if(del.flag)
+		if(del.flag>del.do_nothing)
 		{
 			return "Splice can not be done along with other commands";
 		}
@@ -1713,6 +1746,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 
 	commands.emplace("-rot",&RotateMaker::get());
 	commands.emplace("-rotate",&RotateMaker::get());
+
+	commands.emplace("-list",&ListFilesMaker::get());
 	return commands;
 }
 
@@ -1726,7 +1761,6 @@ std::vector<std::string> conv_strings(int argc,char** argv)
 	{
 		ret.emplace_back(argv[i]);
 	}
-	ret.emplace_back("-a");
 	return ret;
 }
 std::vector<std::string> images_in_path(std::string const& path,std::regex const& rgx,CommandMaker::delivery::regex_state rgxst)
@@ -1767,6 +1801,32 @@ void test()
 		1);
 	stop();
 }
+//help screen of single input
+void info_output();
+//does single processes
+void do_single(CommandMaker::delivery const&,std::vector<std::string> const& files,unsigned int const num_threads);
+//does cut processes
+void do_cut(CommandMaker::delivery const&,std::vector<std::string> const& files,unsigned int const num_threads);
+//does splice processes
+void do_splice(CommandMaker::delivery const&,std::vector<std::string> const& files);
+//finds end of input list and gets the strings from that list
+std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::iter begin,CommandMaker::iter end);
+//filters out files according to the regex pattern
+void filter_out_files(std::vector<std::string>&,std::regex const& rgx,CommandMaker::delivery::regex_state);
+//lists out files
+void list_files(std::vector<std::string> const&);
+
+CommandMaker::delivery parse_commands(CommandMaker::iter begin,CommandMaker::iter end);
+
+bool could_be_command(std::string const& str)
+{
+	return str[0]=='-'&&str[1]>='a'&&str[1]<='z';
+}
+bool is_folder(std::string const& str)
+{
+	return str.back()=='\\'||str.back()=='/';
+}
+
 int main(int argc,char** argv)
 {
 #ifndef NDEBUG
@@ -1775,115 +1835,41 @@ int main(int argc,char** argv)
 	cimg::exception_mode(0);
 	if(argc==1)
 	{
-		std::cout<<
-			"Version: "<<
-			pretty_date()<<
-			" "
-			__TIME__
-			" Copyright 2017-2018 Edward Xie"
-			"\n"
-			"filename_or_folder command params... ...\n"
-			"parameters that require multiple values are notated with a comma\n"
-			"examples: -fg 180 -ccga 20,50 ,30\n"
-			"Type command alone to get readme\n"
-			"Available commands:\n"
-			"  Single Page Operations:\n"
-			"    Convert to Grayscale:     -cg\n"
-			"    Filter Gray:              -fg min_value max_value=255 replacer=255\n"
-			"    Cluster Clear Gray:       -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
-			"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
-			"    Horizontal Padding:       -hp left right=left\n"
-			"    Vertical Padding:         -vp top bottom=top\n"
-			"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
-			"    Rescale Colors Grayscale: -rcg min mid max\n"
-			"    Blur:                     -bl radius\n"
-			"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128\n"
-			"    Remove Border (DANGER):   -rb tolerance=0.5\n"
-			"    Rescale:                  -rs factor interpolation_mode=auto\n"
-			"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
-			"    Rotate:                   -rot degrees\n"
-			"  Multi Page Operations:\n"
-			"    Cut:                      -cut\n"
-			"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
-			"  Options:\n"
-			"    Output:                   -o format move=false\n"
-			"    Verbosity:                -vb level\n"
-			"    Filter Files:             -flt regex remove=false\n"
-			"    Number of Threads:        -nt num\n"
-			"    Starting index            -si num\n"
-			"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
-			"A Multi Page Operation can not be done with other operations.\n"
-			;
+		info_output();
 		return 0;
 	}
 	auto args=conv_strings(argc,argv);
-	typedef decltype(commands.end()) entry;
-
-	std::string& arg1=args[1];
-	if(arg1.empty())
+	auto const& arg1=args[1];
+	if(could_be_command(arg1))
 	{
-		std::cout<<"Invalid argument\n";
-		return 0;
-	}
-
-	entry cmd=commands.find(arg1);
-	if(cmd!=commands.end())
-	{
-		auto& m=cmd->second;
-		std::cout<<m->name()<<":\n"<<m->help_message()<<'\n';
-		return 0;
-	}
-	bool is_folder=arg1.back()=='\\'||arg1.back()=='/';
-
-	if(argc<3)
-	{
-		std::cout<<"No commands given\n";
-		return 0;
-	}
-	CommandMaker::delivery del;
-	auto& output=del.sr;
-	auto& processes=del.pl;
-
-	typedef CommandMaker::iter iter;
-	iter arg_start=args.begin()+2;
-	iter it=arg_start+1;
-	auto could_be_command=[](std::string const& str)
-	{
-		return str.size()>1&&str.front()=='-'&&str[1]>='a'&&str[1]<='z';
-	};
-	for(;it!=args.end();++it)
-	{
-		if(could_be_command(*it))
+		auto cmd=commands.find(arg1);
+		if(cmd!=commands.end())
 		{
-			entry cmd=commands.find(*arg_start);
-			if(cmd==commands.end())
-			{
-				std::cout<<"Unknown command: "<<*arg_start<<'\n';
-				return 0;
-			}
 			auto& m=cmd->second;
-			if(auto res=m->make_command(arg_start+1,it,del))
-			{
-				std::cout<<m->name()<<" Error:\n"<<res<<'\n';
-				return 0;
-			}
-			arg_start=it;
+			std::cout<<m->name()<<":\n"<<m->help_message()<<'\n';
 		}
-	}
-
-	if(output.empty())
-	{
-		if(del.flag==del.do_nothing)
+		else
 		{
-			std::cout<<"No commands given\n";
-			return 0;
+			std::cout<<"Unknown command: "<<arg1<<'\n';
 		}
-		output.assign("%w");
+		return 0;
 	}
-	if(!del.pl.get_log())
+	auto arg_find=get_files(args.begin()+1,args.end());
+	auto& files=arg_find.second;
+	CommandMaker::delivery del;
+	try
 	{
-		del.pl.set_log(&CoutLog::get());
-		del.pl.set_verbosity(decltype(del.pl)::errors_only);
+		del=parse_commands(arg_find.first,args.end());
+	}
+	catch(std::exception const& ex)
+	{
+		std::cout<<ex.what()<<'\n';
+		return 0;
+	}
+	filter_out_files(files,del.rgx,del.rgxst);
+	if(del.list_files)
+	{
+		list_files(files);
 	}
 	auto num_threads=[def=del.num_threads](size_t num_files)
 	{
@@ -1912,141 +1898,261 @@ int main(int argc,char** argv)
 	};
 	switch(del.flag)
 	{
+		case del.do_absolutely_nothing:
+			std::cout<<"No commands given"<<'\n';
+			break;
 		case del.do_nothing:
 			[[fallthrough]];
 		case del.do_single:
-		{
-			if(is_folder)
-			{
-				auto files=images_in_path(arg1,del.rgx,del.rgxst);
-				if(files.empty())
-				{
-					std::cout<<"No files found\n";
-					return 0;
-				}
-				processes.process(files,&output,num_threads(files.size()),del.starting_index,del.do_move);
-			}
-			else
-			{
-				processes.process(arg1.c_str(),&output,del.starting_index,del.do_move);
-			}
+			do_single(del,files,num_threads(files.size()));
 			break;
-		}
 		case del.do_cut:
-		{
-			if(is_folder)
-			{
-				auto files=images_in_path(arg1,del.rgx,del.rgxst);
-				if(files.empty())
-				{
-					std::cout<<"No files found\n";
-					return 0;
-				}
-				class CutProcess:public exlib::ThreadTask {
-				private:
-					std::string const* input;
-					SaveRules const* output;
-					unsigned int index;
-				public:
-					CutProcess(std::string const* input,SaveRules const* output,unsigned int index):
-						input(input),output(output),index(index)
-					{}
-					void execute() override
-					{
-						try
-						{
-							auto out=output->make_filename(*input,index);
-							auto ext=exlib::find_extension(out.begin(),out.end());
-							auto s=supported(&*ext);
-							if(s==support_type::no)
-							{
-								std::cout<<(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())));
-								return;
-							}
-							CImg<unsigned char> in(input->c_str());
-							ScoreProcessor::cut_page(in,out.c_str());
-						}
-						catch(std::exception const& ex)
-						{
-							std::cout<<std::string(ex.what()).append(1,'\n');
-						}
-					}
-				};
-				exlib::ThreadPool tp(num_threads(files.size()));
-				for(size_t i=0;i<files.size();++i)
-				{
-					tp.add_task<CutProcess>(&files[i],&output,i+del.starting_index);
-				}
-				tp.start();
-			}
-			else
-			{
-				try
-				{
-					auto out=output.make_filename(arg1,del.starting_index);
-					auto ext=exlib::find_extension(out.begin(),out.end());
-					auto s=supported(&*ext);
-					if(s==support_type::no)
-					{
-						std::cout<<"Unsupported file type"<<&*ext<<'\n';
-						return 0;
-					}
-					CImg<unsigned char> in(arg1.c_str());
-					cut_page(in,out.c_str());
-				}
-				catch(std::exception const& ex)
-				{
-					std::cout<<ex.what()<<'\n';
-					return 1;
-				}
-			}
+			do_cut(del,files,num_threads(files.size()));
 			break;
-		}
 		case del.do_splice:
+			do_splice(del,files);
+			break;
+	}
+	return 0;
+}
+
+void info_output()
+{
+	std::cout<<
+		"Version: "<<
+		pretty_date()<<
+		" "
+		__TIME__
+		" Copyright 2017-2018 Edward Xie"
+		"\n"
+		"filename_or_folder... command params... ...\n"
+		"place -- in front of files starting with -\n"
+		"parameters that require multiple values are notated with a comma\n"
+		"example: my_image.png -- -my-other-image.jpg my_folder/ -fg 180 -ccga 20,50 ,30\n"
+		"Type command alone to get readme\n"
+		"Available commands:\n"
+		"  Single Page Operations:\n"
+		"    Convert to Grayscale:     -cg\n"
+		"    Filter Gray:              -fg min_value max_value=255 replacer=255\n"
+		"    Cluster Clear Gray:       -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
+		"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
+		"    Horizontal Padding:       -hp left right=left\n"
+		"    Vertical Padding:         -vp top bottom=top\n"
+		"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
+		"    Rescale Colors Grayscale: -rcg min mid max\n"
+		"    Blur:                     -bl radius\n"
+		"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128\n"
+		"    Remove Border (DANGER):   -rb tolerance=0.5\n"
+		"    Rescale:                  -rs factor interpolation_mode=auto\n"
+		"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
+		"    Rotate:                   -rot degrees\n"
+		"  Multi Page Operations:\n"
+		"    Cut:                      -cut\n"
+		"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
+		"  Options:\n"
+		"    Output:                   -o format move=false\n"
+		"    Verbosity:                -vb level\n"
+		"    Filter Files:             -flt regex remove=false\n"
+		"    Number of Threads:        -nt num\n"
+		"    Starting index:           -si num\n"
+		"    List Files:               -list\n"
+		"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
+		"A Multi Page Operation can not be done with other operations.\n"
+		;
+}
+
+void do_single(CommandMaker::delivery const& del,std::vector<std::string> const& files,unsigned int const num_threads)
+{
+	del.pl.process(files,&del.sr,num_threads,del.starting_index,del.do_move);
+}
+
+void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& files,unsigned int const num_threads)
+{
+	class CutProcess:public exlib::ThreadTask {
+	private:
+		std::string const* input;
+		SaveRules const* output;
+		unsigned int index;
+		int verbosity;
+	public:
+		CutProcess(std::string const* input,SaveRules const* output,unsigned int index,int verbosity):
+			input(input),output(output),index(index),verbosity(verbosity)
+		{}
+		void execute() override
 		{
-			if(is_folder)
+			try
 			{
-				auto files=images_in_path(arg1,del.rgx,del.rgxst);
-				if(files.empty())
+				if(verbosity>ProcessList<>::verbosity::errors_only)
 				{
-					std::cout<<"No files found\n";
-					return 0;
+					std::string coutput("Starting ");
+					coutput.append(*input);
+					coutput.append(1,'\n');
+					std::cout<<coutput;
 				}
-				try
+				auto out=output->make_filename(*input,index);
+				auto ext=exlib::find_extension(out.begin(),out.end());
+				auto s=supported(&*ext);
+				if(s==support_type::no)
 				{
-					auto save=output.make_filename(files[0],del.starting_index);
-					auto ext=exlib::find_extension(save.begin(),save.end());
-					if(supported(&*ext)==support_type::no)
+					if(verbosity>ProcessList<>::verbosity::silent)
 					{
-						std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
-						return 0;
+						std::cout<<(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())));
 					}
-					auto num=splice_pages_nongreedy(
-						files,
-						del.splice_args.horiz_padding,
-						del.splice_args.optimal_height,
-						del.splice_args.optimal_padding,
-						del.splice_args.min_padding,
-						save.c_str(),
-						del.splice_args.excess_weight,
-						del.splice_args.padding_weight,
-						del.starting_index);
-					std::cout<<"Created "<<num<<" pages\n";
+					return;
 				}
-				catch(std::exception const& ex)
-				{
-					std::cout<<ex.what()<<'\n';
-					return 1;
-				}
-				return 0;
+				CImg<unsigned char> in(input->c_str());
+				ScoreProcessor::cut_page(in,out.c_str());
 			}
-			else
+			catch(std::exception const& ex)
 			{
-				std::cout<<"Splice requires folder input\n";
-				return 1;
+				if(verbosity>ProcessList<>::verbosity::silent)
+				{
+					std::cout<<std::string(ex.what()).append(1,'\n');
+				}
 			}
 		}
-		//stop();
-		return 0;
+	};
+	exlib::ThreadPool tp(num_threads);
+	for(size_t i=0;i<files.size();++i)
+	{
+		tp.add_task<CutProcess>(&files[i],&del.sr,i+del.starting_index,del.pl.get_verbosity());
 	}
+	tp.start();
+}
+
+void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const& files)
+{
+	try
+	{
+		auto save=del.sr.make_filename(files[0],del.starting_index);
+		auto ext=exlib::find_extension(save.begin(),save.end());
+		if(supported(&*ext)==support_type::no)
+		{
+			std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
+			return;
+		}
+		auto num=splice_pages_nongreedy(
+			files,
+			del.splice_args.horiz_padding,
+			del.splice_args.optimal_height,
+			del.splice_args.optimal_padding,
+			del.splice_args.min_padding,
+			save.c_str(),
+			del.splice_args.excess_weight,
+			del.splice_args.padding_weight,
+			del.starting_index);
+		std::cout<<"Created "<<num<<" pages\n";
+	}
+	catch(std::exception const& ex)
+	{
+		std::cout<<ex.what()<<'\n';
+	}
+}
+
+//finds end of input list and gets the strings from that list
+std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::iter begin,CommandMaker::iter end)
+{
+	bool escaped=false;
+	std::pair<CommandMaker::iter,std::vector<std::string>> ret;
+	auto& string=ret.first;
+	auto& files=ret.second;
+	for(string=begin;string!=end;++string)
+	{
+		if(!escaped)
+		{
+			if(could_be_command(*string))
+			{
+				return ret;
+			}
+			if(*string=="--")
+			{
+				escaped=true;
+				continue;
+			}
+		}
+		if(is_folder(*string))
+		{
+			auto fid=exlib::files_in_dir(*string);
+			files.reserve(files.size()+fid.size());
+			for(auto& str:fid)
+			{
+				files.emplace_back(std::move(str));
+				files.back()=*string+files.back();
+			}
+		}
+		else
+		{
+			files.emplace_back(std::move(*string));
+		}
+		escaped=false;
+	}
+	return ret;
+}
+//filters out files according to the regex pattern
+void filter_out_files(std::vector<std::string>& files,std::regex const& rgx,CommandMaker::delivery::regex_state rgxst)
+{
+	if(rgxst)
+	{
+		files.erase(std::remove_if(files.begin(),files.end(),
+			[&rgx,keep=rgxst==CommandMaker::delivery::normal](auto const& a)
+		{
+			return std::regex_match(a,rgx)!=keep;
+		}),files.end());
+	}
+}
+
+CommandMaker::delivery parse_commands(CommandMaker::iter arg_start,CommandMaker::iter end)
+{
+	CommandMaker::delivery del;
+	if(arg_start!=end)
+	{
+		auto it=arg_start+1;
+		for(;;++it)
+		{
+			if(it==end||could_be_command(*it))
+			{
+				auto cmd=commands.find(*arg_start);
+				if(cmd==commands.end())
+				{
+					throw std::invalid_argument("Unknown command: "+*arg_start);
+				}
+				auto& m=cmd->second;
+				if(auto res=m->make_command(arg_start+1,it,del))
+				{
+					throw std::invalid_argument(std::string(m->name())+" Error:\n"+res);
+				}
+				arg_start=it;
+			}
+			if(it==end)
+			{
+				break;
+			}
+		}
+	}
+	if(del.sr.empty())
+	{
+		del.sr.assign("%w");
+	}
+	if(!del.pl.get_log())
+	{
+		del.pl.set_log(&CoutLog::get());
+		del.pl.set_verbosity(decltype(del.pl)::errors_only);
+	}
+	return del;
+}
+
+void list_files(std::vector<std::string> const& files)
+{
+	if(files.empty())
+	{
+		std::cout<<"No files found\n";
+	}
+	else
+	{
+		for(auto const& file:files)
+		{
+			std::cout<<file<<'\n';
+		}
+	}
+	std::cout<<'\n';
 }
