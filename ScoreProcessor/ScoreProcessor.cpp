@@ -1780,13 +1780,16 @@ std::vector<std::string> images_in_path(std::string const& path,std::regex const
 	}
 	return ret;
 }
-std::string pretty_date()
+std::pair<std::string,std::string> pretty_date()
 {
-	std::string ret(__DATE__);
-	if(ret[4]==' ')
+	std::pair<std::string,std::string> ret;
+	char* const date=__DATE__;
+	ret.first.assign(date);
+	if(ret.first[4]==' ')
 	{
-		ret[4]='0';
+		ret.first[4]='0';
 	}
+	ret.second.assign(date+7,4);
 	return ret;
 }
 void test()
@@ -1899,7 +1902,7 @@ int main(int argc,char** argv)
 	switch(del.flag)
 	{
 		case del.do_absolutely_nothing:
-			std::cout<<"No commands given"<<'\n';
+			std::cout<<"No commands given\n";
 			break;
 		case del.do_nothing:
 			[[fallthrough]];
@@ -1918,15 +1921,17 @@ int main(int argc,char** argv)
 
 void info_output()
 {
+	auto dates=pretty_date();
 	std::cout<<
 		"Version: "<<
-		pretty_date()<<
+		dates.first<<
 		" "
 		__TIME__
-		" Copyright 2017-2018 Edward Xie"
-		"\n"
+		" Copyright 2017-"<<
+		dates.second<<
+		" Edward Xie\n"
 		"filename_or_folder... command params... ...\n"
-		"If a file starts with a dash, double the starting dash: -my-file.jpg -> --my-file.jpg\n"
+		"If a file starts with a dash, double the starting dash: \"-my-file.jpg\" -> \"--my-file.jpg\"\n"
 		"parameters that require multiple values are notated with a comma\n"
 		"example: my_image.png --my-other-image.jpg my_folder/ -fg 180 -ccga 20,50 ,30\n"
 		"Type command alone to get readme\n"
