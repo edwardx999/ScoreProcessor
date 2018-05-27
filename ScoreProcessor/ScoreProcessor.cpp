@@ -1926,9 +1926,9 @@ void info_output()
 		" Copyright 2017-2018 Edward Xie"
 		"\n"
 		"filename_or_folder... command params... ...\n"
-		"place -- in front of files starting with -\n"
+		"If a file starts with a dash, double the starting dash\n"
 		"parameters that require multiple values are notated with a comma\n"
-		"example: my_image.png -- -my-other-image.jpg my_folder/ -fg 180 -ccga 20,50 ,30\n"
+		"example: my_image.png --my-other-image.jpg my_folder/ -fg 180 -ccga 20,50 ,30\n"
 		"Type command alone to get readme\n"
 		"Available commands:\n"
 		"  Single Page Operations:\n"
@@ -2052,22 +2052,21 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 //finds end of input list and gets the strings from that list
 std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::iter begin,CommandMaker::iter end)
 {
-	bool escaped=false;
 	std::pair<CommandMaker::iter,std::vector<std::string>> ret;
 	auto& string=ret.first;
 	auto& files=ret.second;
 	for(string=begin;string!=end;++string)
 	{
-		if(!escaped)
+		if((*string)[0]=='-')
 		{
-			if(could_be_command(*string))
+			char c=(*string)[1];
+			if(c>='a'&&c<='z')//could_be_command
 			{
 				return ret;
 			}
-			if(*string=="--")
+			else if(c=='-')
 			{
-				escaped=true;
-				continue;
+				(*string).erase((*string).begin());//I should have written this whole this with string_view
 			}
 		}
 		if(is_folder(*string))
@@ -2084,7 +2083,6 @@ std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::i
 		{
 			files.emplace_back(std::move(*string));
 		}
-		escaped=false;
 	}
 	return ret;
 }
