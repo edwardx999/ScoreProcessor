@@ -252,23 +252,81 @@ public:
 	}
 };
 class FillSelectionAbsGray:public ImageProcess<> {
-	ImageUtils::Rectangle<unsigned int> rect;
-	Grayscale color;
 public:
-	FillSelectionAbsGray(ImageUtils::Rectangle<unsigned int> rect,Grayscale g):rect(rect),color(g)
-	{}
+	enum origin_reference {
+		top_left,top_middle,top_right,
+		middle_left,middle,middle_right,
+		bottom_left,bottom_middle,bottom_right
+	};
+private:
+	ImageUtils::Rectangle<signed int> offsets;
+	origin_reference origin;
+	Grayscale color;
+	static ImageUtils::Point<signed int> get_origin(origin_reference origin_code,int width,int height)
+	{
+		ImageUtils::Point<signed int> porigin;
+		switch(origin_code%3)
+		{
+			case 0:
+				porigin.x=0;
+				break;
+			case 1:
+				porigin.x=width/2;
+				break;
+			case 2:
+				porigin.x=width;
+		}
+		switch(origin_code/3)
+		{
+			case 0:
+				porigin.y=0;
+				break;
+			case 1:
+				porigin.y=height/2;
+				break;
+			case 2:
+				porigin.y=height;
+		}
+		return porigin;
+	}
+public:
+	FillSelectionAbsGray(ImageUtils::Rectangle<signed int> offsets,Grayscale g,origin_reference orgn):offsets(offsets),color(g),origin(orgn)
+	{
+		assert(origin>=top_left&&origin<=bottom_right);
+	}
 	void process(Img& img) override
 	{
-		auto temp=rect;
-		if(temp.right>img._width)
+		auto const porigin=get_origin(origin,img.width(),img.height());
+		ImageUtils::Rectangle<signed int> rect;
+		rect.left=offsets.left+porigin.x;
+		rect.right=offsets.right+porigin.x;
+		rect.top=offsets.top+porigin.y;
+		rect.bottom=offsets.bottom+porigin.y;
+		if(rect.left<0)
 		{
-			temp.right=img._width;
+			rect.left=0;
 		}
-		if(temp.bottom>img._height)
+		if(rect.top<0)
 		{
-			temp.bottom=img._height;
+			rect.top=0;
 		}
-		fill_selection(img,temp,color);
+		if(rect.right>img.width())
+		{
+			rect.right=img.width();
+		}
+		if(rect.bottom>img.height())
+		{
+			rect.bottom=img.height();
+		}
+		unsigned char buffer[10];
+		for(int i=0;i<img.spectrum();++i)
+		{
+			buffer[i]=color;
+		}
+		fill_selection(
+			img,
+			{scast<uint>(rect.left),scast<uint>(rect.right),scast<uint>(rect.top),scast<uint>(rect.bottom)},
+			buffer);
 	}
 };
 class Blur:public ImageProcess<> {
@@ -1551,10 +1609,45 @@ protected:
 RegexMaker const RegexMaker::singleton;
 
 class FillRectangleGrayMaker:public SingleCommandMaker {
-	FillRectangleGrayMaker():SingleCommandMaker(4,5,"Fills given rectangle with given color","Fill Rectangle Gray")
+	FillRectangleGrayMaker():SingleCommandMaker(4,6,
+		"Fills given rectangle with given color\n"
+		"Origin codes are:\n"
+		"  tl  tm  tr\n"
+		"  ml  m   mr\n"
+		"  bl  bm  br",
+		"Fill Rectangle Gray")
 	{}
 	static FillRectangleGrayMaker const singleton;
 	static char const* const invalids[4];
+#define fsag FillSelectionAbsGray
+	static std::unordered_map<std::string,fsag::origin_reference> make_ref_map()
+	{
+		std::unordered_map<std::string,fsag::origin_reference> map;
+		map.emplace("tl",fsag::top_left);
+		map.emplace("ml",fsag::middle_left);
+		map.emplace("bl",fsag::bottom_left);
+		map.emplace("yaoi",fsag::bottom_left);
+		map.emplace("tm",fsag::top_middle);
+		map.emplace("mm",fsag::middle);
+		map.emplace("m",fsag::middle);
+		map.emplace("bm",fsag::bottom_middle);
+		map.emplace("tr",fsag::top_right);
+		map.emplace("mr",fsag::middle_right);
+		map.emplace("br",fsag::bottom_right);
+		//may add more in the future
+#undef fsag
+		return map;
+	}
+	static FillSelectionAbsGray::origin_reference get_origin(string const& str)
+	{
+		static auto const map=make_ref_map();
+		auto sel=map.find(str);
+		if(sel==map.end())
+		{
+			return FillSelectionAbsGray::origin_reference(-1);
+		}
+		return sel->second;
+	}
 public:
 	static CommandMaker const& get()
 	{
@@ -1569,17 +1662,14 @@ protected:
 			try
 			{
 				coords[i]=std::stoi(begin[i]);
-				if(coords[i]<0)
-				{
-					return "Coordinates must be non-negative";
-				}
 			}
 			catch(std::exception const&)
 			{
 				return invalids[i];
 			}
 		}
-		int color;
+		int color=255;
+		FillSelectionAbsGray::origin_reference origin=FillSelectionAbsGray::top_left;
 		if(n>4)
 		{
 			try
@@ -1594,10 +1684,14 @@ protected:
 			{
 				return "Invalid argument for color";
 			}
-		}
-		else
-		{
-			color=255;
+			if(n>5)
+			{
+				origin=get_origin(begin[5]);
+				if(origin==-1)
+				{
+					return "Unknown origin code";
+				}
+			}
 		}
 		if(coords[0]>=coords[2])
 		{
@@ -1608,14 +1702,16 @@ protected:
 			return "Top must be less than bottom";
 		}
 		del.pl.add_process<FillSelectionAbsGray>(
-			ImageUtils::Rectangle<uint>(
+			ImageUtils::Rectangle<signed int>(
 				{
-					scast<uint>(coords[0]),
-					scast<uint>(coords[2]),
-					scast<uint>(coords[1]),
-					scast<uint>(coords[3])
+					coords[0],
+					coords[2],
+					coords[1],
+					coords[3]
 				}),
-			Grayscale(color));
+			Grayscale(color),
+			origin
+			);
 		return nullptr;
 	}
 };
@@ -1949,7 +2045,7 @@ void info_output()
 		"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128\n"
 		"    Remove Border (DANGER):   -rb tolerance=0.5\n"
 		"    Rescale:                  -rs factor interpolation_mode=auto\n"
-		"    Fill Rectangle Gray:      -fr left top right bottom color=255\n"
+		"    Fill Rectangle Gray:      -fr left top right bottom color=255 origin=tl\n"
 		"    Rotate:                   -rot degrees\n"
 		"  Multi Page Operations:\n"
 		"    Cut:                      -cut\n"

@@ -525,7 +525,6 @@ void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& img,ImageUtils::Rec
 			}
 		}
 	}
-	img.get_gradient();
 }
 namespace ScoreProcessor {
 	template<typename T,unsigned int N>
