@@ -833,7 +833,7 @@ protected:
 		{
 			try
 			{
-				if((*begin).front()=='-')
+				if((*begin).front()=='-'&&(*begin)[1]=='-')
 				{
 					del.sr.assign((*begin).c_str()+1);
 				}
@@ -1926,7 +1926,7 @@ void info_output()
 		" Copyright 2017-2018 Edward Xie"
 		"\n"
 		"filename_or_folder... command params... ...\n"
-		"If a file starts with a dash, double the starting dash\n"
+		"If a file starts with a dash, double the starting dash: -my-file.jpg -> --my-file.jpg\n"
 		"parameters that require multiple values are notated with a comma\n"
 		"example: my_image.png --my-other-image.jpg my_folder/ -fg 180 -ccga 20,50 ,30\n"
 		"Type command alone to get readme\n"
