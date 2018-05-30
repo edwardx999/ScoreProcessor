@@ -23,6 +23,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "Cluster.h"
 #include <assert.h>
 #include <functional>
+#include <array>
 namespace ScoreProcessor {
 	/*
 		Reduces colors to two colors
@@ -509,40 +510,41 @@ template<typename T>
 void ScoreProcessor::fill_selection(::cimg_library::CImg<T>& img,ImageUtils::Rectangle<unsigned int> const sel,T const* color)
 {
 	unsigned int const width=img._width;
-	unsigned int const height=img._height;
-	unsigned int const area=width*height;
+	unsigned int const area=img._height*width;
 	unsigned int const spectrum=img._spectrum;
 	T* const data=img._data;
-	for(unsigned int y=sel.top;y<sel.bottom;++y)
+	for(unsigned int s=0;s<spectrum;++s)
 	{
-		T* const row=data+y*width;
-		for(unsigned int x=sel.left;x<sel.right;++x)
+		T* const layer=data+s*area;
+		for(unsigned int y=sel.top;y<sel.bottom;++y)
 		{
-			T* const pixel=row+x;
-			for(unsigned int s=0;s<spectrum;++s)
+			T* const row=layer+y*width;
+			for(unsigned int x=sel.left;x<sel.right;++x)
 			{
-				*(pixel+s*area)=color[s];
+				row[x]=color[s];
 			}
 		}
 	}
 }
 namespace ScoreProcessor {
-	template<typename T,unsigned int N>
+	template<typename T,size_t N>
 	void fill_selection(::cimg_library::CImg<T>& img,ImageUtils::Rectangle<unsigned int> const sel,std::array<T,N> color)
 	{
+		assert(image._spectrum>=N);
+		assert(selection.right<image._width);
+		assert(selection.bottom<image._height);
 		unsigned int const width=img._width;
-		unsigned int const height=img._height;
-		unsigned int const area=width*height;
+		unsigned int const area=width*img._height;
 		T* const data=img._data;
-		for(unsigned int y=sel.top;y<sel.bottom;++y)
+		for(unsigned int s=0;s<N;++s)
 		{
-			T* const row=data+y*width;
-			for(unsigned int x=sel.left;x<sel.right;++x)
+			T* const layer=data+s*area;
+			for(unsigned int y=sel.top;y<sel.bottom;++y)
 			{
-				T* const pixel=row+x;
-				for(unsigned int s=0;s<N;++s)
+				T* const row=layer+y*width;
+				for(unsigned int x=sel.left;x<sel.right;++x)
 				{
-					*(pixel+s*area)=color[s];
+					row[x]=color[s];
 				}
 			}
 		}
@@ -550,34 +552,11 @@ namespace ScoreProcessor {
 }
 inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::ColorRGB const color)
 {
-	assert(image._spectrum>=3);
-	assert(selection.right<image._width);
-	assert(selection.bottom<image._height);
-	for(unsigned int x=selection.left;x<selection.right;++x)
-	{
-		for(unsigned int y=selection.top;y<selection.bottom;++y)
-		{
-			image(x,y,0)=color.r;
-			image(x,y,1)=color.g;
-			image(x,y,2)=color.b;
-		}
-	}
+	fill_selection(image,selection,std::array<unsigned char,3>({color.r,color.g,color.b}));
 }
 inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::Grayscale const gray)
 {
-	assert(image._spectrum>=1);
-	assert(selection.right<image._width);
-	assert(selection.bottom<image._height);
-	unsigned char* const data=image.data();
-	unsigned int const width=image._width;
-	for(unsigned int y=selection.top;y<selection.bottom;++y)
-	{
-		auto const row=data+y*width;
-		for(unsigned int x=selection.left;x<selection.right;++x)
-		{
-			*(row+x)=gray;
-		}
-	}
+	fill_selection(image,selection,std::array<unsigned char,1>({gray}));
 }
 template<typename T>
 void ScoreProcessor::copy_paste(::cimg_library::CImg<T> dest,::cimg_library::CImg<T> src,ImageUtils::Rectangle<unsigned int> selection,ImageUtils::Point<signed int> destloc)

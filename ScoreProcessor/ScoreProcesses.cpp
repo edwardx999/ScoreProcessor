@@ -591,33 +591,55 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
+	template<typename T,typename Comp>
+	vector<T> fattened_profile(vector<T> const& prof,unsigned int hp,Comp comp)
+	{
+		vector<T> res(profile.size());
+		auto el=res.begin()-1;
+		for(auto it=prof.begin(),rit=res.begin();i<prof.end();++it,++rit)
+		{
+			decltype(it) begin,end;
+			if((it-prof.begin())<=hp)
+			{
+				begin=res.begin();
+			}
+			else
+			{
+				begin=it-hp;
+			}
+			end=it+hp+1;
+			if(end>prof.end())
+			{
+				end=prof.end();
+			}
+			if(el<begin)
+			{
+				el=std::min_element(begin,end);
+			}
+			else
+			{
+				el=std::min(el,end-1,[](auto const a,auto const b)
+				{
+					return comp(*a,*b);
+				});
+			}
+			*rit=*el;
+		}
+		return res;
+	}
 	vector<unsigned int> fattened_profile_high(vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
-#define fatten_base(func)\
-		vector<unsigned int> res(profile.size());\
-		auto rt=res.begin();\
-		auto pt=profile.begin();\
-		for(;rt!=res.end();++rt,++pt)\
-		{\
-			auto beg=pt-horiz_padding;\
-			if(beg<profile.begin())\
-			{\
-				beg=profile.begin();\
-			}\
-			auto ed=pt+horiz_padding+1;\
-			if(ed>profile.end())\
-			{\
-				ed=profile.end();\
-			}\
-			*rt=* ##func## (beg,ed);\
-		}\
-		return res;
-		fatten_base(std::min_element);
+		return exlib::fattened_profile(profile,horiz_padding,[](unsigned int a,unsigned int b)
+		{
+			return a<=b;
+		});
 	}
 	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
-		fatten_base(std::max_element);
-#undef fatten_base
+		return exlib::fattened_profile(profile,horiz_padding,[](unsigned int a,unsigned int b)
+		{
+			return a>=b;
+		});
 	}
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
 
@@ -1665,7 +1687,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 		}
 		return ret;
-	}
+		}
 
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num);
 	unsigned int splice_pages_nongreedy(
@@ -1700,8 +1722,8 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				if(img._spectrum>2)
 				{
 					img=get_grayscale_simple(img);
-			}
-		};
+				}
+			};
 			CImg<unsigned char> top(filenames[0].c_str());
 			CImg<unsigned char> bottom(filenames[1].c_str());
 			if(optimal_height==-1)
@@ -1736,7 +1758,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				conv(bottom.assign(filenames[i+2].c_str()));
 			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-		}
+				}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1774,7 +1796,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			if(p.height>optimal_height)
 			{
 				numer=excess_weight*(p.height-optimal_height);
-		}
+			}
 			else
 			{
 				numer=optimal_height-p.height;
@@ -1784,12 +1806,12 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			float padding_cost=padding_weight*abs_dif(float(p.padding),optimal_padding)/optimal_padding;
 			padding_cost=padding_cost*padding_cost*padding_cost;
 			return height_cost+padding_cost;
-		};
+			};
 		struct node {
 			float cost;
 			page_layout layout;
 			size_t previous;
-	};
+		};
 #ifndef NDEBUG
 		std::cout<<"Initalizing nodes\n"<<"c="<<c<<'\n';
 #endif
@@ -1817,7 +1839,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					nodes[i].cost=total_cost;
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
-				}
+			}
 				else
 				{
 					break;
@@ -1827,7 +1849,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					break;
 				}
 				--j;
-			}
+		}
 #ifndef NDEBUG
 			std::cout<<"prev="<<nodes[i].previous<<'\n';
 #endif
@@ -1877,7 +1899,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-}
+		}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())

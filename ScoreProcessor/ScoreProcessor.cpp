@@ -2049,7 +2049,7 @@ void info_output()
 		"    Rotate:                   -rot degrees\n"
 		"  Multi Page Operations:\n"
 		"    Cut:                      -cut\n"
-		"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
+		"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=-1=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
 		"  Options:\n"
 		"    Output:                   -o format move=false\n"
 		"    Verbosity:                -vb level\n"
@@ -2102,7 +2102,16 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 					return;
 				}
 				CImg<unsigned char> in(input->c_str());
-				ScoreProcessor::cut_page(in,out.c_str());
+				auto num_pages=ScoreProcessor::cut_page(in,out.c_str());
+				if(verbosity>ProcessList<>::verbosity::errors_only)
+				{
+					std::string coutput("Finished ");
+					coutput.append(*input);
+					coutput.append("and created ");
+					coutput.append(std::to_string(num_pages));
+					coutput.append(" pages");
+					std::cout<<coutput;
+				}
 			}
 			catch(std::exception const& ex)
 			{
@@ -2167,7 +2176,7 @@ std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::i
 			}
 			else if(c=='-')
 			{
-				(*string).erase((*string).begin());//I should have written this whole this with string_view
+				(*string).erase((*string).begin());//I should have written this whole thing with string_view
 			}
 		}
 		if(is_folder(*string))

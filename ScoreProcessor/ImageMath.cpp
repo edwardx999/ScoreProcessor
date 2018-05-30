@@ -261,7 +261,7 @@ namespace cimg_library {
 		{
 			for(unsigned int y=0;y<image._height;++y)
 			{
-				ret(x,y)=(image(x,y,0)*0.2126f+image(x,y,1)*0.7152f+image(x,y,2)*0.0722f);
+				ret(x,y)=std::round((image(x,y,0)*0.2126f+image(x,y,1)*0.7152f+image(x,y,2)*0.0722f));
 			}
 		}
 		return ret;
@@ -276,7 +276,7 @@ namespace cimg_library {
 		unsigned char* const bstart=image._data+2*size;
 		for(unsigned int i=0;i<size;++i)
 		{
-			ret_start[i]=(uint16_t(rstart[i])+gstart[i]+bstart[i])/3;
+			ret_start[i]=std::round((float(rstart[i])+gstart[i]+bstart[i])/3.0f);
 		}
 		return ret;
 	}

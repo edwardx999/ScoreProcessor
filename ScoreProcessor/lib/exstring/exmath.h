@@ -19,6 +19,47 @@ namespace exlib {
 		return num_digits;
 	}
 
+	/*
+	Makes a container in which each element becomes the minimum element within hp of its index
+	*/
+	template<typename RandomAccessContainer,typename Comp>
+	RandomAccessContainer fattened_profile(RandomAccessContainer const& prof,size_t hp,Comp comp)
+	{
+		RandomAccessContainer res(prof.size());
+		auto el=prof.begin()-1;
+		auto rit=res.begin();
+		for(auto it=prof.begin();it<prof.end();++it,++rit)
+		{
+			decltype(it) begin,end;
+			if((it-prof.begin())<=hp)
+			{
+				begin=prof.begin();
+			}
+			else
+			{
+				begin=it-hp;
+			}
+			end=it+hp+1;
+			if(end>prof.end())
+			{
+				end=prof.end();
+			}
+			if(el<begin)
+			{
+				el=std::min_element(begin,end);
+			}
+			else
+			{
+				el=std::min(el,end-1,[=](auto const a,auto const b)
+				{
+					return comp(*a,*b);
+				});
+			}
+			*rit=*el;
+		}
+		return res;
+	}
+
 	template<typename T>
 	class LimitedSet {
 	public:
