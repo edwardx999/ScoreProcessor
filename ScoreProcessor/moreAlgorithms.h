@@ -225,27 +225,43 @@ namespace cimg_library {
 			dst_last_row[x]=src_last_row[x]+s(src_last_row[prev],src_last_row1[prev]);
 		}
 	}
-	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energyMap,unsigned int startIndex)
+	/*
+		Creates a seam following the path of least resistance from left to right starting from start_y from [0,start_x]. 
+		(start_x,energy_map._width) is filled with start_y.
+	*/
+	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energy_map,unsigned int const start_y,unsigned int const start_x)
 	{
-		::std::vector<unsigned int> resultPath(energyMap._width);
-		T minValue,pathValue=minValue=energyMap(energyMap._width-1,startIndex);
-		resultPath.back()=startIndex;
-		for(unsigned int x=energyMap._width-2;x<energyMap._width;--x)
+		auto const width=energy_map._width;
+		auto const y_lim=energy_map._height-1;
+		assert(start_x<=width);
+		assert(start_y<energy_map._height);
+		::std::vector<unsigned int> result_path(width);
+		for(unsigned int x=start_x;x<width;++x)
 		{
-			unsigned int y=(startIndex==0?0:startIndex-1);
-			unsigned int yLim=(startIndex<energyMap._height-1?startIndex+1:startIndex);
-			minValue=energyMap(x,startIndex=y++);
-			for(;y<=yLim;++y)
+			result_path[x]=start_y;
+		}
+		unsigned int y=start_y;
+		for(unsigned int x=start_x-1;x<width;--x)
+		{
+			unsigned int const y_min=y==0?0:y-1;
+			unsigned int const y_max=y<y_lim?y+1:y_lim;
+			unsigned int y_best=y_min;
+			T min_value=energy_map(x,y_min);
+			for(unsigned int y=y_min+1;y<=y_max;++y)
 			{
-				if(energyMap(x,y)<=minValue)
+				if(energy_map(x,y)<min_value)
 				{
-					minValue=energyMap(x,y);
-					startIndex=y;
+					y_best=y;
 				}
 			}
-			resultPath[x]=startIndex;
+			y=y_best;
+			result_path[x]=y;
 		}
-		return resultPath;
+		return result_path;
+	}
+	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energy_map,unsigned int const start_y)
+	{
+		trace_back_seam(energy_map,start_y,energy_map._width-1);
 	}
 	template<typename T> void mark_seam(CImg<T>& img,T const* values,::std::vector<unsigned int> const& seam)
 	{

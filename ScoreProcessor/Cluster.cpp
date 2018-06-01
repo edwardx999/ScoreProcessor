@@ -38,7 +38,7 @@ namespace ScoreProcessor {
 	ImageUtils::Rectangle<unsigned int> Cluster::bounding_box() const
 	{
 		ImageUtils::Rectangle<unsigned int> box={~0,0,~0,0};
-		for(auto const& rect:ranges)
+		for(auto const rect:ranges)
 		{
 			if(rect.top<box.top)
 			{

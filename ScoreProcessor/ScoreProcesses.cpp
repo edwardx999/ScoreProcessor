@@ -786,7 +786,7 @@ namespace ScoreProcessor {
 		return resultContainer;
 	}
 
-	float const HORIZONTAL_ENERGY_CONSTANT=200.0f;
+	float const HORIZONTAL_ENERGY_CONSTANT=2000.0f;
 	void add_horizontal_energy(CImg<unsigned char> const& ref,CImg<float>& map)
 	{
 		for(unsigned int y=0;y<map._height;++y)
@@ -843,50 +843,51 @@ namespace ScoreProcessor {
 	}
 	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename)
 	{
-		bool isRGB;
-		switch(image._spectrum)
-		{
-			case 1:
-				isRGB=false;
-				break;
-			case 3:
-				isRGB=true;
-				//return 0;
-				break;
-			default:
-				return 0;
-		}
+		//bool isRGB;
+		//switch(image._spectrum)
+		//{
+		//	case 1:
+		//		isRGB=false;
+		//		break;
+		//	case 3:
+		//		isRGB=true;
+		//		//return 0;
+		//		break;
+		//	default:
+		//		return 0;
+		//}
 
 		vector<vector<unsigned int>> paths;
 		{
 			struct line {
-				unsigned int top,bottom;
+				unsigned int top,bottom,right;
 			};
-			unsigned int right=find_right(image,Grayscale::WHITE,5);
 			CImg<float> map=create_vertical_energy(image);
 			add_horizontal_energy(image,map);
 			min_energy_to_right(map);
-			//map.display();
-			struct float_color {
-				static float diff(float const* a,float const* b)
-				{
-					return static_cast<float>(*b!=INFINITY);
-				}
-			};
-			auto const selections=global_select(map,rcast<float*>(0),float_color::diff,0.5,false);
-			auto const clusters=Cluster::cluster_ranges(selections);
-			vector<line> boxes;
-			unsigned int threshold_width=2*map._width/3,
-				threshold_height=map._height/13;
-				//(map._height*map._width)/20;
-
-			for(auto c=clusters.cbegin();c!=clusters.cend();++c)
+#ifndef NDEBUG
+			map.display();
+#endif
+			auto selector=[](std::array<float,1> color)
 			{
-				//if(clusters[i]->size()>threshold)
-				auto box=(*c)->bounding_box();
-				if(box.width()>threshold_width&&box.height()>threshold_height)
+				return color[0]==INFINITY;
+			};
+			vector<line> boxes;
+			{
+				auto const selections=global_select<1U>(map,selector);
+				auto const clusters=Cluster::cluster_ranges(selections);
+				unsigned int threshold_width=2*map._width/3,
+					threshold_height=map._height/13;
+					//(map._height*map._width)/20;
+
+				for(auto c=clusters.cbegin();c!=clusters.cend();++c)
 				{
-					boxes.push_back(line{box.top,box.bottom});
+					//if(clusters[i]->size()>threshold)
+					auto box=(*c)->bounding_box();
+					if(box.width()>threshold_width&&box.height()>threshold_height)
+					{
+						boxes.push_back(line{box.top,box.bottom,box.right});
+					}
 				}
 			}
 			std::sort(boxes.begin(),boxes.end(),[](line a,line b)
@@ -894,12 +895,11 @@ namespace ScoreProcessor {
 				return a.top<b.top;
 			});
 			unsigned int last_row=map._width-1;
-			size_t limit=boxes.size()-1;
-			for(size_t i=0;i<limit;++i)
+			for(size_t i=1;i<boxes.size();++i)
 			{
-				line const& current=boxes[i];
-				line const& next=boxes[i+1];
-				paths.emplace_back(trace_back_seam(map,(current.bottom+next.top)/2));
+				auto const& current=boxes[i-1];
+				auto const& next=boxes[i];
+				paths.emplace_back(trace_back_seam(map,(current.bottom+next.top)/2,(current.right+next.right)/2-1));
 			}
 		}
 		if(paths.size()==0)

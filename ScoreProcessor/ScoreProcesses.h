@@ -530,9 +530,9 @@ namespace ScoreProcessor {
 	template<typename T,size_t N>
 	void fill_selection(::cimg_library::CImg<T>& img,ImageUtils::Rectangle<unsigned int> const sel,std::array<T,N> color)
 	{
-		assert(image._spectrum>=N);
-		assert(selection.right<image._width);
-		assert(selection.bottom<image._height);
+		assert(img._spectrum>=N);
+		assert(sel.right<img._width);
+		assert(sel.bottom<img._height);
 		unsigned int const width=img._width;
 		unsigned int const area=width*img._height;
 		T* const data=img._data;
@@ -606,19 +606,24 @@ void ScoreProcessor::clear_clusters(
 }
 
 namespace ScoreProcessor {
-	template<typename T,unsigned int num_layers,typename Selector,typename D=unsigned int>
-	std::vector<ImageUtils::Rectangle<D>> global_select(
+	template<unsigned int num_layers,typename T,typename Selector>
+	std::vector<ImageUtils::Rectangle<unsigned int>> global_select(
 		::cil::CImg<T> const& image,
 		Selector keep)
 	{
 		static_assert(num_layers>0,"Positive number of layers required");
 		assert(image._spectrum>=num_layers);
 		std::array<T,num_layers> color;
-		std::vector<ImageUtils::Rectangle<D>> container;
-		for(unsigned int y=0;y<image._height;++y)
+		unsigned int range_found=0,range_start=0,range_end=0;
+		auto const height=image._height;
+		auto const width=image._width;
+		auto const size=height*width;
+		auto const data=image._data;
+		std::vector<ImageUtils::Rectangle<unsigned int>> container;
+		for(unsigned int y=0;y<height;++y)
 		{
-			auto const row=image._data+y*image._width;
-			for(unsigned int x=0;x<image._width;++x)
+			auto const row=data+y*width;
+			for(unsigned int x=0;x<width;++x)
 			{
 				auto const pix=row+x;
 				for(unsigned int i=0;i<num_layers;++i)
@@ -650,7 +655,7 @@ namespace ScoreProcessor {
 					}
 					case 2:
 					{
-						container.push_back(ImageUtils::Rectangle<D>{range_start,range_end,y,y+1});
+						container.push_back(ImageUtils::Rectangle<unsigned int>{range_start,range_end,y,y+1});
 						range_found=0;
 						break;
 					}
@@ -658,7 +663,7 @@ namespace ScoreProcessor {
 			}
 			if(1==range_found)
 			{
-				container.push_back(ImageUtils::Rectangle<D>{range_start,image._width,y,y+1});
+				container.push_back(ImageUtils::Rectangle<unsigned int>{range_start,image._width,y,y+1});
 				range_found=0;
 			}
 		}

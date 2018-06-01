@@ -1932,7 +1932,7 @@ bool is_folder(std::string const& str)
 
 int main(int argc,char** argv)
 {
-#ifndef NDEBUG
+#ifdef TESTING
 	test();
 #endif
 	cimg::exception_mode(0);
@@ -2016,6 +2016,9 @@ int main(int argc,char** argv)
 			do_splice(del,files);
 			break;
 	}
+#ifndef NDEBUG
+	stop();
+#endif
 	return 0;
 }
 
@@ -2101,7 +2104,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 				{
 					if(verbosity>ProcessList<>::verbosity::silent)
 					{
-						std::cout<<(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())));
+						std::cout<<(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())).append(1,'\n'));
 					}
 					return;
 				}
@@ -2111,9 +2114,9 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 				{
 					std::string coutput("Finished ");
 					coutput.append(*input);
-					coutput.append("and created ");
+					coutput.append(" and created ");
 					coutput.append(std::to_string(num_pages));
-					coutput.append(" pages");
+					coutput.append(" pages\n");
 					std::cout<<coutput;
 				}
 			}
