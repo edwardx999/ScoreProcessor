@@ -41,7 +41,7 @@ namespace ScoreProcessor {
 		typedef cimg_library::CImg<T> Img;
 		virtual ~ImageProcess()
 		{};
-		virtual void process(Img&)=0;
+		virtual void process(Img&) const=0;
 	};
 	/*
 		Logs to some output.
@@ -59,7 +59,7 @@ namespace ScoreProcessor {
 	class SaveRules {
 	private:
 		enum template_symbol {
-			i,x=10,f,p,c,w
+			string=-1,i=0,padding_min=0,padding_max=9,x=10,f,p,c,w
 		};
 		struct part {
 			char* data;
@@ -122,6 +122,17 @@ namespace ScoreProcessor {
 			Whether the current template is empty.
 		*/
 		bool empty() const;
+
+		/*
+			Whether template contains given templating.
+		*/
+		bool contains(template_symbol ts) const;
+
+		bool contains_indexing() const;
+
+		template<typename String>
+		bool contains(String const& str) const;
+
 	};
 
 	/*
@@ -754,6 +765,57 @@ namespace ScoreProcessor {
 	inline bool SaveRules::empty() const
 	{
 		return parts.empty();
+	}
+
+	/*
+	Whether template contains given templating.
+	*/
+	inline bool SaveRules::contains(SaveRules::template_symbol ts) const
+	{
+		if(ts==template_symbol::string)
+		{
+			for(auto const& prt:this->parts)
+			{
+				if(prt.data!=0)
+				{
+					return true;
+				}
+			}
+		}
+		else
+		{
+			for(auto const& prt:this->parts)
+			{
+				if(prt.data==0&&prt.info.tmplt==ts)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	inline bool SaveRules::contains_indexing() const
+	{
+		for(auto const& prt:this->parts)
+		{
+			if(prt.data==0&&prt.info.tmplt>=padding_min&&prt.info.tmplt<=padding_max)
+			{
+				return true;
+			}
+		}
+	}
+
+	template<typename String>
+	bool SaveRules::contains(String const& str) const
+	{
+		for(auto const& prt:this->parts)
+		{
+			if(prt.data!=0&&str==prt.data)
+			{
+				return true;
+			}
+		}
 	}
 }
 #endif

@@ -40,13 +40,13 @@ using namespace ImageUtils;
 
 class ChangeToGrayscale:public ImageProcess<> {
 public:
-	void process(Img& image)
+	void process(Img& img) const
 	{
-		if(image._spectrum>=3)
+		if(img._spectrum>=3)
 		{
-			image=get_grayscale_simple(image);
+			img=get_grayscale_simple(img);
 		}
-		else if(image._spectrum==1)
+		else if(img._spectrum==1)
 		{
 			return;
 		}
@@ -58,7 +58,7 @@ public:
 };
 class RemoveTransparency:public ImageProcess<> {
 public:
-	void process(Img& img)
+	void process(Img& img) const
 	{
 		if(img._spectrum==4)
 		{
@@ -71,11 +71,11 @@ class RemoveBorderGray:public ImageProcess<> {
 public:
 	RemoveBorderGray(float tolerance):tolerance(tolerance)
 	{}
-	void process(Img& image)
+	void process(Img& img) const
 	{
-		if(image._spectrum==1)
+		if(img._spectrum==1)
 		{
-			remove_border(image,0,tolerance);
+			remove_border(img,0,tolerance);
 		}
 		else
 		{
@@ -90,11 +90,11 @@ class FilterGray:public ImageProcess<> {
 public:
 	FilterGray(unsigned char min,unsigned char max,Grayscale replacer):min(min),max(max),replacer(replacer)
 	{}
-	void process(Img& image)
+	void process(Img& img) const
 	{
-		if(image._spectrum==1)
+		if(img._spectrum==1)
 		{
-			replace_range(image,min,max,replacer);
+			replace_range(img,min,max,replacer);
 		}
 		else
 		{
@@ -107,9 +107,9 @@ class PadHoriz:public ImageProcess<> {
 public:
 	PadHoriz(unsigned int const left,unsigned int const right):left(left),right(right)
 	{}
-	void process(Img& image)
+	void process(Img& img) const
 	{
-		horiz_padding(image,left,right);
+		horiz_padding(img,left,right);
 	}
 };
 class PadVert:public ImageProcess<> {
@@ -117,7 +117,7 @@ class PadVert:public ImageProcess<> {
 public:
 	PadVert(unsigned int const top,unsigned int const bottom):top(top),bottom(bottom)
 	{}
-	void process(Img& img)
+	void process(Img& img) const
 	{
 		vert_padding(img,top,bottom);
 	}
@@ -130,7 +130,7 @@ public:
 	PadAuto(unsigned int vert,unsigned int min_h,unsigned int max_h,signed int hoff,float opt_rat)
 		:vert(vert),min_h(min_h),max_h(max_h),hoff(hoff),opt_rat(opt_rat)
 	{}
-	void process(Img& img)
+	void process(Img& img) const
 	{
 		auto_padding(img,vert,max_h,min_h,hoff,opt_rat);
 	}
@@ -154,7 +154,7 @@ public:
 		val(val),
 		interpolation(interpolation==automatic?(val>1?cubic:moving_average):interpolation)
 	{}
-	void process(Img& img)
+	void process(Img& img) const
 	{
 		img.resize(
 			scast<int>(std::round(img._width*val)),
@@ -171,7 +171,7 @@ class ClusterClearGray:public ImageProcess<> {
 public:
 	ClusterClearGray(unsigned int min,unsigned int max,Grayscale background,float tolerance):min(min),max(max),background(background),tolerance(tolerance)
 	{}
-	void process(Img& img) override
+	void process(Img& img) const override
 	{
 		if(img._spectrum==1)
 		{
@@ -194,7 +194,7 @@ public:
 	ClusterClearGrayAlt(unsigned char rcmi,unsigned char rcma,unsigned int mis,unsigned mas,unsigned char smi,unsigned char sma,unsigned char back):
 		required_min(rcmi),required_max(rcma),min_size(mis),max_size(mas),sel_min(smi),sel_max(sma),background(back)
 	{}
-	void process(Img& img)
+	void process(Img& img) const
 	{
 		if(img._spectrum==1)
 		{
@@ -209,6 +209,10 @@ public:
 				if(size>=min_size&&size<=max_size)
 				{
 					return true;
+				}
+				if(sel_min>=required_min&&sel_max<=required_max)
+				{
+					return false;
 				}
 				for(auto const& rect:c.get_ranges())
 				{
@@ -239,7 +243,7 @@ class RescaleGray:public ImageProcess<> {
 public:
 	RescaleGray(unsigned char min,unsigned char mid,unsigned char max=255):min(min),mid(mid),max(max)
 	{}
-	void process(Img& img)
+	void process(Img& img) const
 	{
 		if(img._spectrum==1)
 		{
@@ -294,7 +298,7 @@ public:
 	{
 		assert(origin>=top_left&&origin<=bottom_right);
 	}
-	void process(Img& img) override
+	void process(Img& img) const override
 	{
 		auto const porigin=get_origin(origin,img.width(),img.height());
 		ImageUtils::Rectangle<signed int> rect;
@@ -334,7 +338,7 @@ class Blur:public ImageProcess<> {
 public:
 	Blur(float radius):radius(radius)
 	{}
-	void process(Img& img) override
+	void process(Img& img) const override
 	{
 		img.blur(radius);
 	}
@@ -351,7 +355,7 @@ public:
 		num_steps(std::ceil((max_angle-min_angle)/angle_prec)),
 		boundary(boundary)
 	{}
-	void process(Img& img) override
+	void process(Img& img) const override
 	{
 		auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary);
 	}
@@ -362,7 +366,7 @@ class Rotate:public ImageProcess<> {
 public:
 	Rotate(float angle):angle(angle)
 	{}
-	void process(Img& img) override
+	void process(Img& img) const override
 	{
 		img.rotate(angle,2,1);
 	}
