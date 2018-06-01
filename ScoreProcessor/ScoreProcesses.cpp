@@ -641,7 +641,7 @@ namespace ScoreProcessor {
 			return a>=b;
 		});
 	}
-	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage);
+	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage,float const vec);
 
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage,unsigned int const min_padding)
 	{
@@ -786,8 +786,7 @@ namespace ScoreProcessor {
 		return resultContainer;
 	}
 
-	float const HORIZONTAL_ENERGY_CONSTANT=2000.0f;
-	void add_horizontal_energy(CImg<unsigned char> const& ref,CImg<float>& map)
+	void add_horizontal_energy(CImg<unsigned char> const& ref,CImg<float>& map,float const hec)
 	{
 		for(unsigned int y=0;y<map._height;++y)
 		{
@@ -806,12 +805,12 @@ namespace ScoreProcessor {
 				for(node_x=node_start;node_x<mid;++node_x)
 				{
 					++val_div;
-					map(node_x,y)+=HORIZONTAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+					map(node_x,y)+=hec/(val_div*val_div*val_div);
 				}
 				for(;node_x<x;++node_x)
 				{
 					--val_div;
-					map(node_x,y)+=HORIZONTAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+					map(node_x,y)+=hec/(val_div*val_div*val_div);
 				}
 			};
 			if(assign_node_found())
@@ -841,7 +840,7 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename)
+	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename,cut_heuristics const ch)
 	{
 		//bool isRGB;
 		//switch(image._spectrum)
@@ -862,8 +861,9 @@ namespace ScoreProcessor {
 			struct line {
 				unsigned int top,bottom,right;
 			};
-			CImg<float> map=create_vertical_energy(image);
-			add_horizontal_energy(image,map);
+			float const VEC=100.0f;
+			CImg<float> map=create_vertical_energy(image,VEC);
+			add_horizontal_energy(image,map,ch.horizontal_energy_weight);
 			min_energy_to_right(map);
 #ifndef NDEBUG
 			map.display();
@@ -876,15 +876,19 @@ namespace ScoreProcessor {
 			{
 				auto const selections=global_select<1U>(map,selector);
 				auto const clusters=Cluster::cluster_ranges(selections);
-				unsigned int threshold_width=2*map._width/3,
-					threshold_height=map._height/13;
-					//(map._height*map._width)/20;
-
+				auto heuristic_filter=
+					[threshold_width=ch.min_width<0?
+					unsigned int(std::round(map._width*(-ch.min_width/100000.0))):unsigned int(ch.min_width),
+					threshold_height=ch.min_height<0?
+					unsigned int(std::round(map._height*(-ch.min_height/100000.0))):ch.min_height]
+				(auto box){
+					return (box.width()>threshold_width&&box.height()>threshold_height);
+				};
 				for(auto c=clusters.cbegin();c!=clusters.cend();++c)
 				{
 					//if(clusters[i]->size()>threshold)
 					auto box=(*c)->bounding_box();
-					if(box.width()>threshold_width&&box.height()>threshold_height)
+					if(heuristic_filter(box))
 					{
 						boxes.push_back(line{box.top,box.bottom,box.right});
 					}
@@ -1687,7 +1691,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 		}
 		return ret;
-		}
+	}
 
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num);
 	unsigned int splice_pages_nongreedy(
@@ -1756,9 +1760,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-			}
+		}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-				}
+}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1806,7 +1810,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			float padding_cost=padding_weight*abs_dif(float(p.padding),optimal_padding)/optimal_padding;
 			padding_cost=padding_cost*padding_cost*padding_cost;
 			return height_cost+padding_cost;
-			};
+		};
 		struct node {
 			float cost;
 			page_layout layout;
@@ -1839,7 +1843,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					nodes[i].cost=total_cost;
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
-			}
+				}
 				else
 				{
 					break;
@@ -1849,7 +1853,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					break;
 				}
 				--j;
-		}
+			}
 #ifndef NDEBUG
 			std::cout<<"prev="<<nodes[i].previous<<'\n';
 #endif
@@ -1935,7 +1939,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		new_image.save(output.c_str(),++num,3);
 	}
-	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map);
+	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map,float const hec);
 	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const&,unsigned int horiz_padding);
 	std::vector<unsigned int> fattened_profile_low(std::vector<unsigned int> const&,unsigned int horiz_padding);
 	void compress(
@@ -1977,8 +1981,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		*/
 	}
-	float const VERTICAL_ENERGY_CONSTANT=100.0f;
-	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref)
+	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref,float const vec)
 	{
 		CImg<float> map(ref._width,ref._height);
 		map.fill(INFINITY);
@@ -1999,12 +2002,12 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				for(node_y=node_start;node_y<mid;++node_y)
 				{
 					++val_div;
-					map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+					map(x,node_y)=vec/(val_div*val_div*val_div);
 				}
 				for(;node_y<y;++node_y)
 				{
 					--val_div;
-					map(x,node_y)=VERTICAL_ENERGY_CONSTANT/(val_div*val_div*val_div);
+					map(x,node_y)=vec/(val_div*val_div*val_div);
 				}
 			};
 			if(assign_node_found())
@@ -2038,7 +2041,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	float const COMPRESS_HORIZONTAL_ENERGY_CONSTANT=1.0f;
 	CImg<float> create_compress_energy(CImg<unsigned char> const& ref)
 	{
-		auto map=create_vertical_energy(ref);
+		auto map=create_vertical_energy(ref,100.0f);
 		for(auto y=0U;y<map._height;++y)
 		{
 			auto x=0U;
@@ -2140,4 +2143,4 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 		}
 	}
-	}
+}

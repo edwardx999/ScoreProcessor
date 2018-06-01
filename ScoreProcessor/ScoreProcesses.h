@@ -244,6 +244,11 @@ namespace ScoreProcessor {
 		@return where the selected rectangles go
 	*/
 	::std::vector<::std::unique_ptr<ImageUtils::Rectangle<unsigned int>>> select_outside(::cimg_library::CImg<unsigned char> const& image);
+	struct cut_heuristics {
+		signed int min_width;
+		signed int min_height;
+		float horizontal_energy_weight;
+	};
 	/*
 		Cuts a specified score page into multiple smaller images
 		@param image
@@ -251,7 +256,7 @@ namespace ScoreProcessor {
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename);
+	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const ch={-66666,-8000,20});
 
 	/*
 		Finds the line that is the top of the score image

@@ -421,6 +421,7 @@ public:
 			float excess_weight;
 			float padding_weight;
 		} splice_args;
+		ScoreProcessor::cut_heuristics ch;
 		std::regex rgx;
 		enum regex_state {
 			unassigned,normal,inverted
@@ -1135,7 +1136,15 @@ char const* const RescaleGrayMaker::errors[3]={"Invalid argument for min value",
 
 class CutMaker:public CommandMaker {
 	CutMaker()
-		:CommandMaker(0,0,"Cuts the image into separate systems","Cut")
+		:CommandMaker(0,3,
+			"Cuts the image into separate systems\n"
+			"Min dimensions are the heuristics used to determine whether\n"
+			"a group of pixels is actually a system\n"
+			"If a negative number is given it the dimensions is calculated to be:\n"
+			"((-given_dim)/(100000))*(image_dim)\n"
+			"Horizontal weight is how much horizontal whitespace is weighted"
+			,
+			"Cut")
 	{}
 	static CutMaker const singleton;
 public:
@@ -1144,13 +1153,42 @@ public:
 		return singleton;
 	}
 protected:
-	char const* parse_command(iter begin,size_t,delivery& del) const override
+	char const* parse_command(iter begin,size_t n,delivery& del) const override
 	{
 		if(del.flag>del.do_nothing)
 		{
 			return "Cut can not be done along with other commands";
 		}
+		int min_width=-66666,min_height=-8000;
+		float hw=20;
+		if(n>0)
+		{
+			auto res=parse_str(min_width,begin[0].c_str());
+			if(res)
+			{
+				return "Invalid min_width input";
+			}
+			if(n>1)
+			{
+				res=parse_str(min_height,begin[1].c_str());
+				if(res)
+				{
+					return "Invalid min_height input";
+				}
+				if(n>2)
+				{
+					res=parse_str(hw,begin[2].c_str());
+					if(res)
+					{
+						return "Invalid horiz_weight input";
+					}
+				}
+			}
+		}
 		del.flag=delivery::do_cut;
+		del.ch.min_width=min_width;
+		del.ch.min_height=min_height;
+		del.ch.horizontal_energy_weight=hw;
 		return nullptr;
 	}
 };
@@ -2055,7 +2093,7 @@ void info_output()
 		"    Fill Rectangle Gray:      -fr left top right bottom color=255 origin=tl\n"
 		"    Rotate:                   -rot degrees\n"
 		"  Multi Page Operations:\n"
-		"    Cut:                      -cut\n"
+		"    Cut:                      -cut min_width=-66666 min_height=-8000 horiz_weight=20\n"
 		"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=-1=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
 		"  Options:\n"
 		"    Output:                   -o format move=false\n"
@@ -2082,9 +2120,10 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 		SaveRules const* output;
 		unsigned int index;
 		int verbosity;
+		cut_heuristics ch;
 	public:
-		CutProcess(std::string const* input,SaveRules const* output,unsigned int index,int verbosity):
-			input(input),output(output),index(index),verbosity(verbosity)
+		CutProcess(std::string const* input,unsigned int index,CommandMaker::delivery const& del):
+			input(input),output(&del.sr),index(index),verbosity(del.pl.get_verbosity()),ch(del.ch)
 		{}
 		void execute() override
 		{
@@ -2109,7 +2148,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 					return;
 				}
 				CImg<unsigned char> in(input->c_str());
-				auto num_pages=ScoreProcessor::cut_page(in,out.c_str());
+				auto num_pages=ScoreProcessor::cut_page(in,out.c_str(),ch);
 				if(verbosity>ProcessList<>::verbosity::errors_only)
 				{
 					std::string coutput("Finished ");
@@ -2132,7 +2171,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 	exlib::ThreadPool tp(num_threads);
 	for(size_t i=0;i<files.size();++i)
 	{
-		tp.add_task<CutProcess>(&files[i],&del.sr,i+del.starting_index,del.pl.get_verbosity());
+		tp.add_task<CutProcess>(&files[i],i+del.starting_index,del);
 	}
 	tp.start();
 }
