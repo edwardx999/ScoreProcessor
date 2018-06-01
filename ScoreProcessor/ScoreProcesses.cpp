@@ -108,19 +108,15 @@ namespace ScoreProcessor {
 	void replace_by_brightness(CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness,ColorRGB replacer)
 	{
 		assert(image._spectrum==3);
-		for(unsigned int x=0;x<image._width;++x)
+		map<3U>(image,[=](auto color)
 		{
-			for(unsigned int y=0;y<image._height;++y)
+			auto const brightness=(float(color[0])+color[1]+color[2])/3.0f;
+			if(brightness>=lowerBrightness&&brightness<=upperBrightness)
 			{
-				unsigned char pixBr=brightness({image(x,y,0),image(x,y,1),image(x,y,2)});
-				if(pixBr>=lowerBrightness&&pixBr<=upperBrightness)
-				{
-					image(x,y,0)=replacer.r;
-					image(x,y,1)=replacer.g;
-					image(x,y,2)=replacer.b;
-				}
+				return decltype(color)({replacer.r,replacer.g,replacer.b});
 			}
-		}
+			return color;
+		});
 	}
 	void replace_by_chroma(CImg<unsigned char>& image,unsigned char lowerChroma,unsigned char upperChroma,ColorRGB replacer)
 	{
@@ -1029,7 +1025,8 @@ namespace ScoreProcessor {
 				//(top<=boundary&&bottom>boundary)||
 				(top>boundary&&bottom<=boundary);
 		};
-		HoughArray ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
+		HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
+		auto max=*std::max_element(ha.begin(),ha.end());
 		double angle=90.0-ha.angle()*RAD_DEG;
 		img.rotate(angle,2,1);
 	}
