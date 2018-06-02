@@ -19,6 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <algorithm>
 namespace ImageUtils {
 	/*
 		A cartesian vertical line.
@@ -323,6 +324,56 @@ namespace ImageUtils {
 				--i;
 			}
 		}
+	}
+
+	inline ColorRGB::operator ColorHSV() const
+	{
+		ColorHSV ret;
+		float r=this->r,b=this->b,g=this->g;
+		auto min=std::min(r,std::min(g,b));
+		auto max=std::max(r,std::max(g,b));
+		ret.v=max;
+		auto delta=max-min;
+		if(max!=0)
+		{
+			ret.s=std::round(delta/max*255);
+		}
+		else
+		{
+			ret.s=0;
+			//doesn't matter what hue is
+			return ret;
+		}
+		float hue;
+		if(r==max)
+		{
+			hue=(g-b)/delta;
+		}
+		else if(g==max)
+		{
+			hue=2+(b-r)/delta;
+		}
+		else
+		{
+			hue=4+(r-g)/delta;
+		}
+		hue*=(256.0/360*60);
+		if(hue<0)
+		{
+			hue+=256;
+		}
+		ret.h=std::round(hue);
+		return ret;	
+	}
+
+	inline ColorRGB::operator ColorRGBA() const
+	{
+		return ColorRGBA{r,g,b,255};
+	}
+
+	inline ColorRGB::operator Grayscale() const
+	{
+		return static_cast<Grayscale>((r*0.2126f+g*0.7152f+b*0.0722f));
 	}
 
 	/*template<typename T> template<typename U>

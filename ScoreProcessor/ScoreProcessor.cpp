@@ -92,16 +92,36 @@ public:
 	{}
 	void process(Img& img) const
 	{
-		if(img._spectrum==1)
+		if(img._spectrum<3)
 		{
 			replace_range(img,min,max,replacer);
 		}
 		else
 		{
-			throw std::invalid_argument("Filter Gray requires grayscale image");
+			replace_by_brightness(img,min,max,ColorRGB({replacer,replacer,replacer}));
 		}
 	}
 };
+
+class FilterHSV:public ImageProcess<> {
+	ColorHSV start,end;
+	ColorRGB replacer;
+public:
+	FilterHSV(ColorHSV start,ColorHSV end,ColorRGB replacer):start(start),end(end),replacer(replacer)
+	{}
+	void process(Img& img) const override
+	{
+		if(img._spectrum>=3)
+		{
+			replace_by_hsv(img,start,end,replacer);
+		}
+		else
+		{
+			throw std::invalid_argument("Color (3+ spectrum) image required");
+		}
+	}
+};
+
 class PadHoriz:public ImageProcess<> {
 	unsigned int left,right;
 public:
@@ -196,12 +216,12 @@ public:
 	{}
 	void process(Img& img) const
 	{
-		if(img._spectrum==1)
+		if(img._spectrum<3)
 		{
-			clear_clusters(img,background,
-				[this](unsigned char v)
+			clear_clusters(img,std::array<unsigned char,1>({background}),
+				[this](std::array<unsigned char,1> v)
 			{
-				return v>=sel_min&&v<=sel_max;
+				return v[0]>=sel_min&&v[1]<=sel_max;
 			},
 				[this,&img](Cluster const& c)
 			{
@@ -214,7 +234,7 @@ public:
 				{
 					return false;
 				}
-				for(auto const& rect:c.get_ranges())
+				for(auto rect:c.get_ranges())
 				{
 					for(unsigned int y=rect.top;y<rect.bottom;++y)
 					{
@@ -234,7 +254,47 @@ public:
 		}
 		else
 		{
-			throw std::invalid_argument("Cluster Clear Gray requires grayscale image");
+			clear_clusters(img,std::array<unsigned char,3>({background,background,background}),
+				[this](std::array<unsigned char,3> v)
+			{
+				auto const brightness=(float(v[0])+v[1]+v[2])/3.0f;
+				return brightness>=sel_min&&brightness<=sel_max;
+			},
+				[this,&img](Cluster const& c)
+			{
+				auto size=c.size();
+				if(size>=min_size&&size<=max_size)
+				{
+					return true;
+				}
+				if(sel_min>=required_min&&sel_max<=required_max)
+				{
+					return false;
+				}
+				unsigned int const img_size=img._width*img._height;
+				for(auto rect:c.get_ranges())
+				{
+					for(unsigned int y=rect.top;y<rect.bottom;++y)
+					{
+						auto row=img._data+y*img._width;
+						for(unsigned int x=rect.left;x<rect.right;++x)
+						{
+							auto pix=(row+x);
+							float brightness=0;
+							for(unsigned int s=0;s<3;++s)
+							{
+								brightness+=*(pix+s*img_size);
+							}
+							brightness/=3;
+							if(brightness>=required_min&&brightness<=required_max)
+							{
+								return false;
+							}
+						}
+					}
+				}
+				return true;
+			});
 		}
 	}
 };
@@ -534,6 +594,97 @@ protected:
 	}
 };
 FilterGrayMaker const FilterGrayMaker::singleton;
+
+class FilterHSVMaker:public SingleCommandMaker {
+	FilterHSVMaker():SingleCommandMaker(2,3,"Replaces colors found between HSV ranges with replacer. Hue is a circular range.","Filter HSV")
+	{}
+	static FilterHSVMaker const singleton;
+	static char const* do_parse(char const* const errors[],std::array<unsigned char,3>& arr,std::string& str)
+	{
+		constexpr std::optional<unsigned char> none;
+		auto no_constraints=[](auto thing)
+		{
+			return -1;
+		};
+		auto res=parse_range(arr,str,{none,none,none},no_constraints);
+		if(res!=-1)
+		{
+			return errors[res];
+		}
+		return nullptr;
+	}
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		static char const* const start_errors[]=
+		{"Too few parameters for start HSV value",
+		"Too many parameters for start HSV value",
+		"Missing start hue value",
+		"Missing start saturation value",
+		"Missing start value value",
+		"Invalid start hue value",
+		"Invalid start saturation value",
+		"Invalid start value value"};
+		std::array<unsigned char,3> start_hsv;
+		auto res=do_parse(start_errors,start_hsv,begin[0]);
+		if(res) return res;
+
+		static char const* const end_errors[]=
+		{"Too few parameters for end HSV value",
+			"Too many parameters for end HSV value",
+			"Missing end hue value",
+			"Missing end saturation value",
+			"Missing end value value",
+			"Invalid end hue value",
+			"Invalid end saturation value",
+			"Invalid end value value"};
+		std::array<unsigned char,3> end_hsv;
+		res=do_parse(end_errors,end_hsv,begin[1]);
+		if(res) return res;
+
+		if(end_hsv[1]<start_hsv[1])
+		{
+			return "Start saturation must be less than or equal to end saturation";
+		}
+		if(end_hsv[2]<start_hsv[2])
+		{
+			return "Start value must be less than or equal to end value";
+		}
+
+		decltype(end_hsv) replacer={255,255,255};
+		if(n>2)
+		{
+			static char const* const repl_errors[]=
+			{"Too few parameters for replacer RGB value",
+				"Too many parameters for replacer RGB value",
+				"Missing replacer red value",
+				"Missing replacer green value",
+				"Missing replacer blue value",
+				"Invalid replacer red value"
+				"Invalid replacer green value",
+				"Invalid replacer blue value"};
+
+			typedef std::optional<unsigned char> opt;
+			auto resu=parse_range(replacer,begin[2],{opt(255),opt(255),opt(255)},[](auto thing)
+			{
+				return -1;
+			});
+			if(resu!=-1) return repl_errors[resu];
+		}
+
+		del.pl.add_process<FilterHSV>(
+			ColorHSV({start_hsv[0],start_hsv[1],start_hsv[2]}),
+			ColorHSV({end_hsv[0],end_hsv[1],end_hsv[2]}),
+			ColorRGB({replacer[0],replacer[1],replacer[2]}));
+		return nullptr;
+	}
+};
+FilterHSVMaker const FilterHSVMaker::singleton;
 
 class ConvertGrayMaker:public SingleCommandMaker {
 	ConvertGrayMaker():SingleCommandMaker(0,0,"Converts given image to Grayscale","Convert Gray")
@@ -1886,6 +2037,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-rotate",&RotateMaker::get());
 
 	commands.emplace("-list",&ListFilesMaker::get());
+
+	commands.emplace("-fhsv",&FilterHSVMaker::get());
 	return commands;
 }
 
@@ -2079,7 +2232,8 @@ void info_output()
 		"Available commands:\n"
 		"  Single Page Operations:\n"
 		"    Convert to Grayscale:     -cg\n"
-		"    Filter Gray:              -fg min_value max_value=255 replacer=255\n"
+		"    Filter Brightness:        -fg min_value max_value=255 replacer=255\n"
+		"    Filter HSV:               -fhsv start_hsv=,, end_hsv=,, replacer_rgb=255,255,255\n"
 		"    Cluster Clear Gray:       -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
 		"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
 		"    Horizontal Padding:       -hp left right=left\n"

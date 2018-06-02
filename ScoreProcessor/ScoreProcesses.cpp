@@ -95,7 +95,6 @@ namespace ScoreProcessor {
 	}
 	void replace_range(CImg<unsigned char>& image,Grayscale const lower,ImageUtils::Grayscale const upper,Grayscale const replacer)
 	{
-		assert(image._spectrum==1);
 		unsigned char* const limit=image.end();
 		for(auto it=image.begin();it!=limit;++it)
 		{
@@ -105,36 +104,42 @@ namespace ScoreProcessor {
 			}
 		}
 	}
+
 	void replace_by_brightness(CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness,ColorRGB replacer)
 	{
-		assert(image._spectrum==3);
-		map<3U>(image,[=](auto color)
+		assert(image._spectrum>=3);
+		map<3U>(image,[=,repl=std::array<unsigned char,3>({replacer.r,replacer.g,replacer.b})](auto color)
 		{
 			auto const brightness=(float(color[0])+color[1]+color[2])/3.0f;
 			if(brightness>=lowerBrightness&&brightness<=upperBrightness)
 			{
-				return decltype(color)({replacer.r,replacer.g,replacer.b});
+				return repl;
 			}
 			return color;
 		});
 	}
-	void replace_by_chroma(CImg<unsigned char>& image,unsigned char lowerChroma,unsigned char upperChroma,ColorRGB replacer)
+	void replace_by_hsv(::cimg_library::CImg<unsigned char>& image,ImageUtils::ColorHSV start,ImageUtils::ColorHSV end,ImageUtils::ColorRGB replacer)
 	{
-		assert(image._spectrum==3);
-		for(uint x=0;x<image._width;++x)
+		assert(image._spectrum>=3);
+		map<3U>(image,[=,repl=std::array<unsigned char,3>({replacer.r,replacer.g,replacer.b})](auto color)
 		{
-			for(uint y=0;y<image._height;++y)
+			ColorHSV hsv=*reinterpret_cast<ColorRGB*>(&color);
+			if(hsv.s>=start.s&&hsv.s<=end.s&&hsv.v>=start.v&&hsv.v<=end.v)
 			{
-				initializer_list<unsigned char> pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
-				unsigned char chroma=max(pixel)-min(pixel);
-				if(lowerChroma<=chroma&&chroma<=upperChroma)
+				if(start.h<end.h)
 				{
-					image(x,y,0)=replacer.r;
-					image(x,y,1)=replacer.g;
-					image(x,y,2)=replacer.b;
+					if(hsv.h>=start.h&&hsv.h<=end.h)
+					{
+						return repl;
+					}
+				}
+				else if(hsv.h>=start.h||hsv.h<=end.h)
+				{
+					return repl;
 				}
 			}
-		}
+			return color;
+		});
 	}
 	int auto_center_horiz(CImg<unsigned char>& image)
 	{
@@ -1757,9 +1762,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-		}
+			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-}
+		}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1900,7 +1905,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-		}
+	}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())

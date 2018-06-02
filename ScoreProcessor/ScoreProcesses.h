@@ -66,7 +66,7 @@ namespace ScoreProcessor {
 		@param upperChroma
 		@param replacer
 	*/
-	void replace_by_chroma(::cimg_library::CImg<unsigned char>& image,unsigned char lowerChroma,unsigned char upperChroma=255,ImageUtils::ColorRGB replacer=ImageUtils::ColorRGB::WHITE);
+	void replace_by_hsv(::cimg_library::CImg<unsigned char>& image,ImageUtils::ColorHSV startbound,ImageUtils::ColorHSV end,ImageUtils::ColorRGB replacer=ImageUtils::ColorRGB::WHITE);
 	/*
 		Copies a selection from the first image to the location of the second image
 		The two images should have the same number of channels
@@ -817,6 +817,27 @@ namespace ScoreProcessor {
 				for(auto const& rect:cl->get_ranges())
 				{
 					ScoreProcessor::fill_selection(image,rect,background);
+				}
+			}
+		}
+	}
+	template<typename T,size_t NL,typename PixelSelectorArrayNLToBool,typename ClusterToTrueIfClear>
+	void clear_clusters(
+		::cil::CImg<T>& img,
+		std::array<T,NL> replacer,
+		PixelSelectorArrayNLToBool ps,
+		ClusterToTrueIfClear cl)
+	{
+		assert(img._spectrum>=NL);
+		auto rects=global_select<NL>(img,ps);
+		auto clusters=ScoreProcessor::Cluster::cluster_ranges(rects);
+		for(auto it=clusters.cbegin();it!=clusters.cend();++it)
+		{
+			if(cl(**it))
+			{
+				for(auto rect:(*it)->get_ranges())
+				{
+					ScoreProcessor::fill_selection(img,rect,replacer);
 				}
 			}
 		}

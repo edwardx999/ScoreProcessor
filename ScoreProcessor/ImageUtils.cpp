@@ -20,17 +20,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "moreAlgorithms.h"
 namespace ImageUtils {
 #pragma region ColorRGB
-	ColorRGB::operator ColorRGBA() const {
-		return ColorRGBA{r,g,b,255};
-	}
-	ColorRGB::operator ColorHSV() const {
-		ColorHSV ret;
-		ret.h=std::max({r,g,b})-std::min({r,g,b});
-		return ret;
-	}
-	ColorRGB::operator Grayscale() const {
-		return static_cast<Grayscale>((r*0.2126f+g*0.7152f+b*0.0722f));
-	}
 
 	float ColorRGB::difference(ColorRGB other) {
 		float

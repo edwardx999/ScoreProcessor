@@ -28,7 +28,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 namespace cimg_library {
 
 	template<size_t NumLayers,typename T,typename ArrayToArray>
-	CImg<T>& map(CImg<T> img,ArrayToArray func)
+	CImg<T>& map(CImg<T>& img,ArrayToArray func)
 	{
 		assert(NumLayers<=img._spectrum);
 		auto const data=img._data;
