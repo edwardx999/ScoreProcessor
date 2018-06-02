@@ -122,6 +122,25 @@ public:
 	}
 };
 
+class FilterRGB:public ImageProcess<> {
+	ColorRGB start,end;
+	ColorRGB replacer;
+public:
+	FilterRGB(ColorRGB start,ColorRGB end,ColorRGB replacer):start(start),end(end),replacer(replacer)
+	{}
+	void process(Img& img) const override
+	{
+		if(img._spectrum>=3)
+		{
+			replace_by_rgb(img,start,end,replacer);
+		}
+		else
+		{
+			throw std::invalid_argument("Color (3+ spectrum) image required");
+		}
+	}
+};
+
 class PadHoriz:public ImageProcess<> {
 	unsigned int left,right;
 public:
@@ -685,6 +704,101 @@ protected:
 	}
 };
 FilterHSVMaker const FilterHSVMaker::singleton;
+
+class FilterRGBMaker:public SingleCommandMaker {
+	FilterRGBMaker():SingleCommandMaker(2,3,"Replaces colors found between RGB ranges with replacer.","Filter RGB")
+	{}
+	static FilterRGBMaker const singleton;
+	static char const* do_parse(char const* const errors[],std::array<unsigned char,3>& arr,std::string& str)
+	{
+		constexpr std::optional<unsigned char> none;
+		auto no_constraints=[](auto thing)
+		{
+			return -1;
+		};
+		auto res=parse_range(arr,str,{none,none,none},no_constraints);
+		if(res!=-1)
+		{
+			return errors[res];
+		}
+		return nullptr;
+	}
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		static char const* const start_errors[]=
+		{"Too few parameters for start RGB value",
+			"Too many parameters for start RGB value",
+			"Missing start red value",
+			"Missing start green value",
+			"Missing start blue value",
+			"Invalid start red value",
+			"Invalid start green value",
+			"Invalid start blue value"};
+		std::array<unsigned char,3> start_rgb;
+		auto res=do_parse(start_errors,start_rgb,begin[0]);
+		if(res) return res;
+
+		static char const* const end_errors[]=
+		{"Too few parameters for end RGB value",
+			"Too many parameters for end RGB value",
+			"Missing end red value",
+			"Missing end green value",
+			"Missing end blue value",
+			"Invalid end red value",
+			"Invalid end green value",
+			"Invalid end blue value"};
+		std::array<unsigned char,3> end_rgb;
+		res=do_parse(end_errors,end_rgb,begin[1]);
+		if(res) return res;
+
+		if(end_rgb[0]<start_rgb[0])
+		{
+			return "Start red must be less than or equal to end red";
+		}
+		if(end_rgb[1]<start_rgb[1])
+		{
+			return "Start green must be less than or equal to end green";
+		}
+		if(end_rgb[2]<start_rgb[2])
+		{
+			return "Start blue must be less than or equal to end blue";
+		}
+
+		decltype(end_rgb) replacer={255,255,255};
+		if(n>2)
+		{
+			static char const* const repl_errors[]=
+			{"Too few parameters for replacer RGB value",
+				"Too many parameters for replacer RGB value",
+				"Missing replacer red value",
+				"Missing replacer green value",
+				"Missing replacer blue value",
+				"Invalid replacer red value"
+				"Invalid replacer green value",
+				"Invalid replacer blue value"};
+
+			typedef std::optional<unsigned char> opt;
+			auto resu=parse_range(replacer,begin[2],{opt(255),opt(255),opt(255)},[](auto thing)
+			{
+				return -1;
+			});
+			if(resu!=-1) return repl_errors[resu];
+		}
+
+		del.pl.add_process<FilterRGB>(
+			ColorRGB({start_rgb[0],start_rgb[1],start_rgb[2]}),
+			ColorRGB({end_rgb[0],end_rgb[1],end_rgb[2]}),
+			ColorRGB({replacer[0],replacer[1],replacer[2]}));
+		return nullptr;
+	}
+};
+FilterRGBMaker const FilterRGBMaker::singleton;
 
 class ConvertGrayMaker:public SingleCommandMaker {
 	ConvertGrayMaker():SingleCommandMaker(0,0,"Converts given image to Grayscale","Convert Gray")
@@ -2039,6 +2153,7 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-list",&ListFilesMaker::get());
 
 	commands.emplace("-fhsv",&FilterHSVMaker::get());
+	commands.emplace("-frgb",&FilterRGBMaker::get());
 	return commands;
 }
 
@@ -2234,6 +2349,7 @@ void info_output()
 		"    Convert to Grayscale:     -cg\n"
 		"    Filter Brightness:        -fg min_value max_value=255 replacer=255\n"
 		"    Filter HSV:               -fhsv start_hsv=,, end_hsv=,, replacer_rgb=255,255,255\n"
+		"    Filter RGB:               -frgb start_rgb=,, end_rgb=,, replacer_rgb=255,255,255\n"
 		"    Cluster Clear Gray:       -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
 		"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
 		"    Horizontal Padding:       -hp left right=left\n"

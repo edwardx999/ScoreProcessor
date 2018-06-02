@@ -141,6 +141,20 @@ namespace ScoreProcessor {
 			return color;
 		});
 	}
+	void replace_by_rgb(::cil::CImg<unsigned char>& image,ImageUtils::ColorRGB start,ImageUtils::ColorRGB end,ImageUtils::ColorRGB replacer)
+	{
+		assert(image._spectrum>=3);
+		map<3U>(image,[=](auto color)
+		{
+			if(color[0]>=start.r&&color[0]<=end.r&&
+				color[1]>=start.g&&color[1]<=end.g&&
+				color[2]>=start.b&&color[2]<=end.b)
+			{
+				return decltype(color)({replacer.r,replacer.g,replacer.b});
+			}
+			return color;
+		});
+	}
 	int auto_center_horiz(CImg<unsigned char>& image)
 	{
 		bool isRgb;
@@ -1762,9 +1776,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-			}
-			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
 		}
+			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
+}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1905,7 +1919,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-	}
+		}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())
@@ -2145,4 +2159,4 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 		}
 	}
-}
+		}

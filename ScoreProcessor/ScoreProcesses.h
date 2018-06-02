@@ -67,6 +67,7 @@ namespace ScoreProcessor {
 		@param replacer
 	*/
 	void replace_by_hsv(::cimg_library::CImg<unsigned char>& image,ImageUtils::ColorHSV startbound,ImageUtils::ColorHSV end,ImageUtils::ColorRGB replacer=ImageUtils::ColorRGB::WHITE);
+	void replace_by_rgb(::cil::CImg<unsigned char>& image,ImageUtils::ColorRGB start,ImageUtils::ColorRGB end,ImageUtils::ColorRGB replacer);
 	/*
 		Copies a selection from the first image to the location of the second image
 		The two images should have the same number of channels
