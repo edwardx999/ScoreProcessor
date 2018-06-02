@@ -46,14 +46,6 @@ public:
 		{
 			img=get_grayscale_simple(img);
 		}
-		else if(img._spectrum==1)
-		{
-			return;
-		}
-		else
-		{
-			throw std::invalid_argument("Invalid image spectrum");
-		}
 	}
 };
 class RemoveTransparency:public ImageProcess<> {

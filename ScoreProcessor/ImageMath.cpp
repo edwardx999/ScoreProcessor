@@ -25,6 +25,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <assert.h>
 #include <functional>
 #include "lib\exstring\exmath.h"
+#include <array>
 using namespace ImageUtils;
 using namespace std;
 using namespace misc_alg;
@@ -159,34 +160,20 @@ namespace cimg_library {
 	}
 	ColorRGB average_color(cimg_library::CImg<unsigned char> const& image)
 	{
-		UINT64 r=0,g=0,b=0;
-		UINT64 numpixels=image._width*image._height;
-		for(unsigned int x=0;x<image._width;++x)
+		auto c=fold<3>(image,[](auto color,auto acc)
 		{
-			for(unsigned int y=0;y<image._height;++y)
-			{
-				r+=image(x,y,0);
-				g+=image(x,y,1);
-				b+=image(x,y,2);
-			}
-		}
-		r/=numpixels;
-		g/=numpixels;
-		b/=numpixels;
-		return{static_cast<unsigned char>(r),static_cast<unsigned char>(g),static_cast<unsigned char>(b)};
+			return decltype(acc)({acc[0]+color[0],acc[1]+color[1],acc[2]+color[2]});
+		},std::array<unsigned int,3>({0,0,0}));
+		auto const num_pixels=image._width*image._height;
+		return {unsigned char(c[0]/num_pixels),unsigned char(c[1]/num_pixels),unsigned char(c[2]/num_pixels)};
 	}
 	Grayscale average_gray(cimg_library::CImg<unsigned char> const& image)
 	{
-		unsigned long long gray=0;
-		unsigned long long numpixels=image._width*image._height;
-		for(unsigned int x=0;x<image._width;++x)
+		auto gray=fold<1>(image,[](auto color,auto acc)
 		{
-			for(unsigned int y=0;y<image._height;++y)
-			{
-				gray+=image(x,y,0);
-			}
-		}
-		return gray/numpixels;
+			return acc+color[0];
+		},0U);
+		return Grayscale(gray/(image._width*image._height));
 	}
 	ColorRGB darkest_color(cimg_library::CImg<unsigned char> const& image)
 	{
@@ -268,17 +255,10 @@ namespace cimg_library {
 	}
 	CImg<unsigned char> get_grayscale_simple(CImg<unsigned char> const& image)
 	{
-		CImg<unsigned char> ret(image._width,image._height,1,1);
-		unsigned int const size=image._width*image._height;
-		unsigned char* const ret_start=ret._data;
-		unsigned char* const rstart=image._data;
-		unsigned char* const gstart=image._data+size;
-		unsigned char* const bstart=image._data+2*size;
-		for(unsigned int i=0;i<size;++i)
+		return get_map<3,1>(image,[](auto color)
 		{
-			ret_start[i]=std::round((float(rstart[i])+gstart[i]+bstart[i])/3.0f);
-		}
-		return ret;
+			return std::array<unsigned char,1>{unsigned char(std::round((float(color[0])+color[1]+color[2])/3.0f))};
+		});
 	}
 
 	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer)

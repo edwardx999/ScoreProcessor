@@ -19,6 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "CImg.h"
 #include "ImageUtils.h"
 #include <assert.h>
+#include <type_traits>
 #define M_PI	3.14159265358979323846
 #define M_PI_2	1.57079632679489661923
 #define M_PI_4	0.78539816339744830962
@@ -32,7 +33,7 @@ namespace cimg_library {
 	{
 		assert(NumLayers<=img._spectrum);
 		auto const data=img._data;
-		auto const size=img._width*img._height;
+		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
 		std::array<T,NumLayers> color;
 		for(unsigned int i=0;i<size;++i)
 		{
@@ -50,11 +51,277 @@ namespace cimg_library {
 		return img;
 	}
 
-	template<unsigned int NumLayers,typename T,typename ArrayToArray>
-	CImg<T> get_map(CImg<T> const& img,ArrayToArray func)
+	template<unsigned int InputLayers,unsigned int OutputLayers=InputLayers,typename T,typename ArrayToArray>
+	auto get_map(CImg<T> const& img,ArrayToArray func)
 	{
-		auto copy=img;
-		return map(copy,func);
+		std::array<T,InputLayers> input;
+		typedef std::remove_reference<decltype(func(input)[0])>::type R;
+		CImg<R> ret(img._width,img._height,1,OutputLayers);
+		unsigned int size=img._width*img._height;
+		auto const idata=img._data;
+		auto const odata=ret._data;
+		for(unsigned int i=0;i<size;++i)
+		{
+			auto const ipix=idata+i;
+			for(unsigned int s=0;s<InputLayers;++s)
+			{
+				input[s]=*(ipix+s*size);
+			}
+			auto output=func(input);
+
+			auto const opix=odata+i;
+			for(unsigned int s=0;s<OutputLayers;++s)
+			{
+				*(opix+s*size)=output[s];
+			}
+		}
+		return ret;
+	}
+
+	template<unsigned int InputLayers,unsigned int OutputLayers=InputLayers,typename T,typename ArrayToArray>
+	auto get_map(CImg<T> const& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
+	{
+		std::array<T,InputLayers> input;
+		auto const owidth=selection.width();
+		auto const oheight=selection.height();
+		auto const osize=owidth*oheight;
+		CImg<std::remove_reference<decltype(func(input)[0])>::type> ret(owidth,oheight,1,OutputLayers);
+		unsigned int const isize=img._width*img._height;
+		auto const idata=img._data;
+		for(unsigned int y=0;x<oheight;++x)
+		{
+			auto irow=idata+(y+selection.top)*img._width;
+			auto orow=ret._data+y*owidth;
+			for(unsigned int x=0;y<owidth;++y)
+			{
+				auto ipix=irow+x+selection.left;
+				auto opix=orow+x;
+				for(unsigned int s=0;s<InputLayers;++s)
+				{
+					input[s]=*(ipix+s*isize);
+				}
+				auto output=func(input);
+				for(unsigned int s=0;s<OutputLayers;++s)
+				{
+					*(opix+s*osize)=output[s];
+				}
+			}
+		}
+		return ret;
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayToArray>
+	CImg<T>& map(CImg<T>& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
+	{
+		unsigned int const width=img._width;
+		unsigned int const size=width*img._height;
+		std::array<T,NumLayers> color;
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			auto const row=y*width;
+			for(unsigned int x=selection.left;x<selection.right;++x)
+			{
+				auto const pix=row+x;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					color[s]=*(pix+s*size);
+				}
+				auto new_color=func(color);
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					*(pix+s*size)=color[s];
+				}
+			}
+		}
+		return map;
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayToBool>
+	bool or_map(CImg<T> const& img,ArrayToBool pred)
+	{
+		auto const data=img._data;
+		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		std::array<T,NumLayers> color;
+		for(unsigned int i=0;i<size;++i)
+		{
+			auto const pix=data+i;
+			for(unsigned int s=0;s<NumLayers;++s)
+			{
+				color[s]=*(pix+s*size);
+			}
+			if(func(color))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayToArray>
+	bool or_map(CImg<T>& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
+	{
+		unsigned int const width=img._width;
+		unsigned int const size=width*img._height;
+		std::array<T,NumLayers> color;
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			auto const row=y*width;
+			for(unsigned int x=selection.left;x<selection.right;++x)
+			{
+				auto const pix=row+x;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					color[s]=*(pix+s*size);
+				}
+				if(func(color))
+				{
+					return true;
+				}
+
+			}
+		}
+		return false;
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayToBool>
+	bool and_map(CImg<T> const& img,ArrayToBool pred)
+	{
+		auto const data=img._data;
+		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		std::array<T,NumLayers> color;
+		for(unsigned int i=0;i<size;++i)
+		{
+			auto const pix=data+i;
+			for(unsigned int s=0;s<NumLayers;++s)
+			{
+				color[s]=*(pix+s*size);
+			}
+			if(!func(color))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayToArray>
+	bool and_map(CImg<T>& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
+	{
+		unsigned int const width=img._width;
+		unsigned int const size=width*img._height;
+		std::array<T,NumLayers> color;
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			auto const row=y*width;
+			for(unsigned int x=selection.left;x<selection.right;++x)
+			{
+				auto const pix=row+x;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					color[s]=*(pix+s*size);
+				}
+				if(!func(color))
+				{
+					return false;
+				}
+
+			}
+		}
+		return true;
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayRToR,typename R>
+	R fold(CImg<T>const & img,ArrayRToR func,R acc)
+	{
+		auto const data=img._data;
+		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		std::array<T,NumLayers> color;
+		for(unsigned int i=0;i<size;++i)
+		{
+			auto const pix=data+i;
+			for(unsigned int s=0;s<NumLayers;++s)
+			{
+				color[s]=*(pix+s*size);
+			}
+			acc=func(color,acc);
+		}
+		return acc;
+	}
+
+	template<unsigned int Numlayers,typename T,typename ArrayRToR,typename R>
+	R fold(CImg<T>const & img,ArrayRToR func,R acc,ImageUtils::Rectangle<unsigned int> const selection)
+	{
+		unsigned int const width=img._width;
+		unsigned int const size=width*img._height;
+		std::array<T,NumLayers> color;
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			auto const row=y*width;
+			for(unsigned int x=selection.left;x<selection.right;++x)
+			{
+				auto const pix=row+x;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					color[s]=*(pix+s*size);
+				}
+				acc=func(color,acc);
+			}
+		}
+		return acc;
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayArrayToBool>
+	auto min_pixel(CImg<T> const& img,ArrayArrayToBool comp)
+	{
+		assert(NumLayers<=img._spectrum);
+		auto const data=img._data;
+		auto loc=data;
+		std::array<T,NumLayers> min_value;
+		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		std::array<T,NumLayers> color;
+		for(unsigned int i=0;i<size;++i)
+		{
+			auto const pix=data+i;
+			for(unsigned int s=0;s<NumLayers;++s)
+			{
+				color[s]=*(pix+s*size);
+			}
+			if(comp(color,min_value))
+			{
+				min_value=color;
+				loc=pix;
+			}
+		}
+		return std::make_pair<decltype(loc),decltype(min_value)>(loc,min_value);
+	}
+
+	template<unsigned int NumLayers,typename T,typename ArrayArrayToBool>
+	auto min_pixel(CImg<T> const& img,ArrayArrayToBool comp,ImageUtils::Rectangle<unsigned int> const selection)
+	{
+		assert(NumLayers<=img._spectrum);
+		auto const data=img._data;
+		auto loc=data;
+		std::array<T,NumLayers> min_value;
+		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		std::array<T,NumLayers> color;
+		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		{
+			auto const row=y*width;
+			for(unsigned int x=selection.left;x<selection.right;++x)
+			{
+				auto const pix=row+x;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					color[s]=*(pix+s*size);
+				}
+				if(comp(color,min_value))
+				{
+					min_value=color;
+					loc=pix;
+				}
+			}
+		}
+		return std::make_pair<decltype(loc),decltype(min_value)>(loc,min_value);
 	}
 
 	/*
