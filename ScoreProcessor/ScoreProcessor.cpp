@@ -514,6 +514,11 @@ public:
 		enum regex_state {
 			unassigned,normal,inverted
 		};
+		struct sel_boundary {
+			std::string_view begin; //will always be present in the parameters list
+			std::string_view end;
+		};
+		std::vector<sel_boundary> selections;
 		regex_state rgxst;
 		unsigned int num_threads;
 		bool list_files;
@@ -1927,6 +1932,31 @@ protected:
 };
 RegexMaker const RegexMaker::singleton;
 
+class BoundSelMaker:public CommandMaker {
+	BoundSelMaker():CommandMaker(2,-1,"Files between the begin and end are included in the list of files to process","Boundary Select")
+	{}
+	static BoundSelMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command(iter begin,size_t n,delivery& del) const override
+	{
+		if(n&1)
+		{
+			return "Invalid number of arguments";
+		}
+		for(size_t i=0;i<n;i+=2)
+		{
+			del.selections.emplace_back(delivery::sel_boundary({begin[i],begin[i+1]}));
+		}
+		return nullptr;
+	}
+};
+BoundSelMaker const BoundSelMaker::singleton;
+
 class FillRectangleGrayMaker:public SingleCommandMaker {
 	FillRectangleGrayMaker():SingleCommandMaker(4,6,
 		"Fills given rectangle with given color\n"
@@ -2169,6 +2199,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 
 	commands.emplace("-fhsv",&FilterHSVMaker::get());
 	commands.emplace("-frgb",&FilterRGBMaker::get());
+
+	commands.emplace("-bsel",&BoundSelMaker::get());
 	return commands;
 }
 
@@ -2236,7 +2268,7 @@ void do_splice(CommandMaker::delivery const&,std::vector<std::string> const& fil
 //finds end of input list and gets the strings from that list
 std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::iter begin,CommandMaker::iter end);
 //filters out files according to the regex pattern
-void filter_out_files(std::vector<std::string>&,std::regex const& rgx,CommandMaker::delivery::regex_state);
+void filter_out_files(std::vector<std::string>&,CommandMaker::delivery const&);
 //lists out files
 void list_files(std::vector<std::string> const&);
 
@@ -2284,13 +2316,13 @@ int main(int argc,char** argv)
 	try
 	{
 		del=parse_commands(arg_find.first,args.end());
+		filter_out_files(files,del);
 	}
 	catch(std::exception const& ex)
 	{
 		std::cout<<ex.what()<<'\n';
 		return 0;
 	}
-	filter_out_files(files,del.rgx,del.rgxst);
 	if(del.list_files)
 	{
 		list_files(files);
@@ -2384,6 +2416,7 @@ void info_output()
 		"    Output:                   -o format move=false\n"
 		"    Verbosity:                -vb level\n"
 		"    Filter Files:             -flt regex remove=false\n"
+		"    Boundary Select:          -bsel first_file1 last_file1 ... first_filen last_filen\n"
 		"    Number of Threads:        -nt num\n"
 		"    Starting index:           -si num\n"
 		"    List Files:               -list\n"
@@ -2528,14 +2561,54 @@ std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::i
 	return ret;
 }
 //filters out files according to the regex pattern
-void filter_out_files(std::vector<std::string>& files,std::regex const& rgx,CommandMaker::delivery::regex_state rgxst)
+void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery const& del)
 {
-	if(rgxst)
+	if(!del.selections.empty())
+	{
+		std::vector<char> what_to_keep(files.size()); //not gonna take much space anyway, so I'm not using vector<bool>
+		std::memset(what_to_keep.data(),0,what_to_keep.size());
+		for(auto sr:del.selections)
+		{
+			auto const beg=files.begin(),ed=files.end();
+			auto first=std::find_if(beg,ed,[b=sr.begin](auto const& str)
+			{
+				return b==std::string_view(str);
+			});
+			if(first==ed)
+			{
+				throw std::logic_error(std::string(sr.begin).append(" start boundary not found"));
+			}
+			auto last=std::find_if(first,ed,[e=sr.end](auto const& str)
+			{
+				return e==std::string_view(str);
+			});
+			if(last==ed)
+			{
+				throw std::logic_error(std::string(sr.end).append(" end boundary not found beyond ").append(sr.begin));
+			}
+			size_t start=first-files.begin();
+			size_t const end=last-files.begin()+1;
+			for(;start<end;++start)
+			{
+				what_to_keep[start]=1;
+			}
+		}
+		std::vector<std::string> filtered;
+		for(size_t i=0;i<files.size();++i)
+		{
+			if(what_to_keep[i])
+			{
+				filtered.emplace_back(std::move(files[i]));
+			}
+		}
+		files=std::move(filtered);
+	}
+	if(del.rgxst)
 	{
 		files.erase(std::remove_if(files.begin(),files.end(),
-			[&rgx,keep=rgxst==CommandMaker::delivery::normal](auto const& a)
+			[&del,keep=del.rgxst==CommandMaker::delivery::normal](auto const& a)
 		{
-			return std::regex_match(a,rgx)!=keep;
+			return std::regex_match(a,del.rgx)!=keep;
 		}),files.end());
 	}
 }
@@ -2588,6 +2661,7 @@ void list_files(std::vector<std::string> const& files)
 	}
 	else
 	{
+		std::cout<<'\n';
 		for(auto const& file:files)
 		{
 			std::cout<<file<<'\n';
