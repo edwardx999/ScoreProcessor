@@ -41,7 +41,8 @@ namespace ScoreProcessor {
 		typedef cimg_library::CImg<T> Img;
 		virtual ~ImageProcess()
 		{};
-		virtual void process(Img&) const=0;
+		//returns true if the image been modified
+		virtual bool process(Img&) const=0;
 	};
 	/*
 		Logs to some output.
@@ -355,16 +356,14 @@ namespace ScoreProcessor {
 		path in(fname),out(output);
 		if(!exists(in))
 		{
-			throw std::invalid_argument((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
+			throw std::runtime_error(std::string("Failed to open ").append(fname,in.native().size()));
 		}
 		auto const& instr=in.native();
 		auto in_ext=exlib::find_extension(instr.cbegin(),instr.cend());
 		auto const& outstr=out.native();
 		auto out_ext=exlib::find_extension(outstr.cbegin(),outstr.cend());
-		auto proc=[this,fname,output,do_move,in_ext,in_end=instr.cend(),out_ext,out_end=outstr.cend(),&out,&in]()
+		auto support=[in_ext,out_ext,in_end=instr.end(),out_end=outstr.end()]()
 		{
-			auto s=supported(&*out_ext);
-			auto sin=supported(&*in_ext);
 			auto make_ext_string=[](auto begin,auto end)
 			{
 				size_t shorts=std::distance(begin,end);
@@ -376,77 +375,136 @@ namespace ScoreProcessor {
 				}
 				return ext;
 			};
-			if(s==support_type::no)
+			auto sout=supported(&*out_ext);
+			auto sin=supported(&*in_ext);
+			if(sout==support_type::no)
 			{
-				auto ext=make_ext_string(out_ext,out_end);
-				throw std::invalid_argument(std::string("Unsupported file type ")+ext);
+				throw std::invalid_argument(std::string("Unsupported file type ")+make_ext_string(out_ext,out_end));
 			}
 			if(sin==support_type::no)
 			{
-				auto ext=make_ext_string(in_ext,in_end);
-				throw std::invalid_argument(std::string("Unsupported file type ")+ext);
+				throw std::invalid_argument(std::string("Unsupported file type ")+make_ext_string(in_ext,in_end));
 			}
-			if(!std::ofstream(output,std::ios::app))
-			{
-				throw std::runtime_error(std::string("Failed to save to ").append(output,out.native().size()));
-			}
-			cil::CImg<T> img(fname);
-			for(auto& pprocess:*this)
-			{
-				pprocess->process(img);
-			}
-			switch(s)
-			{
-				case support_type::png:
-					img.save_png(output);
-					break;
-				case support_type::jpeg:
-					img.save_jpeg(output);
-					break;
-				case support_type::bmp:
-					img.save_bmp(output);
-					break;
-			}
-			if(do_move&&!std::experimental::filesystem::equivalent(in,out))
-			{
-				remove(in);
-			}
+			return std::make_pair(sin,sout);
 		};
-		if(this->empty())
+		auto copy_or_move=[do_move,&in,&out,fname,output]()
 		{
 			if(std::experimental::filesystem::equivalent(in,out))
 			{
 				return;
 			}
-			if(!exlib::strncmp_nocase(in_ext,out_ext))
+			if(do_move)
 			{
-				if(do_move)
+				try
 				{
 					rename(in,out);
 				}
-				else
+				catch(std::exception const&)
 				{
-					std::ifstream src(fname,std::ios::binary);
-					if(!src)
-					{
-						throw std::invalid_argument((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
-					}
-					std::ofstream dst(output,std::ios::binary);
-					if(!dst)
-					{
-						throw std::invalid_argument((std::string("Failed to save to ").append(output,out.native().size()).c_str()));
-					}
-					dst<<src.rdbuf();
+					throw std::runtime_error(std::string(std::string("Failed to move to ").append(output,out.native().size())));
 				}
 			}
 			else
 			{
-				proc();
+				std::ifstream src(fname,std::ios::binary);
+				if(!src)
+				{
+					throw std::runtime_error((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
+				}
+				std::ofstream dst(output,std::ios::binary);
+				if(!dst)
+				{
+					throw std::runtime_error((std::string("Failed to copy to ").append(output,out.native().size()).c_str()));
+				}
+				dst<<src.rdbuf();
+			}
+		};
+		if(empty())
+		{
+			auto s=support();
+			if(s.first==s.second)
+			{
+				copy_or_move();
+			}
+			else
+			{
+				CImg<T> img;
+				switch(s.first)
+				{
+					case support_type::bmp:
+						img.load_bmp(fname);
+						break;
+					case support_type::jpeg:
+						img.load_jpeg(fname);
+						break;
+					case support_type::png:
+						img.load_png(fname);
+				}
+				switch(s.second)
+				{
+					case support_type::bmp:
+						img.save_bmp(output);
+						break;
+					case support_type::jpeg:
+						img.save_jpeg(output);
+						break;
+					case support_type::png:
+						img.save_png(output);
+				}
+				if(do_move&&!std::experimental::filesystem::equivalent(in,out))
+				{
+					remove(in);
+				}
 			}
 		}
 		else
 		{
-			proc();
+			auto s=support();
+			bool edited=false;
+			{
+				CImg<T> img;
+				switch(s.first)
+				{
+					case support_type::bmp:
+						img.load_bmp(fname);
+						break;
+					case support_type::jpeg:
+						img.load_jpeg(fname);
+						break;
+					case support_type::png:
+						img.load_png(fname);
+				}
+				for(auto it=this->begin();it<this->end();++it)
+				{
+					edited|=(*it)->process(img);
+				}
+				if(s.first!=s.second)
+				{
+					edited=true;
+				}
+				if(edited)
+				{
+					switch(s.second)
+					{
+						case support_type::bmp:
+							img.save_bmp(output);
+							break;
+						case support_type::jpeg:
+							img.save_jpeg(output);
+							break;
+						case support_type::png:
+							img.save_png(output);
+					}
+					if(do_move&&!std::experimental::filesystem::equivalent(in,out))
+					{
+						remove(in);
+					}
+				}
+			}
+			if(!edited)
+			{
+				copy_or_move();
+			}
 		}
 	}
 

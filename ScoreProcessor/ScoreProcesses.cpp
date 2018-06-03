@@ -93,36 +93,62 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void replace_range(CImg<unsigned char>& image,Grayscale const lower,ImageUtils::Grayscale const upper,Grayscale const replacer)
+	bool replace_range(CImg<unsigned char>& image,Grayscale const lower,ImageUtils::Grayscale const upper,Grayscale const replacer)
 	{
+		bool edited=false;
 		unsigned char* const limit=image.end();
 		for(auto it=image.begin();it!=limit;++it)
 		{
 			if(*it>=lower&&*it<=upper)
 			{
-				*it=replacer;
+				if(*it!=replacer)
+				{
+					edited=true;
+					*it=replacer;
+				}
 			}
 		}
+		return edited;
 	}
 
-	void replace_by_brightness(CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness,ColorRGB replacer)
+	bool replace_by_brightness(CImg<unsigned char>& image,unsigned char lowerBrightness,unsigned char upperBrightness,ColorRGB replacer)
 	{
 		assert(image._spectrum>=3);
-		map<3U>(image,[=,repl=std::array<unsigned char,3>({replacer.r,replacer.g,replacer.b})](auto color)
+		bool edited=false;
+		auto repl=std::array<unsigned char,3>({replacer.r,replacer.g,replacer.b});
+		map_if<3U>(image,[=](auto color)
 		{
+			return repl;;
+		},[=,&edited](auto color)
+		{
+			if(color==repl)
+			{
+				return false;
+			}
 			auto const brightness=(float(color[0])+color[1]+color[2])/3.0f;
 			if(brightness>=lowerBrightness&&brightness<=upperBrightness)
 			{
-				return repl;
+				edited=true;
+				return true;
 			}
-			return color;
+			return false;
 		});
+		return edited;
 	}
-	void replace_by_hsv(::cimg_library::CImg<unsigned char>& image,ImageUtils::ColorHSV start,ImageUtils::ColorHSV end,ImageUtils::ColorRGB replacer)
+	bool replace_by_hsv(::cimg_library::CImg<unsigned char>& image,ImageUtils::ColorHSV start,ImageUtils::ColorHSV end,ImageUtils::ColorRGB replacer)
 	{
 		assert(image._spectrum>=3);
-		map<3U>(image,[=,repl=std::array<unsigned char,3>({replacer.r,replacer.g,replacer.b})](auto color)
+		bool edited=false;
+		std::array<unsigned char,3> const& repl=*reinterpret_cast<std::array<unsigned char,3>*>(&replacer);
+		map_if<3U>(image,[=](auto color)
 		{
+			return repl;
+		},[=,&edited](auto color)
+		{
+			if(color==repl)
+			{
+				return false;
+			}
 			ColorHSV hsv=*reinterpret_cast<ColorRGB*>(&color);
 			if(hsv.s>=start.s&&hsv.s<=end.s&&hsv.v>=start.v&&hsv.v<=end.v)
 			{
@@ -130,45 +156,48 @@ namespace ScoreProcessor {
 				{
 					if(hsv.h>=start.h&&hsv.h<=end.h)
 					{
-						return repl;
+						edited=true;
+						return true;
 					}
 				}
 				else if(hsv.h>=start.h||hsv.h<=end.h)
 				{
-					return repl;
+					edited=true;
+					return true;
 				}
 			}
-			return color;
+			return false;
 		});
+		return edited;
 	}
-	void replace_by_rgb(::cil::CImg<unsigned char>& image,ImageUtils::ColorRGB start,ImageUtils::ColorRGB end,ImageUtils::ColorRGB replacer)
+	bool replace_by_rgb(::cil::CImg<unsigned char>& image,ImageUtils::ColorRGB start,ImageUtils::ColorRGB end,ImageUtils::ColorRGB replacer)
 	{
 		assert(image._spectrum>=3);
-		map<3U>(image,[=](auto color)
+		bool edited=false;
+		std::array<unsigned char,3> const& repl=*reinterpret_cast<std::array<unsigned char,3>*>(&replacer);
+		map_if<3U>(image,[=](auto color)
 		{
+			return repl;
+		},[=,&edited](auto color)
+		{
+			if(color==repl)
+			{
+				return false;
+			}
 			if(color[0]>=start.r&&color[0]<=end.r&&
 				color[1]>=start.g&&color[1]<=end.g&&
 				color[2]>=start.b&&color[2]<=end.b)
 			{
-				return decltype(color)({replacer.r,replacer.g,replacer.b});
+				edited=true;
+				return true;
 			}
-			return color;
+			return false;
 		});
+		return edited;
 	}
-	int auto_center_horiz(CImg<unsigned char>& image)
+	bool auto_center_horiz(CImg<unsigned char>& image)
 	{
-		bool isRgb;
-		switch(image._spectrum)
-		{
-			case 3:
-				isRgb=true;
-				break;
-			case 1:
-				isRgb=false;
-				break;
-			default:
-				return 2;
-		}
+		bool isRgb=image._spectrum>=3;
 		unsigned int left,right;
 		unsigned int tolerance=image._height>>4;
 		if(isRgb)
@@ -186,7 +215,7 @@ namespace ScoreProcessor {
 		int shift=static_cast<int>(center-((left+right)/2));
 		if(0==shift)
 		{
-			return 1;
+			return false;
 		}
 		RectangleUINT toShift,toFill;
 		toShift={0,image._width,0,image._height};
@@ -207,7 +236,7 @@ namespace ScoreProcessor {
 		{
 			fill_selection(image,toFill,Grayscale::WHITE);
 		}
-		return 0;
+		return false;
 	}
 	unsigned int find_left(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance)
 	{
@@ -292,20 +321,9 @@ namespace ScoreProcessor {
 		return 0;
 	}
 
-	void auto_center_vert(CImg<unsigned char>& image)
+	bool auto_center_vert(CImg<unsigned char>& image)
 	{
-		bool isRgb;
-		switch(image._spectrum)
-		{
-			case 3:
-				isRgb=true;
-				break;
-			case 1:
-				isRgb=false;
-				break;
-			default:
-				throw std::invalid_argument("Invalid spectrum");
-		}
+		bool isRgb=image._spectrum>=3;
 		int top,bottom;
 		unsigned int tolerance=image._height>>4;
 		if(isRgb)
@@ -318,28 +336,20 @@ namespace ScoreProcessor {
 			top=find_top(image,Grayscale::WHITE,tolerance);
 			bottom=find_bottom(image,Grayscale::WHITE,tolerance);
 		}
-		/*thread topThread(findTop,image,&top,white,tolerance);
-		thread bottomThread(findBottom,image,&bottom,white,tolerance);
-		topThread.join();
-		bottomThread.join();*/
-		//std::cout<<top<<'\n'<<bottom<<'\n';
 		unsigned int center=image._height/2;
 		int shift=static_cast<int>(center-((top+bottom)/2));
-		//std::cout<<shift<<'\n';
 		if(0==shift)
 		{
-			return;
+			return false;
 		}
 		RectangleUINT toShift,toFill;
 		toShift={0,image._width,0,image._height};
 		if(shift>0)
 		{
-//toShift={shift,image._width,0,image._height};
 			toFill={0,image._width,0,static_cast<unsigned int>(shift)};
 		}
 		else if(shift<0)
 		{
-//toShift={0,image._width+shift,0,image._height};
 			toFill={0,image._width,static_cast<unsigned int>(image._height+shift),image._height};
 		}
 		copy_shift_selection(image,toShift,0,shift);
@@ -351,6 +361,7 @@ namespace ScoreProcessor {
 		{
 			fill_selection(image,toFill,Grayscale::WHITE);
 		}
+		return true;
 	}
 	unsigned int find_top(CImg<unsigned char> const& image,ColorRGB const background,unsigned int const tolerance)
 	{
@@ -606,42 +617,6 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	template<typename T,typename Comp>
-	vector<T> fattened_profile(vector<T> const& prof,unsigned int hp,Comp comp)
-	{
-		vector<T> res(profile.size());
-		auto el=res.begin()-1;
-		for(auto it=prof.begin(),rit=res.begin();i<prof.end();++it,++rit)
-		{
-			decltype(it) begin,end;
-			if((it-prof.begin())<=hp)
-			{
-				begin=res.begin();
-			}
-			else
-			{
-				begin=it-hp;
-			}
-			end=it+hp+1;
-			if(end>prof.end())
-			{
-				end=prof.end();
-			}
-			if(el<begin)
-			{
-				el=std::min_element(begin,end);
-			}
-			else
-			{
-				el=std::min(el,end-1,[](auto const a,auto const b)
-				{
-					return comp(*a,*b);
-				});
-			}
-			*rit=*el;
-		}
-		return res;
-	}
 	vector<unsigned int> fattened_profile_high(vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
 		return exlib::fattened_profile(profile,horiz_padding,[](unsigned int a,unsigned int b)
@@ -875,7 +850,7 @@ namespace ScoreProcessor {
 		{
 			struct line {
 				unsigned int top,bottom,right;
-			};
+	};
 			float const VEC=100.0f;
 			CImg<float> map=create_vertical_energy(image,VEC);
 			add_horizontal_energy(image,map,ch.horizontal_energy_weight);
@@ -920,7 +895,7 @@ namespace ScoreProcessor {
 				auto const& next=boxes[i];
 				paths.emplace_back(trace_back_seam(map,(current.bottom+next.top)/2,(current.right+next.right)/2-1));
 			}
-		}
+}
 		if(paths.size()==0)
 		{
 			image.save(filename,1,3U);
@@ -1019,22 +994,22 @@ namespace ScoreProcessor {
 		return num_images;
 	}
 
-	void auto_rotate(CImg<unsigned char>& image,double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary)
+	float auto_rotate(CImg<unsigned char>& image,double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary)
 	{
 		assert(angle_prec>0);
 		assert(pixel_prec>0);
 		assert(min_angle<max_angle);
-		auto_rotate_bare(image,pixel_prec,min_angle*DEG_RAD+M_PI_2,max_angle*DEG_RAD+M_PI_2,(max_angle-min_angle)/angle_prec+1,boundary);
+		return RAD_DEG*auto_rotate_bare(image,pixel_prec,min_angle*DEG_RAD+M_PI_2,max_angle*DEG_RAD+M_PI_2,(max_angle-min_angle)/angle_prec+1,boundary);
 	}
 
-	void auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)
+	float auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)
 	{
 		assert(angle_steps>0);
 		assert(pixel_prec>0);
 		assert(min_angle<max_angle);
 		if(img._height==0||img._width==0)
 		{
-			return;
+			return 0;
 		}
 		auto selector=[&img,boundary](unsigned int x,unsigned int y)
 		{
@@ -1046,12 +1021,16 @@ namespace ScoreProcessor {
 		};
 		HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
 		auto max=*std::max_element(ha.begin(),ha.end());
-		double angle=90.0-ha.angle()*RAD_DEG;
+		double ha_angle=M_PI_2-ha.angle();
+		double angle=ha_angle*RAD_DEG;
 		img.rotate(angle,2,1);
+		return ha_angle;
 	}
 
-	void auto_skew(CImg<unsigned char>& image)
-	{}
+	bool auto_skew(CImg<unsigned char>& image)
+	{
+		return false;
+	}
 	line<unsigned int> find_top_line(CImg<unsigned char> const& image)
 	{
 		return {{0,0},{0,0}};
@@ -1135,7 +1114,7 @@ namespace ScoreProcessor {
 		//cout<<candidates[maxIndex].numPoints<<'\n';
 		return {candidates[maxIndex].start,candidates[maxIndex].last};
 	}
-	void undistort(CImg<unsigned char>& image)
+	bool undistort(CImg<unsigned char>& image)
 	{}
 
 /*
@@ -1332,55 +1311,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		return result_container;
 	}
-	/*
-	vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const gray,bool const ignoreWithinTolerance) {
-		std::vector<RectangleUINT> resultContainer;
-		unsigned int rangeFound=0,rangeStart=0,rangeEnd=0;
-		for(unsigned int y=0;y<image._height;++y)
-		{
-			for(unsigned int x=0;x<image._width;++x)
-			{
-				switch(rangeFound)
-				{
-					case 0: {
-						if((gray_diff(image(x,y),gray)<=tolerance)^ignoreWithinTolerance)
-						{
-							rangeFound=1;
-							rangeStart=x;
-						}
-						break;
-					}
-					case 1: {
-						if((gray_diff(image(x,y),gray)>tolerance)^ignoreWithinTolerance)
-						{
-							rangeFound=2;
-							rangeEnd=x;
-						}
-						else
-						{
-							break;
-						}
-					}
-					case 2: {
-						resultContainer.push_back(RectangleUINT{rangeStart,rangeEnd,y,y+1U});
-						rangeFound=0;
-						break;
-					}
-				}
-			}
-			if(1==rangeFound)
-			{
-				resultContainer.push_back(RectangleUINT{rangeStart,image._width,y,y+1});
-				rangeFound=0;
-			}
-		}
-		ImageUtils::compress_rectangles(resultContainer);
-		return resultContainer;
-	}
-	*/
-
-	float const _16by9=16.0f/9.0f;
-	void auto_padding(CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const horizontal_padding_max,unsigned int const horizontal_padding_min,signed int horiz_offset,float optimal_ratio)
+	bool auto_padding(CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const horizontal_padding_max,unsigned int const horizontal_padding_min,signed int horiz_offset,float optimal_ratio)
 	{
 		auto const tolerance=5U;
 		unsigned int left,right,top,bottom;
@@ -1419,18 +1350,27 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		{
 			horizontal_padding=horizontal_padding_min;
 		}
+		signed int x1=left-horizontal_padding;
+		signed int y1=top-vertical_padding;
+		signed int x2=right+horizontal_padding-1+horiz_offset;
+		signed int y2=bottom+vertical_padding-1;
+		if(x1==0&&y1==0&&x2==image.width()-1&&y2==image.height()-1)
+		{
+			return false;
+		}
 		image.crop(
 			static_cast<signed int>(left-horizontal_padding),
 			static_cast<signed int>(top-vertical_padding),
 			right+horizontal_padding-1+horiz_offset,
 			bottom+vertical_padding-1,
 			1);
+		return true;
 	}
-	void horiz_padding(CImg<unsigned char>& image,unsigned int const left)
+	bool horiz_padding(CImg<unsigned char>& image,unsigned int const left)
 	{
-		horiz_padding(image,left,left);
+		return horiz_padding(image,left,left);
 	}
-	void horiz_padding(CImg<unsigned char>& image,unsigned int const left_pad,unsigned int const right_pad)
+	bool horiz_padding(CImg<unsigned char>& image,unsigned int const left_pad,unsigned int const right_pad)
 	{
 		auto const tolerance=5U;
 		unsigned int left,right;
@@ -1452,7 +1392,13 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		auto const& prev_left=left;
 		unsigned int const prev_right=image._width-right-1;
-		image.crop(static_cast<signed int>(left-left_pad),0,right+right_pad,image.height()-1,0);
+		signed int x1=(left-left_pad);
+		signed int x2=right+right_pad;
+		if(x1==0&&x2==image._width-1)
+		{
+			return false;
+		}
+		image.crop(x1,0,x2,image.height()-1,0);
 		std::array<unsigned char,4> color{255,255,255,255};
 		if(prev_left<left_pad)
 		{
@@ -1462,12 +1408,13 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		{
 			fill_selection(image,{image._width+prev_right-right_pad,image._width,0,image._height},color.data());
 		}
+		return true;
 	}
-	void vert_padding(CImg<unsigned char>& image,unsigned int const p)
+	bool vert_padding(CImg<unsigned char>& image,unsigned int const p)
 	{
-		vert_padding(image,p,p);
+		return vert_padding(image,p,p);
 	}
-	void vert_padding(CImg<unsigned char>& image,unsigned int const tp,unsigned int const bp)
+	bool vert_padding(CImg<unsigned char>& image,unsigned int const tp,unsigned int const bp)
 	{
 		auto const tolerance=5U;
 		unsigned int top,bottom;
@@ -1484,16 +1431,23 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		auto const& prev_top=top;
 		unsigned int const prev_bottom=image._height-bottom-1;
-		image.crop(0,static_cast<signed int>(top-tp),image._width-1,bottom+bp);
+		signed int y1=top-tp;
+		signed int y2=bottom+bp;
+		if(y1==0&&y2==image._height-1)
+		{
+			return false;
+		}
+		image.crop(0,y1,image._width-1,y2);
 		std::array<unsigned char,4> color{255,255,255,255};
 		if(prev_top<tp)
 		{
-			fill_selection(image,{0,image._width,0,tp-top},color.data());
+			fill_selection(image,{0,image._width,0,static_cast<unsigned int>(-y1)},color.data());
 		}
 		if(prev_bottom<bp)
 		{
 			fill_selection(image,{0,image._width,image._height+prev_bottom-bp,image._height},color.data());
 		}
+		return true;
 	}
 
 	struct page:CImg<unsigned char> {
@@ -1776,9 +1730,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-		}
+			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-}
+		}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1869,11 +1823,11 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 					break;
 				}
 				--j;
-			}
+				}
 #ifndef NDEBUG
 			std::cout<<"prev="<<nodes[i].previous<<'\n';
 #endif
-		}
+	}
 		vector<size_t> breakpoints;
 		breakpoints.reserve(c);
 		size_t index=c;
@@ -1919,7 +1873,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-		}
+	}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())
@@ -1968,9 +1922,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		CImg<float> energy_map=create_compress_energy(copy,min_padding);
 		if(image._spectrum==1)
 		{
-			clear_clusters(copy,255,[](unsigned char val)
+			clear_clusters(copy,std::array<unsigned char,1>({255}),[](auto val)
 			{
-				return val<220;
+				return val[0]<220;
 			},[threshold=2*copy._width/3](Cluster const& c){
 				return c.bounding_box().width()<threshold;
 			});
@@ -2103,28 +2057,35 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		}
 		return map;
 	}
-	void remove_border(CImg<unsigned char>& image,Grayscale const color,float const tolerance)
+	bool remove_border(CImg<unsigned char>& image,Grayscale const color,float const tolerance)
 	{
 		uint right=image._width-1;
 		uint bottom=image._height-1;
+		bool edited=false;
 		for(uint x=0;x<=right;++x)
 		{
-			flood_fill(image,tolerance,color,Grayscale::WHITE,{x,0});
-			flood_fill(image,tolerance,color,Grayscale::WHITE,{x,bottom});
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{x,0});
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{x,bottom});
 		}
 		for(uint y=1;y<bottom;++y)
 		{
-			flood_fill(image,tolerance,color,Grayscale::WHITE,{0,y});
-			flood_fill(image,tolerance,color,Grayscale::WHITE,{right,y});
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{0,y});
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{right,y});
 		}
+		return edited;
 	}
-	void flood_fill(CImg<unsigned char>& image,float const tolerance,Grayscale const color,Grayscale const replacer,Point<unsigned int> point)
+	bool flood_fill(CImg<unsigned char>& image,float const tolerance,Grayscale const color,Grayscale const replacer,Point<unsigned int> point)
 	{
 		auto rects=flood_select(image,tolerance,color,point);
-		for(auto const& rect:rects)
+		if(rects.empty())
+		{
+			return false;
+		}
+		for(auto rect:rects)
 		{
 			fill_selection(image,rect,replacer);
 		}
+		return true;
 	}
 	void rescale_colors(CImg<unsigned char>& img,unsigned char min,unsigned char mid,unsigned char max)
 	{
@@ -2159,4 +2120,4 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 		}
 	}
-		}
+}

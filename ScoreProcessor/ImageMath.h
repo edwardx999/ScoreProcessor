@@ -51,6 +51,32 @@ namespace cimg_library {
 		return img;
 	}
 
+	template<size_t NumLayers,typename T,typename ArrayToArray,typename ArrayToBool>
+	CImg<T>& map_if(CImg<T>& img,ArrayToArray func,ArrayToBool pred)
+	{
+		assert(NumLayers<=img._spectrum);
+		auto const data=img._data;
+		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		std::array<T,NumLayers> color;
+		for(unsigned int i=0;i<size;++i)
+		{
+			auto const pix=data+i;
+			for(unsigned int s=0;s<NumLayers;++s)
+			{
+				color[s]=*(pix+s*size);
+			}
+			if(pred(color))
+			{
+				auto new_color=func(color);
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					*(pix+s*size)=new_color[s];
+				}
+			}
+		}
+		return img;
+	}
+
 	template<unsigned int InputLayers,unsigned int OutputLayers=InputLayers,typename T,typename ArrayToArray>
 	auto get_map(CImg<T> const& img,ArrayToArray func)
 	{
@@ -160,16 +186,17 @@ namespace cimg_library {
 	template<unsigned int NumLayers,typename T,typename ArrayToArray>
 	bool or_map(CImg<T>& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
 	{
-		unsigned int const width=img._width;
-		unsigned int const size=width*img._height;
+		auto const width=img._width;
+		auto const size=width*img._height;
+		auto const data=img._data;
 		std::array<T,NumLayers> color;
-		for(unsigned int y=selection.top;y<selection.bottom;++y)
+		for(auto y=selection.top;y<selection.bottom;++y)
 		{
-			auto const row=y*width;
-			for(unsigned int x=selection.left;x<selection.right;++x)
+			auto const row=data+y*width;
+			for(auto x=selection.left;x<selection.right;++x)
 			{
 				auto const pix=row+x;
-				for(unsigned int s=0;s<NumLayers;++s)
+				for(auto s=0U;s<NumLayers;++s)
 				{
 					color[s]=*(pix+s*size);
 				}
@@ -209,10 +236,11 @@ namespace cimg_library {
 	{
 		unsigned int const width=img._width;
 		unsigned int const size=width*img._height;
+		auto const data=img._data;
 		std::array<T,NumLayers> color;
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
 		{
-			auto const row=y*width;
+			auto const row=data+y*width;
 			for(unsigned int x=selection.left;x<selection.right;++x)
 			{
 				auto const pix=row+x;

@@ -18,6 +18,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #define SCORE_PARSE_H
 #include <numeric>
 #include <cctype>
+#include <charconv>
 namespace ScoreProcessor {
 	//I really need MSVC to implement from_chars.
 	int parse_str(double& out,char const* str)
@@ -90,16 +91,16 @@ namespace ScoreProcessor {
 		out=temp;\
 		return 0;\
 	}
-	make_parse_str_unsigned(unsigned char)
-	make_parse_str_unsigned(unsigned short)
-	make_parse_str_unsigned(unsigned int)
-	//-1 is success
-	//err val 0 is too few arguments
-	//err val 1 is too many arguments
-	//err val n in [2,num_args+1] mean missing (n-2)th argument 
-	//err val n in [num_args+2,2*num_args+1] means invalid (n-num_args-2)th argument
-	//other err vals are defined by the given constraints function
-	template<typename T,size_t num_args,typename Func>
+		make_parse_str_unsigned(unsigned char)
+		make_parse_str_unsigned(unsigned short)
+		make_parse_str_unsigned(unsigned int)
+		//-1 is success
+		//err val 0 is too few arguments
+		//err val 1 is too many arguments
+		//err val n in [2,num_args+1] mean missing (n-2)th argument 
+		//err val n in [num_args+2,2*num_args+1] means invalid (n-num_args-2)th argument
+		//other err vals are defined by the given constraints function
+		template<typename T,size_t num_args,typename Func>
 	int parse_range(
 		std::array<T,num_args>& out,
 		std::string& str,

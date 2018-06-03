@@ -40,22 +40,26 @@ using namespace ImageUtils;
 
 class ChangeToGrayscale:public ImageProcess<> {
 public:
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
 		if(img._spectrum>=3)
 		{
 			img=get_grayscale_simple(img);
+			return true;
 		}
+		return false;
 	}
 };
 class RemoveTransparency:public ImageProcess<> {
 public:
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
 		if(img._spectrum==4)
 		{
+			return true;
 			remove_transparency(img,150,ColorRGB::WHITE);
 		}
+		return false;
 	}
 };
 class RemoveBorderGray:public ImageProcess<> {
@@ -63,11 +67,11 @@ class RemoveBorderGray:public ImageProcess<> {
 public:
 	RemoveBorderGray(float tolerance):tolerance(tolerance)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
 		if(img._spectrum==1)
 		{
-			remove_border(img,0,tolerance);
+			return remove_border(img,0,tolerance);
 		}
 		else
 		{
@@ -82,15 +86,15 @@ class FilterGray:public ImageProcess<> {
 public:
 	FilterGray(unsigned char min,unsigned char max,Grayscale replacer):min(min),max(max),replacer(replacer)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
 		if(img._spectrum<3)
 		{
-			replace_range(img,min,max,replacer);
+			return replace_range(img,min,max,replacer);
 		}
 		else
 		{
-			replace_by_brightness(img,min,max,ColorRGB({replacer,replacer,replacer}));
+			return replace_by_brightness(img,min,max,ColorRGB({replacer,replacer,replacer}));
 		}
 	}
 };
@@ -101,11 +105,11 @@ class FilterHSV:public ImageProcess<> {
 public:
 	FilterHSV(ColorHSV start,ColorHSV end,ColorRGB replacer):start(start),end(end),replacer(replacer)
 	{}
-	void process(Img& img) const override
+	bool process(Img& img) const override
 	{
 		if(img._spectrum>=3)
 		{
-			replace_by_hsv(img,start,end,replacer);
+			return replace_by_hsv(img,start,end,replacer);
 		}
 		else
 		{
@@ -120,11 +124,11 @@ class FilterRGB:public ImageProcess<> {
 public:
 	FilterRGB(ColorRGB start,ColorRGB end,ColorRGB replacer):start(start),end(end),replacer(replacer)
 	{}
-	void process(Img& img) const override
+	bool process(Img& img) const override
 	{
 		if(img._spectrum>=3)
 		{
-			replace_by_rgb(img,start,end,replacer);
+			return replace_by_rgb(img,start,end,replacer);
 		}
 		else
 		{
@@ -138,9 +142,9 @@ class PadHoriz:public ImageProcess<> {
 public:
 	PadHoriz(unsigned int const left,unsigned int const right):left(left),right(right)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
-		horiz_padding(img,left,right);
+		return horiz_padding(img,left,right);
 	}
 };
 class PadVert:public ImageProcess<> {
@@ -148,9 +152,9 @@ class PadVert:public ImageProcess<> {
 public:
 	PadVert(unsigned int const top,unsigned int const bottom):top(top),bottom(bottom)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
-		vert_padding(img,top,bottom);
+		return vert_padding(img,top,bottom);
 	}
 };
 class PadAuto:public ImageProcess<> {
@@ -161,9 +165,9 @@ public:
 	PadAuto(unsigned int vert,unsigned int min_h,unsigned int max_h,signed int hoff,float opt_rat)
 		:vert(vert),min_h(min_h),max_h(max_h),hoff(hoff),opt_rat(opt_rat)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
-		auto_padding(img,vert,max_h,min_h,hoff,opt_rat);
+		return auto_padding(img,vert,max_h,min_h,hoff,opt_rat);
 	}
 };
 class Rescale:public ImageProcess<> {
@@ -185,7 +189,7 @@ public:
 		val(val),
 		interpolation(interpolation==automatic?(val>1?cubic:moving_average):interpolation)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
 		img.resize(
 			scast<int>(std::round(img._width*val)),
@@ -193,6 +197,7 @@ public:
 			img._depth,
 			img._spectrum,
 			interpolation);
+		return true;
 	}
 };
 class ClusterClearGray:public ImageProcess<> {
@@ -202,12 +207,21 @@ class ClusterClearGray:public ImageProcess<> {
 public:
 	ClusterClearGray(unsigned int min,unsigned int max,Grayscale background,float tolerance):min(min),max(max),background(background),tolerance(tolerance)
 	{}
-	void process(Img& img) const override
+	bool process(Img& img) const override
 	{
 		if(img._spectrum==1)
 		{
-			clear_clusters(img,rcast<ucharcp>(&background),
-				ImageUtils::Grayscale::color_diff,tolerance,true,min,max,rcast<ucharcp>(&background));
+			return clear_clusters(img,
+				std::array<unsigned char,1>({background}),
+				[this](std::array<unsigned char,1> v)
+			{
+				return gray_diff(v[0],background)<tolerance;
+			},
+				[this](Cluster const& cluster)
+			{
+				auto size=cluster.size();
+				return size>=min&&size<=max;
+			});
 		}
 		else
 		{
@@ -225,14 +239,14 @@ public:
 	ClusterClearGrayAlt(unsigned char rcmi,unsigned char rcma,unsigned int mis,unsigned mas,unsigned char smi,unsigned char sma,unsigned char back):
 		required_min(rcmi),required_max(rcma),min_size(mis),max_size(mas),sel_min(smi),sel_max(sma),background(back)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
 		if(img._spectrum<3)
 		{
-			clear_clusters(img,std::array<unsigned char,1>({background}),
+			return clear_clusters(img,std::array<unsigned char,1>({background}),
 				[this](std::array<unsigned char,1> v)
 			{
-				return v[0]>=sel_min&&v[1]<=sel_max;
+				return v[0]>=sel_min&&v[0]<=sel_max;
 			},
 				[this,&img](Cluster const& c)
 			{
@@ -265,7 +279,7 @@ public:
 		}
 		else
 		{
-			clear_clusters(img,std::array<unsigned char,3>({background,background,background}),
+			return clear_clusters(img,std::array<unsigned char,3>({background,background,background}),
 				[this](std::array<unsigned char,3> v)
 			{
 				auto const brightness=(float(v[0])+v[1]+v[2])/3.0f;
@@ -314,11 +328,12 @@ class RescaleGray:public ImageProcess<> {
 public:
 	RescaleGray(unsigned char min,unsigned char mid,unsigned char max=255):min(min),mid(mid),max(max)
 	{}
-	void process(Img& img) const
+	bool process(Img& img) const
 	{
 		if(img._spectrum==1)
 		{
 			rescale_colors(img,min,mid,max);
+			return true;
 		}
 		else
 		{
@@ -369,7 +384,7 @@ public:
 	{
 		assert(origin>=top_left&&origin<=bottom_right);
 	}
-	void process(Img& img) const override
+	bool process(Img& img) const override
 	{
 		auto const porigin=get_origin(origin,img.width(),img.height());
 		ImageUtils::Rectangle<signed int> rect;
@@ -398,10 +413,10 @@ public:
 		{
 			buffer[i]=color;
 		}
-		fill_selection(
+		return fill_selection(
 			img,
 			{scast<uint>(rect.left),scast<uint>(rect.right),scast<uint>(rect.top),scast<uint>(rect.bottom)},
-			buffer);
+			buffer,check_fill_t());
 	}
 };
 class Blur:public ImageProcess<> {
@@ -409,9 +424,10 @@ class Blur:public ImageProcess<> {
 public:
 	Blur(float radius):radius(radius)
 	{}
-	void process(Img& img) const override
+	bool process(Img& img) const override
 	{
 		img.blur(radius);
+		return true;
 	}
 };
 class Straighten:public ImageProcess<> {
@@ -426,9 +442,9 @@ public:
 		num_steps(std::ceil((max_angle-min_angle)/angle_prec)),
 		boundary(boundary)
 	{}
-	void process(Img& img) const override
+	bool process(Img& img) const override
 	{
-		auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary);
+		return auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary)!=0;
 	}
 };
 
@@ -437,9 +453,10 @@ class Rotate:public ImageProcess<> {
 public:
 	Rotate(float angle):angle(angle)
 	{}
-	void process(Img& img) const override
+	bool process(Img& img) const override
 	{
 		img.rotate(angle,2,1);
+		return true;
 	}
 };
 
@@ -1597,9 +1614,9 @@ protected:
 		try
 		{
 			radius=std::stof(*begin);
-			if(radius<0)
+			if(radius<=0)
 			{
-				return "Blur radius must be non-negative";
+				return "Blur radius must be positive";
 			}
 		}
 		catch(std::exception const&)
@@ -1809,7 +1826,10 @@ protected:
 						return "Mode does not exist";
 				}
 			}
-			del.pl.add_process<Rescale>(factor,mode);
+			if(factor!=1)
+			{
+				del.pl.add_process<Rescale>(factor,mode);
+			}
 		}
 		catch(std::exception const&)
 		{
@@ -2045,7 +2065,10 @@ protected:
 		{
 			angle+=360;
 		}
-		del.pl.add_process<Rotate>(-angle);
+		if(angle!=0)
+		{
+			del.pl.add_process<Rotate>(-angle);
+		}
 		return nullptr;
 	}
 };
