@@ -98,7 +98,6 @@ public:
 		}
 	}
 };
-
 class FilterHSV:public ImageProcess<> {
 	ColorHSV start,end;
 	ColorRGB replacer;
@@ -117,7 +116,6 @@ public:
 		}
 	}
 };
-
 class FilterRGB:public ImageProcess<> {
 	ColorRGB start,end;
 	ColorRGB replacer;
@@ -136,7 +134,6 @@ public:
 		}
 	}
 };
-
 class PadHoriz:public ImageProcess<> {
 	unsigned int left,right;
 public:
@@ -447,7 +444,6 @@ public:
 		return auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary)!=0;
 	}
 };
-
 class Rotate:public ImageProcess<> {
 	float angle;
 public:
@@ -465,6 +461,7 @@ void stop()
 	cout<<"Stopped\n";
 	std::this_thread::sleep_for(std::chrono::seconds(1000));
 }
+
 class CoutLog:public Log {
 	CoutLog()
 	{}
@@ -1619,16 +1616,19 @@ protected:
 		try
 		{
 			radius=std::stof(*begin);
-			if(radius<=0)
+			if(radius<0)
 			{
-				return "Blur radius must be positive";
+				return "Blur radius must be non-negative";
 			}
 		}
 		catch(std::exception const&)
 		{
 			return "Invalid arguments given for blur";
 		}
-		del.pl.add_process<Blur>(radius);
+		if(radius>0)
+		{
+			del.pl.add_process<Blur>(radius);
+		}
 		return nullptr;
 	}
 };
@@ -1790,6 +1790,10 @@ protected:
 			{
 				return "Rescale factor must be non-negative";
 			}
+			if(factor==1)
+			{
+				return nullptr;
+			}
 			int mode=Rescale::automatic;
 			if(n>1)
 			{
@@ -1831,10 +1835,7 @@ protected:
 						return "Mode does not exist";
 				}
 			}
-			if(factor!=1)
-			{
-				del.pl.add_process<Rescale>(factor,mode);
-			}
+			del.pl.add_process<Rescale>(factor,mode);
 		}
 		catch(std::exception const&)
 		{
@@ -2110,7 +2111,8 @@ private:
 		CommandMaker(
 			1,1,
 			"Controls the number of CPU threads used when processing multiple images\n"
-			"Defaults to max number supported by the CPU"
+			"Defaults to max number supported by the CPU\n"
+			"Number of threads created will not exceed number number of images"
 			,"Number of Threads")
 	{}
 	static NumThreadMaker const singleton;
@@ -2373,7 +2375,7 @@ int main(int argc,char** argv)
 	stop();
 #endif
 	return 0;
-}
+	}
 
 void info_output()
 {

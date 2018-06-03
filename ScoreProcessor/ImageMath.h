@@ -83,20 +83,19 @@ namespace cimg_library {
 		std::array<T,InputLayers> input;
 		typedef std::remove_reference<decltype(func(input)[0])>::type R;
 		CImg<R> ret(img._width,img._height,1,OutputLayers);
-		unsigned int size=img._width*img._height;
+		auto const size=img._width*img._height;
 		auto const idata=img._data;
 		auto const odata=ret._data;
-		for(unsigned int i=0;i<size;++i)
+		for(auto i=0U;i<size;++i)
 		{
 			auto const ipix=idata+i;
-			for(unsigned int s=0;s<InputLayers;++s)
+			for(auto s=0U;s<InputLayers;++s)
 			{
 				input[s]=*(ipix+s*size);
 			}
 			auto output=func(input);
-
 			auto const opix=odata+i;
-			for(unsigned int s=0;s<OutputLayers;++s)
+			for(auto s=0U;s<OutputLayers;++s)
 			{
 				*(opix+s*size)=output[s];
 			}
@@ -112,22 +111,22 @@ namespace cimg_library {
 		auto const oheight=selection.height();
 		auto const osize=owidth*oheight;
 		CImg<std::remove_reference<decltype(func(input)[0])>::type> ret(owidth,oheight,1,OutputLayers);
-		unsigned int const isize=img._width*img._height;
+		auto const isize=img._width*img._height;
 		auto const idata=img._data;
-		for(unsigned int y=0;x<oheight;++x)
+		for(auto y=0U;x<oheight;++x)
 		{
 			auto irow=idata+(y+selection.top)*img._width;
 			auto orow=ret._data+y*owidth;
-			for(unsigned int x=0;y<owidth;++y)
+			for(auto x=0U;y<owidth;++y)
 			{
 				auto ipix=irow+x+selection.left;
 				auto opix=orow+x;
-				for(unsigned int s=0;s<InputLayers;++s)
+				for(auto s=0U;s<InputLayers;++s)
 				{
 					input[s]=*(ipix+s*isize);
 				}
 				auto output=func(input);
-				for(unsigned int s=0;s<OutputLayers;++s)
+				for(auto s=0U;s<OutputLayers;++s)
 				{
 					*(opix+s*osize)=output[s];
 				}
@@ -141,10 +140,11 @@ namespace cimg_library {
 	{
 		unsigned int const width=img._width;
 		unsigned int const size=width*img._height;
+		auto const data=img._data;
 		std::array<T,NumLayers> color;
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
 		{
-			auto const row=y*width;
+			auto const row=data+y*width;
 			for(unsigned int x=selection.left;x<selection.right;++x)
 			{
 				auto const pix=row+x;
@@ -281,10 +281,11 @@ namespace cimg_library {
 	{
 		unsigned int const width=img._width;
 		unsigned int const size=width*img._height;
+		auto const data=img._data;
 		std::array<T,NumLayers> color;
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
 		{
-			auto const row=y*width;
+			auto const row=data+y*width;
 			for(unsigned int x=selection.left;x<selection.right;++x)
 			{
 				auto const pix=row+x;

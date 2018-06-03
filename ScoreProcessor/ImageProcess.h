@@ -421,39 +421,46 @@ namespace ScoreProcessor {
 		};
 		if(empty())
 		{
-			auto s=support();
-			if(s.first==s.second)
+			if(!exlib::strncmp_nocase(in_ext,out_ext))
 			{
 				copy_or_move();
 			}
 			else
 			{
-				CImg<T> img;
-				switch(s.first)
+				auto s=support();
+				if(s.first==s.second)
 				{
-					case support_type::bmp:
-						img.load_bmp(fname);
-						break;
-					case support_type::jpeg:
-						img.load_jpeg(fname);
-						break;
-					case support_type::png:
-						img.load_png(fname);
+					copy_or_move();
 				}
-				switch(s.second)
+				else
 				{
-					case support_type::bmp:
-						img.save_bmp(output);
-						break;
-					case support_type::jpeg:
-						img.save_jpeg(output);
-						break;
-					case support_type::png:
-						img.save_png(output);
-				}
-				if(do_move&&!std::experimental::filesystem::equivalent(in,out))
-				{
-					remove(in);
+					CImg<T> img;
+					switch(s.first)
+					{
+						case support_type::bmp:
+							img.load_bmp(fname);
+							break;
+						case support_type::jpeg:
+							img.load_jpeg(fname);
+							break;
+						case support_type::png:
+							img.load_png(fname);
+					}
+					switch(s.second)
+					{
+						case support_type::bmp:
+							img.save_bmp(output);
+							break;
+						case support_type::jpeg:
+							img.save_jpeg(output);
+							break;
+						case support_type::png:
+							img.save_png(output);
+					}
+					if(do_move&&!std::experimental::filesystem::equivalent(in,out))
+					{
+						remove(in);
+					}
 				}
 			}
 		}
