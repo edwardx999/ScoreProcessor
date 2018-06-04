@@ -25,6 +25,127 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <array>
 namespace ScoreProcessor {
+
+	//BackgroundFinder:: returns true if a pixel is NOT part of the background
+	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
+	unsigned int find_left(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	{
+		unsigned int num=0;
+		auto const size=img._width*img._height;
+		for(unsigned int x=0;x<img._width;++x)
+		{
+			for(unsigned int y=0;y<img._height;++y)
+			{
+				auto pix=&img(x,y);
+				std::array<T,NumLayers> pixel;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					pixel[s]=*(pix+s*size);
+				}
+				if(bf(pixel))
+				{
+					++num;
+				}
+			}
+			if(num>=tolerance)
+			{
+				return x;
+			}
+		}
+		return img._width-1;
+	}
+	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
+	unsigned int find_right(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	{
+		unsigned int num=0;
+		auto const size=img._width*img._height;
+		for(unsigned int x=img._width-1;x<img._width;--x)
+		{
+			for(unsigned int y=0;y<img._height;++y)
+			{
+				auto pix=&img(x,y);
+				std::array<T,NumLayers> pixel;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					pixel[s]=*(pix+s*size);
+				}
+				if(bf(pixel))
+				{
+					++num;
+				}
+			}
+			if(num>=tolerance)
+			{
+				return x;
+			}
+		}
+		return 0;
+	}
+
+	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
+	unsigned int find_top(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	{
+		unsigned int num=0;
+		auto const width=img._width;
+		auto const height=img._height;
+		auto const size=width*height;
+		auto const data=img._data;
+		for(unsigned int y=0;y<height;++y)
+		{
+			auto const row=data+y*width;
+			for(unsigned int x=0;x<width;++x)
+			{
+				auto pix=row+x;
+				std::array<T,NumLayers> pixel;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					pixel[s]=*(pix+s*size);
+				}
+				if(bf(pixel))
+				{
+					++num;
+				}
+			}
+			if(num>=tolerance)
+			{
+				return y;
+			}
+		}
+		return height-1;
+	}
+
+	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
+	unsigned int find_bottom(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	{
+		unsigned int num=0;
+		auto const width=img._width;
+		auto const height=img._height;
+		auto const size=width*height;
+		auto const data=img._data;
+		for(unsigned int y=height-1;y<height;--y)
+		{
+			auto const row=data+y*width;
+			for(unsigned int x=0;x<width;++x)
+			{
+				auto pix=row+x;
+				std::array<T,NumLayers> pixel;
+				for(unsigned int s=0;s<NumLayers;++s)
+				{
+					pixel[s]=*(pix+s*size);
+				}
+				if(bf(pixel))
+				{
+					++num;
+				}
+			}
+			if(num>=tolerance)
+			{
+				return y;
+			}
+		}
+		return 0;
+	}
+
 	/*
 		Reduces colors to two colors
 		@param image, must be a 3 channel RGB image
@@ -333,21 +454,21 @@ namespace ScoreProcessor {
 		@param min_horizontal_padding
 		@param optimal_ratio
 	*/
-	bool auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const max_horizontal_padding,unsigned int const min_horizontal_padding,signed int horiz_offset,float optimal_ratio=16.0f/9.0f);
+	bool auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const max_horizontal_padding,unsigned int const min_horizontal_padding,signed int horiz_offset,float optimal_ratio=16.0f/9.0f,unsigned int tolerance=5,unsigned char background=200);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
 		@param paddingSize, size in pixels of padding
 	*/
 	bool horiz_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
-	bool horiz_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const left,unsigned int const right);
+	bool horiz_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const left,unsigned int const right,unsigned int tolerance=5,unsigned char background=200);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
 		@param paddingSize, size in pixels of padding
 	*/
 	bool vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
-	bool vert_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const top,unsigned int const bottom);
+	bool vert_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const top,unsigned int const bottom,unsigned int tolerance=5,unsigned char background=200);
 	/*
 		Combines pages together to achieve optimal size for each page
 		Aligns right side of each image

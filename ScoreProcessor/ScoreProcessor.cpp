@@ -161,6 +161,7 @@ public:
 };
 class PadHoriz:public ImageProcess<> {
 	unsigned int left,right;
+	
 public:
 	PadHoriz(unsigned int const left,unsigned int const right):left(left),right(right)
 	{}
