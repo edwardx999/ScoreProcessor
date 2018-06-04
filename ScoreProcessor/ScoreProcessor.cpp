@@ -327,15 +327,18 @@ public:
 	{}
 	bool process(Img& img) const
 	{
-		if(img._spectrum==1)
+		if(img._spectrum<3)
 		{
 			rescale_colors(img,min,mid,max);
-			return true;
+			
 		}
 		else
 		{
-			throw std::invalid_argument("Rescale Gray requires grayscale image");
+			rescale_colors(img,min,mid,max);
+			rescale_colors(img.get_shared_channel(1),min,mid,max);
+			rescale_colors(img.get_shared_channel(2),min,mid,max);
 		}
+		return true;
 	}
 };
 class FillSelectionAbsGray:public ImageProcess<> {

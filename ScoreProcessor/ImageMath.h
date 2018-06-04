@@ -485,7 +485,7 @@ namespace cimg_library {
 		angle_steps(num_steps),
 		precision(precision)
 	{
-		fill(0);
+		CImg<CountType>::fill(0);
 		double step=(_height-1)/precision;
 		for(uint y=0;y<height;++y)
 		{

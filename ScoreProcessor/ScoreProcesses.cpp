@@ -2093,7 +2093,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 		assert(mid<max);
 		double const scale_up=scast<double>(255-mid)/scast<double>(max-mid);
 		double const scale_down=scast<double>(mid)/scast<double>(mid-min);
-		unsigned char* const limit=img.end();
+		unsigned char* const limit=img.begin()+img._width*img._height;
 		for(unsigned char* it=img.begin();it!=limit;++it)
 		{
 			unsigned char& pixel=*it;
