@@ -165,7 +165,7 @@ namespace cimg_library {
 		MAP IS MODIFIED
 	*/
 	template<typename T> void min_energy_to_right(CImg<T>& map);
-	template<typename T,typename Selector> 
+	template<typename T,typename Selector>
 	void accumulate_to_right(CImg<T>& dst,CImg<T> const& src,ImageUtils::Rectangle<unsigned int> const area,Selector s);
 	template<typename T> void sandpile(CImg<T>& sandPiles,T maxSize);
 
@@ -226,35 +226,69 @@ namespace cimg_library {
 		}
 	}
 	/*
-		Creates a seam following the path of least resistance from left to right starting from start_y from [0,start_x]. 
-		(start_x,energy_map._width) is filled with start_y.
+		Creates a seam reaching to edges starting at the given point
 	*/
-	template<typename T> ::std::vector<unsigned int> trace_back_seam(CImg<T> const& energy_map,unsigned int const start_y,unsigned int const start_x)
+	template<typename T> ::std::vector<unsigned int> trace_seam(CImg<T> const& energy_map,unsigned int const start_y,unsigned int const start_x)
 	{
 		auto const width=energy_map._width;
 		auto const y_lim=energy_map._height-1;
-		assert(start_x<=width);
+		assert(start_x<width);
 		assert(start_y<energy_map._height);
 		::std::vector<unsigned int> result_path(width);
-		for(unsigned int x=start_x;x<width;++x)
+		if(y_lim==0)
 		{
-			result_path[x]=start_y;
+			std::fill(result_path.begin(),result_path.end(),0);
+			return result_path;
 		}
+		auto find_best_y=[y_lim,&energy_map](unsigned int x,unsigned int y)
+		{
+			if(y==0)
+			{
+				if(energy_map(x,0)<=energy_map(x,1))
+				{
+					return 0U;
+				}
+				return 1U;
+			}
+			else if(y==y_lim)
+			{
+				auto const cand=y_lim-1;
+				if(energy_map(x,y_lim)<=energy_map(x,cand))
+				{
+					return y_lim;
+				}
+				return cand;
+			}
+			else
+			{
+				auto lower=y-1;
+				auto upper=y+1;
+				auto min_value=energy_map(x,y);//needs to be middle biased
+				auto cand=energy_map(x,lower);
+				if(min_value>cand)
+				{
+					min_value=cand;
+					y=lower;
+				}
+				cand=energy_map(x,upper);
+				if(min_value>cand)//favors lower in tie
+				{
+					return upper;
+				}
+				return y;
+			}
+		};
+		result_path[start_x]=start_y;
 		unsigned int y=start_y;
+		for(unsigned int x=start_x+1;x<width;++x)
+		{
+			y=find_best_y(x,y);
+			result_path[x]=y;
+		}
+		y=start_y;
 		for(unsigned int x=start_x-1;x<width;--x)
 		{
-			unsigned int const y_min=y==0?0:y-1;
-			unsigned int const y_max=y<y_lim?y+1:y_lim;
-			unsigned int y_best=y_min;
-			T min_value=energy_map(x,y_min);
-			for(unsigned int y=y_min+1;y<=y_max;++y)
-			{
-				if(energy_map(x,y)<min_value)
-				{
-					y_best=y;
-				}
-			}
-			y=y_best;
+			y=find_best_y(x,y);
 			result_path[x]=y;
 		}
 		return result_path;

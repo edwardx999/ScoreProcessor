@@ -21,6 +21,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 #include <algorithm>
 namespace ImageUtils {
+	struct perc_or_val {
+		bool is_perc;
+		union {
+			float perc;
+			unsigned int val;
+		};
+		inline perc_or_val(float perc):is_perc(true),perc(perc)
+		{}
+		inline perc_or_val(unsigned int val):is_perc(false),val(val)
+		{}
+		inline perc_or_val()
+		{}
+	};
 	/*
 		A cartesian vertical line.
 	*/
@@ -363,7 +376,7 @@ namespace ImageUtils {
 			hue+=256;
 		}
 		ret.h=std::round(hue);
-		return ret;	
+		return ret;
 	}
 
 	inline ColorRGB::operator ColorRGBA() const

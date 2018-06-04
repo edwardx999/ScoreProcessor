@@ -850,10 +850,11 @@ namespace ScoreProcessor {
 		{
 			struct line {
 				unsigned int top,bottom,right;
-	};
+			};
 			float const VEC=100.0f;
 			CImg<float> map=create_vertical_energy(image,VEC);
-			add_horizontal_energy(image,map,ch.horizontal_energy_weight);
+			if(ch.horizontal_energy_weight!=0)
+				add_horizontal_energy(image,map,ch.horizontal_energy_weight);
 			min_energy_to_right(map);
 #ifndef NDEBUG
 			map.display();
@@ -867,12 +868,10 @@ namespace ScoreProcessor {
 				auto const selections=global_select<1U>(map,selector);
 				auto const clusters=Cluster::cluster_ranges(selections);
 				auto heuristic_filter=
-					[threshold_width=ch.min_width<0?
-					unsigned int(std::round(map._width*(-ch.min_width/100000.0))):unsigned int(ch.min_width),
-					threshold_height=ch.min_height<0?
-					unsigned int(std::round(map._height*(-ch.min_height/100000.0))):ch.min_height]
-				(auto box){
-					return (box.width()>threshold_width&&box.height()>threshold_height);
+					[=]
+				(auto box)
+				{
+					return (box.width()>=ch.min_width&&box.height()>=ch.min_height);
 				};
 				for(auto c=clusters.cbegin();c!=clusters.cend();++c)
 				{
@@ -893,9 +892,9 @@ namespace ScoreProcessor {
 			{
 				auto const& current=boxes[i-1];
 				auto const& next=boxes[i];
-				paths.emplace_back(trace_back_seam(map,(current.bottom+next.top)/2,(current.right+next.right)/2-1));
+				paths.emplace_back(trace_seam(map,(current.bottom+next.top)/2,(current.right+next.right)/2-1));
 			}
-}
+		}
 		if(paths.size()==0)
 		{
 			image.save(filename,1,3U);
@@ -905,10 +904,11 @@ namespace ScoreProcessor {
 		unsigned int bottom_of_old=0;
 		for(unsigned int path_num=0;path_num<paths.size();++path_num)
 		{
-			unsigned int lowest_in_path=paths[path_num][0],highest_in_path=paths[path_num][0];
-			for(unsigned int x=1;x<paths[path_num].size();++x)
+			auto const& path=paths[path_num];
+			unsigned int lowest_in_path=path[0],highest_in_path=path[0];
+			for(unsigned int x=1;x<path.size();++x)
 			{
-				unsigned int node_y=paths[path_num][x];
+				unsigned int node_y=path[x];
 				if(node_y>lowest_in_path)
 				{
 					lowest_in_path=node_y;
@@ -922,24 +922,21 @@ namespace ScoreProcessor {
 			height=lowest_in_path-bottom_of_old;
 			assert(height<image._height);
 			CImg<unsigned char> new_image(image._width,height);
-			//newImage.fill(Grayscale::WHITE);
 			if(path_num==0)
 			{
 				for(unsigned int x=0;x<new_image._width;++x)
 				{
 					unsigned int y=0;
-					//unsigned int yStage1=paths[pathNum-1][x]-bottomOfOld;
 					unsigned int y_stage2=paths[path_num][x];
-					/*for(y=0;y<yStage1;++y) {
-					newImage(x,y)=Grayscale::WHITE;
-					}*/
 					for(;y<y_stage2;++y)
 					{
-						new_image(x,y)=image(x,y);
+						if(y<new_image._height)
+							new_image(x,y)=image(x,y);
 					}
 					for(;y<new_image._height;++y)
 					{
-						new_image(x,y)=Grayscale::WHITE;
+						if(y<new_image._height)
+							new_image(x,y)=Grayscale::WHITE;
 					}
 				}
 			}
@@ -952,15 +949,18 @@ namespace ScoreProcessor {
 					unsigned int y_stage2=paths[path_num][x]-bottom_of_old;
 					for(;y<y_stage1;++y)
 					{
-						new_image(x,y)=Grayscale::WHITE;
+						if(y<new_image._height)
+							new_image(x,y)=Grayscale::WHITE;
 					}
 					for(;y<y_stage2;++y)
 					{
-						new_image(x,y)=image(x,y+bottom_of_old);
+						if(y<new_image._height)
+							new_image(x,y)=image(x,y+bottom_of_old);
 					}
 					for(;y<new_image._height;++y)
 					{
-						new_image(x,y)=Grayscale::WHITE;
+						if(y<new_image._height)
+							new_image(x,y)=Grayscale::WHITE;
 					}
 				}
 			}
@@ -968,16 +968,11 @@ namespace ScoreProcessor {
 			bottom_of_old=highest_in_path;
 		}
 		CImg<unsigned char> new_image(image._width,image._height-bottom_of_old);
-		//newImage.fill(Grayscale::WHITE);
 		unsigned int y_max=image._height-bottom_of_old;
 		for(unsigned int x=0;x<new_image._width;++x)
 		{
-/*for(unsigned int y=paths.back()[x]-bottomOfOld;y<yMax;++y) {
-	newImage(x,y)=image(x,y+bottomOfOld);
-}*/
 			unsigned int y=0;
 			unsigned int y_stage1=paths.back()[x]-bottom_of_old;
-			//unsigned int yStage2=paths[pathNum][x]-bottomOfOld;
 			for(;y<y_stage1;++y)
 			{
 				new_image(x,y)=Grayscale::WHITE;
@@ -986,9 +981,6 @@ namespace ScoreProcessor {
 			{
 				new_image(x,y)=image(x,y+bottom_of_old);
 			}
-			/*for(;y<newImage._height;++y) {
-				newImage(x,y)=Grayscale::WHITE;
-			}*/
 		}
 		new_image.save(filename,++num_images,3U);
 		return num_images;
@@ -1666,10 +1658,10 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num);
 	unsigned int splice_pages_nongreedy(
 		::std::vector<::std::string> const& filenames,
-		unsigned int horiz_padding,
-		unsigned int optimal_height,
-		unsigned int optimal_padding,
-		unsigned int min_padding,
+		ImageUtils::perc_or_val horiz_padding,
+		ImageUtils::perc_or_val optimal_height,
+		ImageUtils::perc_or_val optimal_padding,
+		ImageUtils::perc_or_val min_padding,
 		char const* output,
 		float excess_weight,
 		float padding_weight,
@@ -1700,10 +1692,17 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			};
 			CImg<unsigned char> top(filenames[0].c_str());
 			CImg<unsigned char> bottom(filenames[1].c_str());
-			if(optimal_height==-1)
+			auto fix_perc=[basis=top._width](ImageUtils::perc_or_val& pv)
 			{
-				optimal_height=top._width*6/11;
-			}
+				if(pv.is_perc)
+				{
+					pv.val=unsigned int(std::round(basis*pv.perc/100.0f));
+				}
+			};
+			fix_perc(optimal_height);
+			fix_perc(optimal_padding);
+			fix_perc(min_padding);
+			fix_perc(horiz_padding);
 			conv(top);
 			conv(bottom);
 			pages[0].top_kern=(pages[0].top_raw=find_top(top,255,top._width/1024+1));
@@ -1716,9 +1715,9 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				std::cout<<i<<'\n';
 #endif
 				auto bot=build_bottom_profile(top,255);
-				bot=fattened_profile_low(bot,horiz_padding);
+				bot=fattened_profile_low(bot,horiz_padding.val);
 				auto tob=build_top_profile(bottom,255);
-				tob=fattened_profile_high(tob,horiz_padding);
+				tob=fattened_profile_high(tob,horiz_padding.val);
 				auto const sp=find_spacing(bot,top._height,tob);
 				pages[i].bottom_raw=*std::max_element(bot.cbegin(),bot.cend());
 				pages[i].bottom_kern=sp.bottom_sg;
@@ -1732,7 +1731,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				conv(bottom.assign(filenames[i+2].c_str()));
 			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-		}
+			}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1754,30 +1753,30 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 				}
 				total_height+=items[n-1].bottom_raw-items[n-1].top_kern;
 			}
-			unsigned int minned=total_height+(n+1)*min_padding;
-			if(minned>optimal_height)
+			unsigned int minned=total_height+(n+1)*min_padding.val;
+			if(minned>optimal_height.val)
 			{
-				return page_layout{min_padding,minned};
+				return page_layout{min_padding.val,minned};
 			}
 			else
 			{
-				return page_layout{scast<uint>((optimal_height-total_height)/(n+1)),optimal_height};
+				return page_layout{scast<uint>((optimal_height.val-total_height)/(n+1)),optimal_height.val};
 			}
 		};
 		auto cost=[=](page_layout const p)
 		{
 			float numer;
-			if(p.height>optimal_height)
+			if(p.height>optimal_height.val)
 			{
-				numer=excess_weight*(p.height-optimal_height);
+				numer=excess_weight*(p.height-optimal_height.val);
 			}
 			else
 			{
-				numer=optimal_height-p.height;
+				numer=optimal_height.val-p.height;
 			}
-			float height_cost=numer/optimal_height;
+			float height_cost=numer/optimal_height.val;
 			height_cost=height_cost*height_cost*height_cost;
-			float padding_cost=padding_weight*abs_dif(float(p.padding),optimal_padding)/optimal_padding;
+			float padding_cost=padding_weight*abs_dif(float(p.padding),optimal_padding.val)/optimal_padding.val;
 			padding_cost=padding_cost*padding_cost*padding_cost;
 			return height_cost+padding_cost;
 		};
@@ -1827,7 +1826,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 #ifndef NDEBUG
 			std::cout<<"prev="<<nodes[i].previous<<'\n';
 #endif
-	}
+			}
 		vector<size_t> breakpoints;
 		breakpoints.reserve(c);
 		size_t index=c;
@@ -1873,7 +1872,7 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			++num_imgs;
 		}
 		return num_imgs;
-	}
+		}
 	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
 	{
 		if(pages.empty())
@@ -2120,4 +2119,4 @@ vector<RectangleUINT> global_select(CImg<unsigned char> const& image,float const
 			}
 		}
 	}
-}
+	}

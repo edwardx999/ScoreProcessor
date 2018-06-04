@@ -32,11 +32,36 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <array>
 #include <numeric>
 #include <sstream>
+#include <variant>
 #include "parse.h"
 using namespace cimg_library;
 using namespace std;
 using namespace ScoreProcessor;
 using namespace ImageUtils;
+
+#define make_perc_val(pv,valname,str,PercConstraints,ValConstraints)\
+	if(##str##.back()=='%')\
+	{\
+		##pv##.is_perc=true;\
+		##str##.back()='\0';\
+		res=parse_str(##pv##.perc,##str##.c_str());\
+		if(res)\
+		{\
+			return "Invalid " #valname " input";\
+		}\
+		if(##pv##.perc<0||##pv##.perc>100) return #valname " input must be in range [0,100]%";\
+		##PercConstraints##\
+	}\
+	else\
+	{\
+		##pv##.is_perc=false;\
+		int res=parse_str(##pv##.val,##str##.c_str());\
+		if(res)\
+		{\
+			return "Invalid" #valname " input";\
+		}\
+		##ValConstraints##\
+	}
 
 class ChangeToGrayscale:public ImageProcess<> {
 public:
@@ -330,7 +355,7 @@ public:
 		if(img._spectrum<3)
 		{
 			rescale_colors(img,min,mid,max);
-			
+
 		}
 		else
 		{
@@ -502,14 +527,17 @@ public:
 		};
 		do_state flag;
 		struct {
-			unsigned int horiz_padding;
-			unsigned int optimal_padding;
-			unsigned int min_padding;
-			unsigned int optimal_height;
+			perc_or_val horiz_padding;
+			perc_or_val optimal_padding;
+			perc_or_val min_padding;
+			perc_or_val optimal_height;
 			float excess_weight;
 			float padding_weight;
 		} splice_args;
-		ScoreProcessor::cut_heuristics ch;
+		struct {
+			perc_or_val min_height,min_width;
+			float horiz_weight;
+		} cut_args;
 		std::regex rgx;
 		enum regex_state {
 			unassigned,normal,inverted
@@ -1065,32 +1093,36 @@ public:
 protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		try
-		{
-			int amount=std::stoi(*begin);
-			if(amount<0)
-			{
-				return "Padding must be non-negative";
-			}
-			if(n>1)
-			{
-				int a=std::stoi(begin[1]);
-				if(a<0)
-				{
-					return "Padding must be non-negative";
-				}
-				del.pl.add_process<PadHoriz>(amount,a);
-			}
-			else
-			{
-				del.pl.add_process<PadHoriz>(amount,amount);
-			}
+#define padding_maker(type,first,second,match)\
+			unsigned int amount;\
+			int res=parse_str(amount,begin[0].c_str());\
+			if(res)\
+			{\
+				return "Invalid " #first " input";\
+			}\
+			if(n>1)\
+			{\
+				unsigned int a;\
+				if(begin[1][0]==##match##)\
+				{\
+					a=amount;\
+				}\
+				else\
+				{\
+					res=parse_str(a,begin[1].c_str());\
+					if(res)\
+					{\
+						return "Invalid " #second " input";\
+					}\
+				}\
+				del.pl.add_process<##type##>(amount,a);\
+			}\
+			else\
+			{\
+				del.pl.add_process<##type##>(amount,amount);\
+			}\
 			return nullptr;
-		}
-		catch(std::exception const&)
-		{
-			return "Invalid input";
-		}
+		padding_maker(PadHoriz,left,right,'l');
 	}
 };
 HorizontalPaddingMaker const HorizontalPaddingMaker::singleton;
@@ -1108,32 +1140,7 @@ public:
 protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		try
-		{
-			int amount=std::stoi(*begin);
-			if(amount<0)
-			{
-				return "Padding must be non-negative";
-			}
-			if(n>1)
-			{
-				int a=std::stoi(begin[1]);
-				if(a<0)
-				{
-					return "Padding must be non-negative";
-				}
-				del.pl.add_process<PadVert>(amount,a);
-			}
-			else
-			{
-				del.pl.add_process<PadVert>(amount,amount);
-			}
-			return nullptr;
-		}
-		catch(std::exception const&)
-		{
-			return "Invalid input";
-		}
+		padding_maker(PadVert,top,bottom,'t');
 	}
 };
 VerticalPaddingMaker const VerticalPaddingMaker::singleton;
@@ -1419,10 +1426,8 @@ class CutMaker:public CommandMaker {
 			"Cuts the image into separate systems\n"
 			"Min dimensions are the heuristics used to determine whether\n"
 			"a group of pixels is actually a system\n"
-			"If a negative number is given it the dimensions is calculated to be:\n"
-			"((-given_dim)/(100000))*(image_dim)\n"
-			"Horizontal weight is how much horizontal whitespace is weighted"
-			,
+			"Percentages are taken as percentages of the respective dimension\n"
+			"Horizontal weight is how much horizontal whitespace is weighted",
 			"Cut")
 	{}
 	static CutMaker const singleton;
@@ -1438,36 +1443,31 @@ protected:
 		{
 			return "Cut can not be done along with other commands";
 		}
-		int min_width=-66666,min_height=-8000;
+		perc_or_val min_width(55.0f),min_height(8.0f);
 		float hw=20;
 		if(n>0)
 		{
-			auto res=parse_str(min_width,begin[0].c_str());
-			if(res)
-			{
-				return "Invalid min_width input";
-			}
+
+			int res;
+			make_perc_val(min_width,min_width,begin[0],,);
 			if(n>1)
 			{
-				res=parse_str(min_height,begin[1].c_str());
-				if(res)
-				{
-					return "Invalid min_height input";
-				}
-				if(n>2)
-				{
-					res=parse_str(hw,begin[2].c_str());
-					if(res)
+				make_perc_val(min_height,min_height,begin[1],,)
+					if(n>2)
 					{
-						return "Invalid horiz_weight input";
+						res=parse_str(hw,begin[2].c_str());
+						if(res)
+						{
+							return "Invalid horiz_weight input";
+						}
 					}
-				}
 			}
 		}
+#undef do_parse
 		del.flag=delivery::do_cut;
-		del.ch.min_width=min_width;
-		del.ch.min_height=min_height;
-		del.ch.horizontal_energy_weight=hw;
+		del.cut_args.min_width=min_width;
+		del.cut_args.min_height=min_height;
+		del.cut_args.horiz_weight=hw;
 		return nullptr;
 	}
 };
@@ -1476,7 +1476,7 @@ CutMaker const CutMaker::singleton;
 class SpliceMaker:public CommandMaker {
 	SpliceMaker():
 		CommandMaker(
-			3,6,
+			0,6,
 			"Splices the pages together assuming right alignment.\n"
 			"Knuth algorithm that tries to minimize deviation from optimal height and optimal padding.\n"
 			"Horizontal padding is the padding placed between elements of the page horizontally.\n"
@@ -1489,7 +1489,8 @@ class SpliceMaker:public CommandMaker {
 			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^3\n"
 			"  else\n"
 			"    ((opt_height-height)/opt_height)^3+\n"
-			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^3",
+			"    (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^3\n"
+			"Percentages are taken as percentages of the 1st page width",
 			"Splice")
 	{}
 	static SpliceMaker const singleton;
@@ -1506,94 +1507,43 @@ protected:
 			return "Splice can not be done along with other commands";
 		}
 		del.flag=del.do_splice;
-		int hpadding,opadding,mpadding,oheight=-1;
+		perc_or_val hpad(3.0f),opad(5.0f),mpad(1.2f);
+		perc_or_val oheight(55.0f);
 		float excess_weight=10;
 		float padding_weight=1;
-		try
+		int res;
+		if(n>0)
 		{
-			hpadding=std::stoi(begin[0]);
-			if(hpadding<0)
+			make_perc_val(hpad,horiz_pad,begin[0],,);
+			if(n>1)
 			{
-				return "Horizontal padding must be non-negative";
-			}
-		}
-		catch(std::exception const&)
-		{
-			return "Invalid input for horizontal padding";
-		}
-		try
-		{
-			opadding=std::stoi(begin[1]);
-			if(opadding<0)
-			{
-				return "Optimal padding must be non-negative";
-			}
-		}
-		catch(std::exception const&)
-		{
-			return "Invalid input for optimal padding";
-		}
-		try
-		{
-			mpadding=std::stoi(begin[2]);
-			if(mpadding<0)
-			{
-				return "Minimum padding must be non-negative";
-			}
-		}
-		catch(std::exception const&)
-		{
-			return "Invalid input for minimum padding";
-		}
-		if(n>3)
-		{
-			try
-			{
-				oheight=std::stoi(begin[3]);
-				if(oheight<-1)
+				make_perc_val(opad,opt_pad,begin[1],,);
+				if(n>2)
 				{
-					return "Optimal height must be non-negative";
-				}
-			}
-			catch(std::exception const&)
-			{
-				return "Invalid input for optimal height";
-			}
-			if(n>4)
-			{
-				try
-				{
-					excess_weight=std::stof(begin[4]);
-				}
-				catch(std::exception const&)
-				{
-					return "Invald input for excess height penalty";
-				}
-				if(excess_weight<0)
-				{
-					return "Penalty for excess height must be positive";
-				}
-				if(n>5)
-				{
-					try
+					make_perc_val(mpad,min_pad,begin[2],,);
+					if(n>3)
 					{
-						padding_weight=std::stof(begin[5]);
-					}
-					catch(std::exception const&)
-					{
-						return "Invalid input for padding weight";
-					}
-					if(padding_weight<0)
-					{
-						return "Padding weight must be positive";
+						make_perc_val(oheight,opt_height,begin[3],,);
+						if(n>4)
+						{
+							res=parse_str(excess_weight,begin[4].c_str());
+							if(res) return "Invalid excs_weight input";
+							if(excess_weight<0) return "excs_weight must be positive";
+							if(n>5)
+							{
+								res=parse_str(padding_weight,begin[5].c_str());
+								if(res) return "Invalid pad_weight input";
+								if(padding_weight<0) return "pad_weight must be positive";
+							}
+						}
 					}
 				}
 			}
 		}
 		del.flag=delivery::do_splice;
-		del.splice_args.horiz_padding=hpadding;
-		del.splice_args.min_padding=mpadding;
-		del.splice_args.optimal_padding=opadding;
+		del.splice_args.horiz_padding=hpad;
+		del.splice_args.min_padding=mpad;
+		del.splice_args.optimal_padding=opad;
 		del.splice_args.optimal_height=oheight;
 		del.splice_args.excess_weight=excess_weight;
 		del.splice_args.padding_weight=padding_weight;
@@ -1788,10 +1738,20 @@ protected:
 	{
 		try
 		{
-			double factor=std::stod(*begin);
+			size_t idx;
+			double factor=std::stod(*begin,&idx);
 			if(factor<0)
 			{
 				return "Rescale factor must be non-negative";
+			}
+			auto end=(*begin)[idx];
+			if(end=='%')
+			{
+				factor/=100;
+			}
+			else if(end!='\0'&&!std::isspace(end))
+			{
+				return "Invalid factor input";
 			}
 			if(factor==1)
 			{
@@ -2256,7 +2216,7 @@ void test()
 		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gcut\\",
 		std::regex(".*"),
 		CommandMaker::delivery::regex_state::normal);
-	splice_pages_nongreedy(files,100,-1,300,150,
+	splice_pages_nongreedy(files,1.0f,55.0f,3.0f,1.0f,
 		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gtogether\\p.png",
 		10,1,
 		1);
@@ -2378,7 +2338,7 @@ int main(int argc,char** argv)
 	stop();
 #endif
 	return 0;
-	}
+}
 
 void info_output()
 {
@@ -2415,8 +2375,8 @@ void info_output()
 		"    Fill Rectangle Gray:      -fr left top right bottom color=255 origin=tl\n"
 		"    Rotate:                   -rot degrees\n"
 		"  Multi Page Operations:\n"
-		"    Cut:                      -cut min_width=-66666 min_height=-8000 horiz_weight=20\n"
-		"    Splice:                   -spl horiz_pad opt_pad min_vert_pad opt_height=-1=(6/11 1st pg width) excs_weight=10 pad_weight=1\n"
+		"    Cut:                      -cut min_width=66% min_height=8% horiz_weight=20\n"
+		"    Splice:                   -spl horiz_pad=3% opt_pad=5% min_vert_pad=1.2% opt_height=55% excs_weight=10 pad_weight=1\n"
 		"  Options:\n"
 		"    Output:                   -o format move=false\n"
 		"    Verbosity:                -vb level\n"
@@ -2443,10 +2403,16 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 		SaveRules const* output;
 		unsigned int index;
 		int verbosity;
-		cut_heuristics ch;
+		perc_or_val min_width;
+		perc_or_val min_height;
+		float horiz_weight;
 	public:
 		CutProcess(std::string const* input,unsigned int index,CommandMaker::delivery const& del):
-			input(input),output(&del.sr),index(index),verbosity(del.pl.get_verbosity()),ch(del.ch)
+			input(input),output(&del.sr),
+			index(index),verbosity(del.pl.get_verbosity()),
+			min_width(del.cut_args.min_width),
+			min_height(del.cut_args.min_height),
+			horiz_weight(del.cut_args.horiz_weight)
 		{}
 		void execute() override
 		{
@@ -2471,7 +2437,22 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 					return;
 				}
 				CImg<unsigned char> in(input->c_str());
-				auto num_pages=ScoreProcessor::cut_page(in,out.c_str(),ch);
+				cut_heuristics cut_args;
+				cut_args.horizontal_energy_weight=horiz_weight;
+				auto fix_perc=[](unsigned int val,perc_or_val pv)
+				{
+					if(pv.is_perc)
+					{
+						return unsigned int(std::round(pv.perc*val/100.0));
+					}
+					else
+					{
+						return pv.val;
+					}
+				};
+				cut_args.min_height=fix_perc(in._height,min_height);
+				cut_args.min_width=fix_perc(in._width,min_width);
+				auto num_pages=ScoreProcessor::cut_page(in,out.c_str(),cut_args);
 				if(verbosity>ProcessList<>::verbosity::errors_only)
 				{
 					std::string coutput("Finished ");

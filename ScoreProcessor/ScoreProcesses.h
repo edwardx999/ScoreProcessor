@@ -238,8 +238,8 @@ namespace ScoreProcessor {
 	*/
 	::std::vector<::std::unique_ptr<ImageUtils::Rectangle<unsigned int>>> select_outside(::cimg_library::CImg<unsigned char> const& image);
 	struct cut_heuristics {
-		signed int min_width;
-		signed int min_height;
+		unsigned int min_width;
+		unsigned int min_height;
 		float horizontal_energy_weight;
 	};
 	/*
@@ -249,7 +249,7 @@ namespace ScoreProcessor {
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const ch={-66666,-8000,20});
+	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const ch={1000,80,20});
 
 	/*
 		Finds the line that is the top of the score image
@@ -366,10 +366,10 @@ namespace ScoreProcessor {
 		unsigned int const starting_index=1);
 	unsigned int splice_pages_nongreedy(
 		::std::vector<::std::string> const& filenames,
-		unsigned int horiz_padding,
-		unsigned int optimal_height,
-		unsigned int optimal_padding,
-		unsigned int min_padding,
+		ImageUtils::perc_or_val horiz_padding,
+		ImageUtils::perc_or_val optimal_height,
+		ImageUtils::perc_or_val optimal_padding,
+		ImageUtils::perc_or_val min_padding,
 		char const* output,
 		float excess_weight=10,
 		float padding_weight=1,
