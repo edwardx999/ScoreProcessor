@@ -161,7 +161,7 @@ public:
 };
 class PadHoriz:public ImageProcess<> {
 	unsigned int left,right;
-	
+
 public:
 	PadHoriz(unsigned int const left,unsigned int const right):left(left),right(right)
 	{}
@@ -2273,6 +2273,10 @@ int main(int argc,char** argv)
 	{
 		del=parse_commands(arg_find.first,args.end());
 		filter_out_files(files,del);
+		std::sort(files.begin(),files.end(),[](auto const& a,auto const& b)
+		{
+			return exlib::strncmp_wind(a.c_str(),b.c_str())<0;
+		});
 	}
 	catch(std::exception const& ex)
 	{

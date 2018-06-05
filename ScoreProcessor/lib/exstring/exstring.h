@@ -845,5 +845,74 @@ namespace exlib {
 		}
 		return 0;
 	}
+
+
+	template<typename T>
+	bool is_digit(T ch)
+	{
+		return ch>='0'&&ch<='9';
+	}
+
+	template<typename T>
+	int strncmp_num(T const* a_start,T const* a_end,T const* b_start,T const* b_end)
+	{
+		assert(a_start<=a_end);
+		assert(b_start<=b_end);
+		auto a_begin=a_start,b_begin=b_start;
+		for(;a_begin!=a_end&&*a_begin=='0';++a_begin);//strip away leading zeros
+		for(;b_begin!=b_end&&*b_begin=='0';++b_begin);
+		if(int res=(a_end-a_begin)-(b_end-b_begin))
+		{
+			return res;
+		}
+		for(auto ab=a_begin,bb=b_begin;ab!=a_end;++ab,++bb)
+		{
+			if(int res=*ab-*bb)
+			{
+				return res;
+			}
+		}
+		return int((b_begin-b_start)-(a_begin-a_start));
+	}
+
+	//comparison similar to windows sorting
+	template<typename T>
+	int strncmp_wind(T const* a,T const* b)
+	{
+		for(;;)
+		{
+			if(*b==0)
+			{
+				return *a;
+			}
+			if(*a==0)
+			{
+				return -*b;
+			}
+			if(is_digit(*a)&&is_digit(*b))
+			{
+				auto asn=a;
+				while(is_digit(*(++asn)));
+				auto bsn=b;
+				while(is_digit(*(++bsn)));
+				if(int res=strncmp_num(a,asn,b,bsn))
+				{
+					return res;
+				}
+				a=asn;
+				b=bsn;
+				continue;
+			}
+			else if(*b!=*a)
+			{
+				if(int res=lowercase(*a)-lowercase(*b))
+				{
+					return res;
+				}
+			}
+			++a,++b;
+		}
+	}
+
 }
 #endif
