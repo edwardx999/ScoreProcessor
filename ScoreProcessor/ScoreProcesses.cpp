@@ -1288,7 +1288,11 @@ namespace ScoreProcessor {
 				break;
 			}
 		}
-		unsigned int optimal_width=optimal_ratio*(bottom-top+2*vertical_padding);
+		if(left>right) std::swap(left,right);
+		if(top>bottom) std::swap(top,bottom);
+
+		unsigned int true_height=bottom-top;
+		unsigned int optimal_width=optimal_ratio*(true_height+2*vertical_padding);
 		unsigned int horizontal_padding;
 		unsigned int actual_width=right-left;
 		if(optimal_width>actual_width)
@@ -1298,13 +1302,13 @@ namespace ScoreProcessor {
 			{
 				horizontal_padding=horizontal_padding_max;
 			}
-			if(horizontal_padding<horizontal_padding_min)
+			else if(horizontal_padding<horizontal_padding_min)
 			{
 				horizontal_padding=horizontal_padding_min;
 			}
 		}
 		else
-		{
+		{	
 			horizontal_padding=horizontal_padding_min;
 		}
 		signed int x1=left-horizontal_padding;
@@ -1315,12 +1319,11 @@ namespace ScoreProcessor {
 		{
 			return false;
 		}
-		image.crop(
-			static_cast<signed int>(left-horizontal_padding),
-			static_cast<signed int>(top-vertical_padding),
-			right+horizontal_padding-1+horiz_offset,
-			bottom+vertical_padding-1,
-			1);
+		image=crop_fill(
+			image,
+			{x1,x2,y1,y2},
+			unsigned char(255)
+		);
 		return true;
 	}
 	bool horiz_padding(CImg<unsigned char>& image,unsigned int const left)
@@ -1354,24 +1357,17 @@ namespace ScoreProcessor {
 				break;
 			}
 		}
-		auto const& prev_left=left;
-		unsigned int const prev_right=image._width-right-1;
+		if(left>right)
+		{
+			std::swap(left,right);
+		}
 		signed int x1=(left-left_pad);
 		signed int x2=right+right_pad;
 		if(x1==0&&x2==image._width-1)
 		{
 			return false;
 		}
-		image.crop(x1,0,x2,image.height()-1,0);
-		std::array<unsigned char,4> color{255,255,255,255};
-		if(prev_left<left_pad)
-		{
-			fill_selection(image,{0,left_pad-prev_left,0,image._height},color.data());
-		}
-		if(prev_right<right_pad)
-		{
-			fill_selection(image,{image._width+prev_right-right_pad,image._width,0,image._height},color.data());
-		}
+		image=crop_fill(image,{x1,x2,0,image.height()-1});
 		return true;
 	}
 	bool vert_padding(CImg<unsigned char>& image,unsigned int const p)
@@ -1405,24 +1401,17 @@ namespace ScoreProcessor {
 				break;
 			}
 		}
-		auto const& prev_top=top;
-		unsigned int const prev_bottom=image._height-bottom-1;
+		if(top>bottom)
+		{
+			std::swap(top,bottom);
+		}
 		signed int y1=top-tp;
 		signed int y2=bottom+bp;
-		if(y1==0&&y2==image._height-1)
+		if(y1==0&&y2==image.height()-1)
 		{
 			return false;
 		}
-		image.crop(0,y1,image._width-1,y2);
-		std::array<unsigned char,4> color{255,255,255,255};
-		if(prev_top<tp)
-		{
-			fill_selection(image,{0,image._width,0,static_cast<unsigned int>(-y1)},color.data());
-		}
-		if(prev_bottom<bp)
-		{
-			fill_selection(image,{0,image._width,image._height+prev_bottom-bp,image._height},color.data());
-		}
+		image=crop_fill(image,{0,image.width()-1,y1,y2});
 		return true;
 	}
 
@@ -1715,7 +1704,7 @@ namespace ScoreProcessor {
 				conv(bottom.assign(filenames[i+2].c_str()));
 			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-		}
+			}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;

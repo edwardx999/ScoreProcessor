@@ -1284,8 +1284,8 @@ public:
 protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		int vert,minh,maxh,hoff;
-		float opt_rat;
+		int vert,minh,maxh,hoff=0;
+		float opt_rat=16.0f/9.0f;
 		try
 		{
 			vert=std::stoul(begin[0]);
@@ -1340,32 +1340,22 @@ protected:
 			{
 				return "Invalid argument given for horizontal offset";
 			}
-		}
-		else
-		{
-			hoff=0;
-			goto end;
-		}
-		if(n>4)
-		{
-			try
+			if(n>4)
 			{
-				opt_rat=std::stof(begin[4]);
-				if(opt_rat<0)
+				try
 				{
-					return "Optimal ratio must be non-negative";
+					opt_rat=std::stof(begin[4]);
+					if(opt_rat<0)
+					{
+						return "Optimal ratio must be non-negative";
+					}
+				}
+				catch(std::exception const&)
+				{
+					return "Invalid argument given for optimal ratio";
 				}
 			}
-			catch(std::exception const&)
-			{
-				return "Invalid argument given for optimal ratio";
-			}
 		}
-		else
-		{
-			opt_rat=16.0f/9.0f;
-		}
-	end:
 		del.pl.add_process<PadAuto>(vert,minh,maxh,hoff,opt_rat);
 		return nullptr;
 	}
@@ -2336,6 +2326,9 @@ int main(int argc,char** argv)
 			break;
 	}
 #ifndef NDEBUG
+	stop();
+#endif
+#ifdef STOP_CONSOLE
 	stop();
 #endif
 	return 0;

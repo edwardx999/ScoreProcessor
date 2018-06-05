@@ -146,6 +146,35 @@ namespace ScoreProcessor {
 		return 0;
 	}
 
+	template<typename T>
+	cil::CImg<T> crop_fill(cil::CImg<T> const& img,ImageUtils::Rectangle<signed int> region,T fill=255)
+	{
+		auto const width=img.width();
+		auto const height=img.height();
+		auto ret=img.get_crop(region.left,region.top,region.right,region.bottom,4);
+		T buffer[10];
+		for(unsigned int s=0;s<img._spectrum;++s)
+		{
+			buffer[s]=fill;
+		}
+		if(region.left<0)
+		{
+			fill_selection(ret,{0,static_cast<unsigned int>(-region.left),0,ret._height},buffer);
+		}
+		if(region.right>=width)
+		{
+			fill_selection(ret,{static_cast<unsigned int>(width-region.left),ret._width,0,ret._height},buffer);
+		}
+		if(region.top<0)
+		{
+			fill_selection(ret,{0,ret._width,0,static_cast<unsigned int>(-region.top)},buffer);
+		}
+		if(region.bottom>=height)
+		{
+			fill_selection(ret,{0,ret._width,static_cast<unsigned int>(height-region.top),ret._height},buffer);
+		}
+		return ret;
+	}
 	/*
 		Reduces colors to two colors
 		@param image, must be a 3 channel RGB image
