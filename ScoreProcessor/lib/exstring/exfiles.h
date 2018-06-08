@@ -21,6 +21,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <Windows.h>
 #endif
 #include <stdio.h>
+#include "exstring.h"
 namespace exlib {
 	/*
 	Returns a vector containing the filenames of all files in the first level of the given directory.
@@ -65,6 +66,59 @@ namespace exlib {
 				}
 			} while(FindNextFileA(hFind,&fdata));
 			FindClose(hFind);
+		}
+		std::sort(files.begin(),files.end(),[](auto const& a,auto const& b)
+		{
+			return exlib::strncmp_wind(a.c_str(),b.c_str())<0;
+		});
+		return files;
+	}
+
+	template<typename String>
+	std::vector<String> files_in_dir_rec(String const& path)
+	{
+		String search=path+"*.*";
+		HANDLE hFind;
+		WIN32_FIND_DATAA fdata;
+		hFind=FindFirstFileA(search.c_str(),&fdata);
+		std::vector<String> end_files;
+		std::vector<String> rec_searches;
+		if(hFind!=INVALID_HANDLE_VALUE)
+		{
+			do
+			{
+				if(!(fdata.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY))
+				{
+					end_files.emplace_back(fdata.cFileName);
+				}
+				else
+				{
+					if(strcmp(fdata.cFileName,".")==0||strcmp(fdata.cFileName,"..")==0)
+					{
+						continue;
+					}
+					auto rec=String(fdata.cFileName)+"\\";
+					rec_searches.emplace_back(std::move(rec));
+				}
+			} while(FindNextFileA(hFind,&fdata));
+			FindClose(hFind);
+		}
+		std::sort(rec_searches.begin(),rec_searches.end(),[](auto const& a,auto const& b)
+		{
+			return strncmp_wind(a.c_str(),b.c_str())<0;
+		});
+		std::vector<String> files;
+		for(auto const& rec:rec_searches)
+		{
+			auto res=files_in_dir_rec(path+rec);
+			for(auto const& r:res)
+			{
+				files.emplace_back(rec+r);
+			}
+		}
+		for(auto& f:end_files)
+		{
+			files.emplace_back(std::move(f));
 		}
 		return files;
 	}

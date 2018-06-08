@@ -703,7 +703,6 @@ namespace ScoreProcessor {
 				}
 			}
 		}
-		std::cout<<edited<<'\n';
 		return edited;
 	}
 }

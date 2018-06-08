@@ -324,7 +324,7 @@ namespace ImageUtils {
 	void compress_rectangles(std::vector<Rectangle<T>,alloc>& container)
 	{
 		sort(container.begin(),container.end());
-		for(unsigned int i=1;i<container.size();++i)
+		for(size_t i=1;i<container.size();++i)
 		{
 			Rectangle<T>& a=container[i],b=container[i-1];
 			if(a.left==b.left&&

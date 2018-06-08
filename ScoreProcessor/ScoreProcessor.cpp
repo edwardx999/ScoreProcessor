@@ -28,6 +28,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <algorithm>
 #include "support.h"
 #include <unordered_map>
+#include <map>
 #include <optional>
 #include <array>
 #include <numeric>
@@ -1924,20 +1925,20 @@ class FillRectangleGrayMaker:public SingleCommandMaker {
 	static FillRectangleGrayMaker const singleton;
 	static char const* const invalids[4];
 #define fsag FillSelectionAbsGray
-	static std::unordered_map<std::string,fsag::origin_reference> make_ref_map()
+	static auto make_ref_map()
 	{
-		std::unordered_map<std::string,fsag::origin_reference> map;
-		map.emplace("tl",fsag::top_left);
-		map.emplace("ml",fsag::middle_left);
+		std::map<std::string,fsag::origin_reference> map;
 		map.emplace("bl",fsag::bottom_left);
-		map.emplace("yaoi",fsag::bottom_left);
-		map.emplace("tm",fsag::top_middle);
-		map.emplace("mm",fsag::middle);
-		map.emplace("m",fsag::middle);
 		map.emplace("bm",fsag::bottom_middle);
-		map.emplace("tr",fsag::top_right);
-		map.emplace("mr",fsag::middle_right);
 		map.emplace("br",fsag::bottom_right);
+		map.emplace("ml",fsag::middle_left);
+		map.emplace("m",fsag::middle);
+		map.emplace("mm",fsag::middle);
+		map.emplace("mr",fsag::middle_right);
+		map.emplace("tl",fsag::top_left);
+		map.emplace("tm",fsag::top_middle);
+		map.emplace("tr",fsag::top_right);
+		map.emplace("yaoi",fsag::bottom_left);
 		//may add more in the future
 #undef fsag
 		return map;
@@ -2172,23 +2173,6 @@ std::vector<std::string> conv_strings(int argc,char** argv)
 	}
 	return ret;
 }
-std::vector<std::string> images_in_path(std::string const& path,std::regex const& rgx,CommandMaker::delivery::regex_state rgxst)
-{
-	auto ret=exlib::files_in_dir(path);
-	if(rgxst)
-	{
-		ret.erase(std::remove_if(ret.begin(),ret.end(),
-			[&rgx,keep=rgxst==CommandMaker::delivery::normal](auto const& a)
-		{
-			return std::regex_match(a,rgx)!=keep;
-		}),ret.end());
-	}
-	for(auto& f:ret)
-	{
-		f=path+f;
-	}
-	return ret;
-}
 std::pair<std::string,std::string> pretty_date()
 {
 	std::pair<std::string,std::string> ret;
@@ -2203,14 +2187,6 @@ std::pair<std::string,std::string> pretty_date()
 }
 void test()
 {
-	auto files=images_in_path(
-		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gcut\\",
-		std::regex(".*"),
-		CommandMaker::delivery::regex_state::normal);
-	splice_pages_nongreedy(files,1.0f,55.0f,3.0f,1.0f,
-		"C:\\Users\\edwar\\Documents\\Visual Studio 2017\\Projects\\ScoreProcessor\\Release\\test\\gtogether\\p.png",
-		10,1,
-		1);
 	stop();
 }
 //help screen of single input
@@ -2222,7 +2198,10 @@ void do_cut(CommandMaker::delivery const&,std::vector<std::string> const& files,
 //does splice processes
 void do_splice(CommandMaker::delivery const&,std::vector<std::string> const& files);
 //finds end of input list and gets the strings from that list
-std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::iter begin,CommandMaker::iter end);
+CommandMaker::iter find_file_list(CommandMaker::iter begin,CommandMaker::iter end);
+
+std::vector<std::string> get_files(CommandMaker::iter begin,CommandMaker::iter end);
+
 //filters out files according to the regex pattern
 void filter_out_files(std::vector<std::string>&,CommandMaker::delivery const&);
 //lists out files
@@ -2232,7 +2211,15 @@ CommandMaker::delivery parse_commands(CommandMaker::iter begin,CommandMaker::ite
 
 bool could_be_command(std::string const& str)
 {
-	return str[0]=='-'&&str[1]>='a'&&str[1]<='z';
+	if(str[0]=='-')
+	{
+		if(str[1]=='r'&&str[2]=='\0')
+		{
+			return false;
+		}
+		return str[1]>='a'&&str[1]<='z';
+	}
+	return false;
 }
 bool is_folder(std::string const& str)
 {
@@ -2266,17 +2253,14 @@ int main(int argc,char** argv)
 		}
 		return 0;
 	}
-	auto arg_find=get_files(args.begin()+1,args.end());
-	auto& files=arg_find.second;
+	auto arg_find=find_file_list(args.begin()+1,args.end());
 	CommandMaker::delivery del;
+	decltype(get_files(args.end(),args.end())) files;
 	try
 	{
-		del=parse_commands(arg_find.first,args.end());
+		del=parse_commands(arg_find,args.end());
+		files=get_files(args.begin()+1,arg_find);
 		filter_out_files(files,del);
-		std::sort(files.begin(),files.end(),[](auto const& a,auto const& b)
-		{
-			return exlib::strncmp_wind(a.c_str(),b.c_str())<0;
-		});
 	}
 	catch(std::exception const& ex)
 	{
@@ -2350,9 +2334,10 @@ void info_output()
 		dates.second<<
 		" Edward Xie\n"
 		"filename_or_folder... command params... ...\n"
+		"If you want to recursively search a folder, type -r before it\n"
 		"If a file starts with a dash, double the starting dash: \"-my-file.jpg\" -> \"--my-file.jpg\"\n"
 		"parameters that require multiple values are notated with a comma\n"
-		"example: my_image.png --my-other-image.jpg my_folder/ -fg 180 -ccga 20,50 ,30\n"
+		"ex: img0.png --image1.jpg my_folder/ -r rec_folder/ -fg 180 -ccga 20,50 ,30\n"
 		"Type command alone to get readme\n"
 		"Available commands:\n"
 		"  Single Page Operations:\n"
@@ -2507,42 +2492,71 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 	}
 }
 
-//finds end of input list and gets the strings from that list
-std::pair<CommandMaker::iter,std::vector<std::string>> get_files(CommandMaker::iter begin,CommandMaker::iter end)
+//finds end of input list
+CommandMaker::iter find_file_list(CommandMaker::iter begin,CommandMaker::iter end)
 {
-	std::pair<CommandMaker::iter,std::vector<std::string>> ret;
-	auto& string=ret.first;
-	auto& files=ret.second;
-	for(string=begin;string!=end;++string)
+	CommandMaker::iter pos;
+	for(pos=begin;pos!=end;++pos)
 	{
-		if((*string)[0]=='-')
+		if((*pos)[0]=='-')
 		{
-			char c=(*string)[1];
-			if(c>='a'&&c<='z')//could_be_command
+			char c=(*pos)[1];
+			if(c=='r'&&(*pos)[2]=='\0')
 			{
-				return ret;
+				continue;
+			}
+			else if(c>='a'&&c<='z')//could_be_command
+			{
+				return pos;
 			}
 			else if(c=='-')
 			{
-				(*string).erase((*string).begin());//I should have written this whole thing with string_view
+				(*pos).erase((*pos).begin());//I should have written this whole thing with string_view
 			}
 		}
-		if(is_folder(*string))
+	}
+	return pos;
+}
+
+std::vector<std::string> get_files(CommandMaker::iter begin,CommandMaker::iter end)
+{
+	bool do_recursive=false;
+	std::vector<std::string> files;
+	for(auto pos=begin;pos!=end;++pos)
+	{
+		if(*pos=="-r")
 		{
-			auto fid=exlib::files_in_dir(*string);
+			if(do_recursive)
+			{
+				throw std::logic_error("Double recursive flag given");
+			}
+			do_recursive=true;
+		}
+		else if(is_folder(*pos))
+		{
+			auto fid=do_recursive?exlib::files_in_dir_rec(*pos):exlib::files_in_dir(*pos);
 			files.reserve(files.size()+fid.size());
 			for(auto& str:fid)
 			{
 				files.emplace_back(std::move(str));
-				files.back()=*string+files.back();
+				files.back()=*pos+files.back();
 			}
+			do_recursive=false;
 		}
 		else
 		{
-			files.emplace_back(std::move(*string));
+			if(do_recursive)
+			{
+				throw std::logic_error("Cannot recursively search a non-folder");
+			}
+			files.emplace_back(std::move(*pos));
 		}
 	}
-	return ret;
+	if(do_recursive)
+	{
+		throw std::logic_error("Recursive flag given at end of input list");
+	}
+	return files;
 }
 //filters out files according to the regex pattern
 void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery const& del)
