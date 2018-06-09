@@ -2079,7 +2079,6 @@ namespace ScoreProcessor {
 			void execute() override
 			{
 				vector<page> imgs(num_pages);
-				imgs[0].load(fbegin->c_str());
 				imgs[0].top=ibegin->top_raw;
 				for(size_t i=0;i<num_pages;++i)
 				{
