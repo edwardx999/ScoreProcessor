@@ -2192,9 +2192,9 @@ void test()
 //help screen of single input
 void info_output();
 //does single processes
-void do_single(CommandMaker::delivery const&,std::vector<std::string> const& files,unsigned int const num_threads);
+void do_single(CommandMaker::delivery const&,std::vector<std::string> const& files);
 //does cut processes
-void do_cut(CommandMaker::delivery const&,std::vector<std::string> const& files,unsigned int const num_threads);
+void do_cut(CommandMaker::delivery const&,std::vector<std::string> const& files);
 //does splice processes
 void do_splice(CommandMaker::delivery const&,std::vector<std::string> const& files);
 //finds end of input list and gets the strings from that list
@@ -2271,6 +2271,18 @@ int main(int argc,char** argv)
 	{
 		list_files(files);
 	}
+	if(del.num_threads==0)
+	{
+		del.num_threads=std::thread::hardware_concurrency();
+		if(del.num_threads==0)
+		{
+			del.num_threads=2;
+		}
+	}
+	del.num_threads=std::min(
+		del.num_threads,
+		unsigned int(std::min(size_t(std::numeric_limits<decltype(del.num_threads)>::max()),files.size())));
+
 	auto num_threads=[def=del.num_threads](size_t num_files)
 	{
 		unsigned int cand;
@@ -2304,10 +2316,10 @@ int main(int argc,char** argv)
 		case del.do_nothing:
 			[[fallthrough]];
 		case del.do_single:
-			do_single(del,files,num_threads(files.size()));
+			do_single(del,files);
 			break;
 		case del.do_cut:
-			do_cut(del,files,num_threads(files.size()));
+			do_cut(del,files);
 			break;
 		case del.do_splice:
 			do_splice(del,files);
@@ -2373,12 +2385,12 @@ void info_output()
 		;
 }
 
-void do_single(CommandMaker::delivery const& del,std::vector<std::string> const& files,unsigned int const num_threads)
+void do_single(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
-	del.pl.process(files,&del.sr,num_threads,del.starting_index,del.do_move);
+	del.pl.process(files,&del.sr,del.num_threads,del.starting_index,del.do_move);
 }
 
-void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& files,unsigned int const num_threads)
+void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
 	class CutProcess:public exlib::ThreadTask {
 	private:
@@ -2455,7 +2467,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 			}
 		}
 	};
-	exlib::ThreadPool tp(num_threads);
+	exlib::ThreadPool tp(del.num_threads);
 	for(size_t i=0;i<files.size();++i)
 	{
 		tp.add_task<CutProcess>(&files[i],i+del.starting_index,del);
@@ -2474,16 +2486,28 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 			std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
 			return;
 		}
-		auto num=splice_pages_nongreedy(
-			files,
-			del.splice_args.horiz_padding,
-			del.splice_args.optimal_height,
-			del.splice_args.optimal_padding,
-			del.splice_args.min_padding,
-			save.c_str(),
-			del.splice_args.excess_weight,
-			del.splice_args.padding_weight,
-			del.starting_index);
+		auto num=del.num_threads==1?
+			splice_pages_nongreedy(
+				files,
+				del.splice_args.horiz_padding,
+				del.splice_args.optimal_height,
+				del.splice_args.optimal_padding,
+				del.splice_args.min_padding,
+				save.c_str(),
+				del.splice_args.excess_weight,
+				del.splice_args.padding_weight,
+				del.starting_index):
+			splice_pages_nongreedy_parallel(
+				files,
+				del.splice_args.horiz_padding,
+				del.splice_args.optimal_height,
+				del.splice_args.optimal_padding,
+				del.splice_args.min_padding,
+				save.c_str(),
+				del.splice_args.excess_weight,
+				del.splice_args.padding_weight,
+				del.starting_index,
+				del.num_threads);
 		std::cout<<"Created "<<num<<" pages\n";
 	}
 	catch(std::exception const& ex)

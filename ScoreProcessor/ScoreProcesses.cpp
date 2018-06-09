@@ -29,6 +29,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <assert.h>
 #include "ImageMath.h"
 #include "lib/exstring/exmath.h"
+#include <atomic>
+#include <mutex>
+#include "lib/threadpool/ThreadPool.h"
 using namespace std;
 using namespace ImageUtils;
 using namespace cimg_library;
@@ -1308,7 +1311,7 @@ namespace ScoreProcessor {
 			}
 		}
 		else
-		{	
+		{
 			horizontal_padding=horizontal_padding_min;
 		}
 		signed int x1=left-horizontal_padding;
@@ -1608,6 +1611,7 @@ namespace ScoreProcessor {
 		tog.save(output,num_pages+starting_index,num_digits);
 		return num_pages+1;
 	}
+
 	spacing find_spacing(vector<uint> const& bottom_of_top,uint size_top,vector<uint> const& top_of_bottom)
 	{
 		auto b=bottom_of_top.rbegin();
@@ -1628,7 +1632,6 @@ namespace ScoreProcessor {
 		return ret;
 	}
 
-	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num);
 	unsigned int splice_pages_nongreedy(
 		::std::vector<::std::string> const& filenames,
 		ImageUtils::perc_or_val horiz_padding,
@@ -1704,7 +1707,7 @@ namespace ScoreProcessor {
 				conv(bottom.assign(filenames[i+2].c_str()));
 			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-			}
+		}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1758,28 +1761,16 @@ namespace ScoreProcessor {
 			page_layout layout;
 			size_t previous;
 		};
-#ifndef NDEBUG
-		std::cout<<"Initalizing nodes\n"<<"c="<<c<<'\n';
-#endif
 		vector<node> nodes(c+1);
 		nodes[0].cost=0;
 		for(size_t i=1;i<=c;++i)
 		{
 			nodes[i].cost=INFINITY;
-#ifndef NDEBUG
-			std::cout<<"i="<<i<<'\n';
-#endif
 			for(size_t j=i-1;;) //make this a binary search? no, mininum is almost always a few pages down
 			{
-#ifndef NDEBUG
-				//std::cout<<"j="<<j<<'\n';
-#endif
 				auto layout=create_layout(pages.data()+j,i-j);
 				auto local_cost=cost(layout);
 				auto total_cost=local_cost+nodes[j].cost;
-#ifndef NDEBUG
-				std::cout<<"i: "<<i<<" j: "<<j<<" cost: "<<total_cost<<'\n';
-#endif
 				if(total_cost<nodes[i].cost)
 				{
 					nodes[i].cost=total_cost;
@@ -1795,10 +1786,7 @@ namespace ScoreProcessor {
 					break;
 				}
 				--j;
-				}
-#ifndef NDEBUG
-			std::cout<<"prev="<<nodes[i].previous<<'\n';
-#endif
+			}
 		}
 		vector<size_t> breakpoints;
 		breakpoints.reserve(c);
@@ -1816,9 +1804,6 @@ namespace ScoreProcessor {
 		{
 			auto const start=breakpoints[i];
 			auto const end=breakpoints[i-1];
-#ifndef NDEBUG
-			std::cout<<start<<" <> "<<end<<'\n';
-#endif
 			auto const s=end-start;
 			vector<page> imgs(s);
 			assert(s>0);
@@ -1846,40 +1831,286 @@ namespace ScoreProcessor {
 		}
 		return num_imgs;
 	}
-	void combine_images(std::string const& output,std::vector<CImg<unsigned char>> const& pages,unsigned int& num)
+
+	unsigned int splice_pages_nongreedy_parallel(
+		::std::vector<::std::string> const& filenames,
+		ImageUtils::perc_or_val horiz_padding,
+		ImageUtils::perc_or_val optimal_height,
+		ImageUtils::perc_or_val optimal_padding,
+		ImageUtils::perc_or_val min_padding,
+		char const* output,
+		float excess_weight,
+		float padding_weight,
+		unsigned int starting_index,
+		unsigned int num_threads)
 	{
-		if(pages.empty())
+		struct item {
+			unsigned int top_raw;
+			unsigned int top_kern;
+			unsigned int bottom_kern;
+			unsigned int bottom_raw;
+		};
+		auto const c=filenames.size();
+		if(c<2)
 		{
-			return;
+			throw std::invalid_argument("Need multiple pages to splice");
 		}
-		unsigned int height=0;
-		unsigned int width=0;
-		for(auto const& page:pages)
-		{
-			if(page._width>width)
+		struct manager {
+			CImg<unsigned char> image;
+			char const* filename;
+			unsigned int times_used=0;
+			std::mutex guard;
+			void load()
 			{
-				width=page._width;
-			}
-			height+=page._height;
-		}
-		CImg<unsigned char> new_image(width,height,1);
-		unsigned int y_abs=0;
-		for(auto const& page:pages)
-		{
-			for(unsigned int y=0;y<page._height;++y,++y_abs)
-			{
-				unsigned int x_off;
-				for(x_off=1;x_off<=page._width;++x_off)
+				std::lock_guard<std::mutex> locker(guard);
+				if(image._data==0)
 				{
-					new_image(width-x_off,y_abs)=page(page._width-x_off,y);
-				}
-				for(;x_off<=width;++x_off)
-				{
-					new_image(width-x_off,y_abs)=Grayscale::WHITE;
+					image.load(filename);
+					if(image._spectrum>=3)
+					{
+						image=get_grayscale_simple(image);
+					}
 				}
 			}
+			void finish()
+			{
+				std::lock_guard<std::mutex> locker(guard);
+				++times_used;
+				if(times_used==2)
+				{
+					delete[] image._data;
+					image._data=0;
+				}
+			}
+		};
+		vector<item> pages(c);
+		vector<manager> images(c);
+		for(size_t i=0;i<c;++i)
+		{
+			images[i].filename=filenames[i].c_str();
 		}
-		new_image.save(output.c_str(),++num,3);
+		images[0].image.load(filenames[0].c_str());
+		auto fix_perc=[basis=images[0].image._width](ImageUtils::perc_or_val& pv)
+		{
+			if(pv.is_perc)
+			{
+				pv.val=unsigned int(std::round(basis*pv.perc/100.0f));
+			}
+		};
+		fix_perc(optimal_height);
+		fix_perc(optimal_padding);
+		fix_perc(min_padding);
+		fix_perc(horiz_padding);
+
+		exlib::ThreadPool pool(num_threads);
+		class PageTask:public exlib::ThreadTask {
+			manager* work; //will find between *(work-1) and *work
+			item* output; //will write to *(output-1) and *output
+			unsigned int horiz_padding;
+		public:
+			PageTask(manager* work,item* output,unsigned int hp):work(work),output(output),horiz_padding(hp)
+			{}
+			void execute() override
+			{
+				(work-1)->load();
+				work->load();
+				auto const& top=(work-1)->image;
+				auto const& bottom=(work)->image;
+				auto bot=build_bottom_profile(top,255);
+				bot=fattened_profile_low(bot,horiz_padding);
+				auto tob=build_top_profile(bottom,255);
+				tob=fattened_profile_high(tob,horiz_padding);
+				auto const sp=find_spacing(bot,top._height,tob);
+				(output-1)->bottom_raw=*std::max_element(bot.cbegin(),bot.cend());
+				(output-1)->bottom_kern=sp.bottom_sg;
+				output->top_kern=sp.top_sg;
+				output->top_raw=*std::min_element(tob.cbegin(),tob.cend());
+				(work-1)->finish();
+				work->finish();
+			}
+		};
+
+		class FirstTask:public exlib::ThreadTask {
+			manager* work;
+			item* output;
+		public:
+			FirstTask(manager* work,item* output):work(work),output(output)
+			{}
+			void execute() override
+			{
+				work->load();
+				output->top_raw=output->top_kern=find_top(work->image,255,work->image._width/1024+1);
+				work->finish();
+			}
+		};
+
+		class LastTask:public exlib::ThreadTask {
+			manager* work;
+			item* output;
+		public:
+			LastTask(manager* work,item* output):work(work),output(output)
+			{}
+			void execute() override
+			{
+				work->load();
+				output->bottom_raw=output->bottom_kern=find_bottom(work->image,255,work->image._width/1024+1);
+				work->finish();
+			}
+		};
+
+		pool.add_task<FirstTask>(images.data(),pages.data());
+		for(size_t i=1;i<c;++i)
+		{
+			pool.add_task<PageTask>(images.data()+i,pages.data()+i,horiz_padding.val);
+		}
+		pool.add_task<LastTask>(images.data()+c-1,pages.data()+c-1);
+		pool.start();
+		pool.wait();
+
+		struct page_layout {
+			unsigned int padding;
+			unsigned int height;
+		};
+		auto create_layout=[=](item const* const items,size_t const n)
+		{
+			assert(n!=0);
+			unsigned int total_height;
+			if(n==1)
+			{
+				total_height=items[0].bottom_raw-items[0].top_raw;
+			}
+			else
+			{
+				total_height=items[0].bottom_kern-items[0].top_raw;
+				for(size_t i=1;i<n-1;++i)
+				{
+					total_height+=items[i].bottom_kern-items[i].top_kern;
+				}
+				total_height+=items[n-1].bottom_raw-items[n-1].top_kern;
+			}
+			unsigned int minned=total_height+(n+1)*min_padding.val;
+			if(minned>optimal_height.val)
+			{
+				return page_layout{min_padding.val,minned};
+			}
+			else
+			{
+				return page_layout{scast<uint>((optimal_height.val-total_height)/(n+1)),optimal_height.val};
+			}
+		};
+		auto cost=[=](page_layout const p)
+		{
+			float numer;
+			if(p.height>optimal_height.val)
+			{
+				numer=excess_weight*(p.height-optimal_height.val);
+			}
+			else
+			{
+				numer=optimal_height.val-p.height;
+			}
+			float height_cost=numer/optimal_height.val;
+			height_cost=height_cost*height_cost*height_cost;
+			float padding_cost=padding_weight*abs_dif(float(p.padding),optimal_padding.val)/optimal_padding.val;
+			padding_cost=padding_cost*padding_cost*padding_cost;
+			return height_cost+padding_cost;
+		};
+		struct node {
+			float cost;
+			page_layout layout;
+			size_t previous;
+		};
+		vector<node> nodes(c+1);
+		nodes[0].cost=0;
+		for(size_t i=1;i<=c;++i)
+		{
+			nodes[i].cost=INFINITY;
+			for(size_t j=i-1;;) //make this a binary search? no, mininum is almost always a few pages down
+			{
+				auto layout=create_layout(pages.data()+j,i-j);
+				auto local_cost=cost(layout);
+				auto total_cost=local_cost+nodes[j].cost;
+				if(total_cost<nodes[i].cost)
+				{
+					nodes[i].cost=total_cost;
+					nodes[i].previous=j;
+					nodes[i].layout=layout;
+				}
+				else
+				{
+					break;
+				}
+				if(j==0)
+				{
+					break;
+				}
+				--j;
+			}
+		}
+		vector<size_t> breakpoints;
+		breakpoints.reserve(c);
+		size_t index=c;
+		do
+		{
+			breakpoints.push_back(index);
+			index=nodes[index].previous;
+		} while(index);
+		breakpoints.push_back(0);
+
+		class SpliceTask:public exlib::ThreadTask {
+			unsigned int num;
+			unsigned int num_digs;
+			char const* output;
+			std::string const* fbegin;
+			item const* ibegin;
+			size_t num_pages;
+			unsigned int padding;
+		public:
+			SpliceTask(
+				unsigned int n,
+				unsigned int nd,
+				char const* out,
+				std::string const* b,
+				item const* ib,
+				size_t np,
+				unsigned int padding):
+				num(n),num_digs(nd),output(out),fbegin(b),ibegin(ib),num_pages(np),padding(padding)
+			{}
+			void execute() override
+			{
+				vector<page> imgs(num_pages);
+				imgs[0].load(fbegin->c_str());
+				imgs[0].top=ibegin->top_raw;
+				for(size_t i=0;i<num_pages;++i)
+				{
+					imgs[i].load(fbegin[i].c_str());
+					imgs[i].top=ibegin[i].top_kern;
+					imgs[i].bottom=ibegin[i].bottom_kern;
+				}
+				imgs[0].top=ibegin[0].top_raw;
+				imgs[num_pages-1].bottom=ibegin[num_pages-1].bottom_raw;
+				splice_images(imgs.data(),num_pages,padding).save(output,num,num_digs);
+			}
+		};
+
+		unsigned int num_digs=exlib::num_digits(breakpoints.size()-1+starting_index);
+		num_digs=num_digs<3?3:num_digs;
+		unsigned int num_imgs=0;
+		for(size_t i=breakpoints.size()-1;i>0;--i)
+		{
+			++num_imgs;
+			auto const start=breakpoints[i];
+			auto const end=breakpoints[i-1];
+			auto const s=end-start;
+			pool.add_task<SpliceTask>(
+				num_imgs,num_digs,
+				output,filenames.data()+start,
+				pages.data()+start,s,
+				nodes[end].layout.padding);
+		}
+		pool.start();
+		pool.wait();
+		return num_imgs;
 	}
 	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map,float const hec);
 	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const&,unsigned int horiz_padding);

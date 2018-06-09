@@ -524,6 +524,17 @@ namespace ScoreProcessor {
 		float excess_weight=10,
 		float padding_weight=1,
 		unsigned int starting_index=1);
+	unsigned int splice_pages_nongreedy_parallel(
+		::std::vector<::std::string> const& filenames,
+		ImageUtils::perc_or_val horiz_padding,
+		ImageUtils::perc_or_val optimal_height,
+		ImageUtils::perc_or_val optimal_padding,
+		ImageUtils::perc_or_val min_padding,
+		char const* output,
+		float excess_weight=10,
+		float padding_weight=1,
+		unsigned int starting_index=1,
+		unsigned int num_threads=8);
 	void compress(
 		::cimg_library::CImg<unsigned char>& image,
 		unsigned int const min_padding,
