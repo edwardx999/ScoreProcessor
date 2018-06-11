@@ -33,7 +33,7 @@ namespace SProcUnitTests {
 		{
 			CImg<unsigned char> img(10,10);
 			img.fill(0);
-			auto res=crop_fill(img,Rint({-2,12,-4,14}),unsigned char(255));
+			auto res=get_crop_fill(img,Rint({-2,12,-4,14}),unsigned char(255));
 			Assert::AreEqual(15U,res._width);
 			Assert::AreEqual(19U,res._height);
 			CImg<unsigned char> exp(15,19);

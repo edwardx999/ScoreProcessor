@@ -21,7 +21,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include <utility>
 namespace ScoreProcessor {
-	
+
 	class Cluster {
 	private:
 		::std::vector<ImageUtils::Rectangle<unsigned int>> ranges;
@@ -45,7 +45,27 @@ namespace ScoreProcessor {
 			Returns the center of mass of the cluster
 			If cluster contains no rectangles, returns {0,0}
 		*/
-		ImageUtils::Point<unsigned int> center() const;
+		template<typename T>
+		ImageUtils::Point<T> center() const
+		{
+			if(ranges.size()==0)
+			{
+				return {T(0),T(0)};
+			}
+			ImageUtils::Point<double> center={0.0,0.0};
+			double denom=0.0;
+			for(auto const& rect:ranges)
+			{
+				double area=rect.area();
+				auto rect_center=rect.center<double>();
+				center.x+=area*rect_center.x;
+				center.y+=area*rect_center.y;
+				denom+=area;
+			}
+			center.x/=denom;
+			center.y/=denom;
+			return {T(center.x),T(center.y)};
+		}
 		/*
 			Returns the highest rightmost point of the cluster
 		*/

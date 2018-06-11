@@ -194,6 +194,18 @@ public:
 		return auto_padding(img,vert,max_h,min_h,hoff,opt_rat);
 	}
 };
+class PadCluster:public ImageProcess<> {
+	unsigned int left,right,top,bottom;
+	unsigned char bt;
+public:
+	PadCluster(unsigned int left,unsigned int right,unsigned int top,unsigned int bottom,unsigned char bt):
+		left(left),right(right),bottom(bottom),top(top),bt(bt)
+	{}
+	bool process(Img& img) const override
+	{
+		return cluster_padding(img,left,right,top,bottom,bt);
+	}
+};
 class Rescale:public ImageProcess<> {
 	double val;
 	int interpolation;
@@ -1096,15 +1108,16 @@ protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 #define padding_maker(type,first,second,match)\
-			unsigned int amount;\
+			int amount;\
 			int res=parse_str(amount,begin[0].c_str());\
 			if(res)\
 			{\
 				return "Invalid " #first " input";\
 			}\
+			if(amount<-1) return "Input for " #first " must be non-negative";\
 			if(n>1)\
 			{\
-				unsigned int a;\
+				int a;\
 				if(begin[1][0]==##match##)\
 				{\
 					a=amount;\
@@ -1116,12 +1129,13 @@ protected:
 					{\
 						return "Invalid " #second " input";\
 					}\
+					if(a<-1) return "Input for " #second " must be non-negative";\
 				}\
 				del.pl.add_process<##type##>(amount,a);\
 			}\
 			else\
 			{\
-				del.pl.add_process<##type##>(amount,amount);\
+				del.pl.add_process<##type##>(unsigned int(amount),unsigned int(amount));\
 			}\
 			return nullptr;
 		padding_maker(PadHoriz,left,right,'l');
@@ -1146,6 +1160,48 @@ protected:
 	}
 };
 VerticalPaddingMaker const VerticalPaddingMaker::singleton;
+
+class ClusterPaddingMaker:public SingleCommandMaker {
+	ClusterPaddingMaker()
+		:SingleCommandMaker(4,5,
+			"Pads the sides of the image with given number of pixels.\n"
+			"The image is found to be the largest non-background cluster found.\n"
+			"THIS HAS A VERY SPECIALIZED USE AND I RECOMMEND YOU DO NOT USE IT!","Cluster Padding")
+	{}
+	static ClusterPaddingMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		int left,right,top,bottom;
+		unsigned char bt=254;
+		int res;
+#define judge(name,index)\
+	res=parse_str(name,begin[index].c_str());\
+		if(res) return "Invalid input for " #name;\
+		if(name<-1) return "Padding for " #name " must be non-negative";
+		judge(left,0);
+		judge(right,1);
+		judge(top,2);
+		judge(bottom,3);
+		if(n>4)
+		{
+			res=parse_str(bt,begin[4].c_str());
+			if(res)
+			{
+				return "Invalid input for background";
+			}
+		}
+		del.pl.add_process<PadCluster>(uint(left),uint(right),uint(top),uint(bottom),bt);
+		return nullptr;
+#undef judge
+	}
+};
+ClusterPaddingMaker const ClusterPaddingMaker::singleton;
 
 class OutputMaker:public CommandMaker {
 	OutputMaker():
@@ -2158,6 +2214,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-frgb",&FilterRGBMaker::get());
 
 	commands.emplace("-bsel",&BoundSelMaker::get());
+
+	commands.emplace("-cp",&ClusterPaddingMaker::get());
 	return commands;
 }
 
@@ -2332,7 +2390,7 @@ int main(int argc,char** argv)
 	stop();
 #endif
 	return 0;
-}
+	}
 
 void info_output()
 {
@@ -2361,6 +2419,7 @@ void info_output()
 		"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
 		"    Horizontal Padding:       -hp left right=left\n"
 		"    Vertical Padding:         -vp top bottom=top\n"
+		"    Cluster Padding:          -cp left right top bottom background_threshold=254\n"
 		"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
 		"    Rescale Colors Grayscale: -rcg min mid max\n"
 		"    Blur:                     -bl radius\n"
@@ -2454,7 +2513,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 					coutput.append(*input);
 					coutput.append(" and created ");
 					coutput.append(std::to_string(num_pages));
-					coutput.append(" pages\n");
+					coutput.append(num_pages==1?" page\n":" pages\n");
 					std::cout<<coutput;
 				}
 			}
@@ -2486,7 +2545,7 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 			std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
 			return;
 		}
-		auto num=del.num_threads==1?
+		auto num=del.num_threads<2?
 			splice_pages_nongreedy(
 				files,
 				del.splice_args.horiz_padding,
@@ -2508,7 +2567,7 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 				del.splice_args.padding_weight,
 				del.starting_index,
 				del.num_threads);
-		std::cout<<"Created "<<num<<" pages\n";
+		std::cout<<"Created "<<num<<(num==1?" page\n":" pages\n");
 	}
 	catch(std::exception const& ex)
 	{
@@ -2560,10 +2619,19 @@ std::vector<std::string> get_files(CommandMaker::iter begin,CommandMaker::iter e
 		{
 			auto fid=do_recursive?exlib::files_in_dir_rec(*pos):exlib::files_in_dir(*pos);
 			files.reserve(files.size()+fid.size());
-			for(auto& str:fid)
+			if(*pos=="./"||*pos==".\\")
 			{
-				files.emplace_back(std::move(str));
-				files.back()=*pos+files.back();
+				for(auto& str:fid)
+				{
+					files.emplace_back(std::move(str));
+				}
+			}
+			else
+			{
+				for(auto const& str:fid)
+				{
+					files.emplace_back(*pos+str);
+				}
 			}
 			do_recursive=false;
 		}
@@ -2609,8 +2677,8 @@ void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery con
 				throw std::logic_error(std::string(sr.end).append(" end boundary not found beyond ").append(sr.begin));
 			}
 			size_t start=first-files.begin();
-			size_t const end=last-files.begin()+1;
-			for(;start<end;++start)
+			size_t const end=last-files.begin();
+			for(;start<=end;++start)
 			{
 				what_to_keep[start]=1;
 			}

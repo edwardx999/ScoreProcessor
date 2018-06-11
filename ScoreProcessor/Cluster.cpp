@@ -59,22 +59,7 @@ namespace ScoreProcessor {
 		}
 		return box;
 	}
-	ImageUtils::Point<unsigned int> Cluster::center() const
-	{
-		ImageUtils::Point<double> center={0.0,0.0};
-		double denom=0.0;
-		for(auto const& rect:ranges)
-		{
-			double area=rect.area();
-			auto rect_center=rect.center<double>();
-			center.x+=area*rect_center.x;
-			center.y+=area*rect_center.y;
-			denom+=area;
-		}
-		center.x/=denom;
-		center.y/=denom;
-		return {static_cast<unsigned int>(center.x),static_cast<unsigned int>(center.y)};
-	}
+
 #define xfirst_point_finder(xdef,xterm,xcomp,ydef,yterm,ycomp) \
 	ImageUtils::Point<unsigned int> point={xdef,ydef}; \
 	for(auto const& rect:ranges) \

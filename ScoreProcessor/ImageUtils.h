@@ -345,11 +345,11 @@ namespace ImageUtils {
 		float r=this->r,b=this->b,g=this->g;
 		auto min=std::min(r,std::min(g,b));
 		auto max=std::max(r,std::max(g,b));
-		ret.v=max;
+		ret.v=unsigned char(max);
 		auto delta=max-min;
 		if(max!=0)
 		{
-			ret.s=std::round(delta/max*255);
+			ret.s=unsigned char(std::round(delta/max*255));
 		}
 		else
 		{
@@ -370,12 +370,12 @@ namespace ImageUtils {
 		{
 			hue=4+(r-g)/delta;
 		}
-		hue*=(256.0/360*60);
+		hue*=(256.0f/360*60);
 		if(hue<0)
 		{
 			hue+=256;
 		}
-		ret.h=std::round(hue);
+		ret.h=unsigned char(std::round(hue));
 		return ret;
 	}
 

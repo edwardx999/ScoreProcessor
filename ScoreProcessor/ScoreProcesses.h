@@ -147,7 +147,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	cil::CImg<T> crop_fill(cil::CImg<T> const& img,ImageUtils::Rectangle<signed int> region,T fill=255)
+	cil::CImg<T> get_crop_fill(cil::CImg<T> const& img,ImageUtils::Rectangle<signed int> region,T fill=255)
 	{
 		auto const width=img.width();
 		auto const height=img.height();
@@ -484,6 +484,13 @@ namespace ScoreProcessor {
 		@param optimal_ratio
 	*/
 	bool auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const max_horizontal_padding,unsigned int const min_horizontal_padding,signed int horiz_offset,float optimal_ratio=16.0f/9.0f,unsigned int tolerance=5,unsigned char background=200);
+	bool cluster_padding(
+		::cil::CImg<unsigned char>& img,
+		unsigned int const left,
+		unsigned int const right,
+		unsigned int const top,
+		unsigned int const bottom,
+		unsigned char background_threshold);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image

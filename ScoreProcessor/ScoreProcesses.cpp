@@ -1322,7 +1322,7 @@ namespace ScoreProcessor {
 		{
 			return false;
 		}
-		image=crop_fill(
+		image=get_crop_fill(
 			image,
 			{x1,x2,y1,y2},
 			unsigned char(255)
@@ -1345,8 +1345,10 @@ namespace ScoreProcessor {
 				{
 					return color[0]<background;
 				};
-				left=find_left<1>(image,tolerance,selector);
-				right=find_right<1>(image,tolerance,selector);
+				if(left_pad!=-1)
+					left=find_left<1>(image,tolerance,selector);
+				if(right_pad!=-1)
+					right=find_right<1>(image,tolerance,selector);
 				break;
 			}
 			default:
@@ -1355,8 +1357,10 @@ namespace ScoreProcessor {
 				{
 					return float(color[0])+color[1]+color[2]<bg;
 				};
-				left=find_left<3>(image,tolerance,selector);
-				right=find_right<3>(image,tolerance,selector);
+				if(left_pad!=-1)
+					left=find_left<3>(image,tolerance,selector);
+				if(right_pad!=-1)
+					right=find_right<3>(image,tolerance,selector);
 				break;
 			}
 		}
@@ -1364,13 +1368,13 @@ namespace ScoreProcessor {
 		{
 			std::swap(left,right);
 		}
-		signed int x1=(left-left_pad);
-		signed int x2=right+right_pad;
-		if(x1==0&&x2==image._width-1)
+		signed int x1=left_pad==-1?0:(left-left_pad);
+		signed int x2=right_pad==-1?image.width()-1:right+right_pad;
+		if(x1==0&&x2==image.width()-1)
 		{
 			return false;
 		}
-		image=crop_fill(image,{x1,x2,0,image.height()-1});
+		image=get_crop_fill(image,{x1,x2,0,image.height()-1});
 		return true;
 	}
 	bool vert_padding(CImg<unsigned char>& image,unsigned int const p)
@@ -1389,8 +1393,10 @@ namespace ScoreProcessor {
 				{
 					return color[0]<background;
 				};
-				top=find_top<1>(image,tolerance,selector);
-				bottom=find_bottom<1>(image,tolerance,selector);
+				if(tp!=-1)
+					top=find_top<1>(image,tolerance,selector);
+				if(bp!=-1)
+					bottom=find_bottom<1>(image,tolerance,selector);
 				break;
 			}
 			default:
@@ -1399,8 +1405,10 @@ namespace ScoreProcessor {
 				{
 					return float(color[0])+color[1]+color[2]<bg;
 				};
-				top=find_top<3>(image,tolerance,selector);
-				bottom=find_bottom<3>(image,tolerance,selector);
+				if(tp!=-1)
+					top=find_top<3>(image,tolerance,selector);
+				if(bp!=-1)
+					bottom=find_bottom<3>(image,tolerance,selector);
 				break;
 			}
 		}
@@ -1408,13 +1416,82 @@ namespace ScoreProcessor {
 		{
 			std::swap(top,bottom);
 		}
-		signed int y1=top-tp;
-		signed int y2=bottom+bp;
+		signed int y1=tp==-1?0:top-tp;
+		signed int y2=bp==-1?image.height()-1:bottom+bp;
 		if(y1==0&&y2==image.height()-1)
 		{
 			return false;
 		}
-		image=crop_fill(image,{0,image.width()-1,y1,y2});
+		image=get_crop_fill(image,{0,image.width()-1,y1,y2});
+		return true;
+	}
+
+	bool cluster_padding(
+		::cil::CImg<unsigned char>& img,
+		unsigned int const lp,
+		unsigned int const rp,
+		unsigned int const tp,
+		unsigned int const bp,
+		unsigned char bt)
+	{
+		auto selections=img._spectrum>2?
+			global_select<3>(img,[threshold=3*unsigned short(bt)](auto color)
+		{
+			return unsigned short(color[0])+color[1]+color[2]<=threshold;
+		}):
+			global_select<1>(img,[bt](auto color)
+		{
+			return color[0]<=bt;
+		});
+		auto clusters=Cluster::cluster_ranges(selections);
+		if(clusters.size()==0)
+		{
+			return false;
+		}
+		unsigned int top_size=0;
+		Cluster* top_cluster;
+		for(auto const& cluster:clusters)
+		{
+			auto size=cluster->size();
+			if(size>top_size)
+			{
+				top_size=size;
+				top_cluster=cluster.get();
+			}
+		}
+		auto com=top_cluster->bounding_box().center<double>();
+		ImageUtils::PointUINT tl,tr,bl,br;
+		double tld=0,trd=0,bld=0,brd=0;
+		auto switch_if_bigger=[com](double& dist,PointUINT& contender,PointUINT cand)
+		{
+			double d=hypot(com.x-double(cand.x),com.y-double(cand.y));
+			if(d>dist)
+			{
+				dist=d;
+				contender=cand;
+			}
+		};
+		for(auto const rect:top_cluster->get_ranges())
+		{
+			PointUINT cand;
+			cand={rect.left,rect.top};
+			if(cand.x<=com.x&&cand.y<=com.y) switch_if_bigger(tld,tl,cand);
+			cand.x=rect.right;
+			if(cand.x>=com.x&&cand.y<=com.y) switch_if_bigger(trd,tr,cand);
+			cand.y=rect.bottom;
+			if(cand.x>=com.x&&cand.y>=com.y) switch_if_bigger(brd,br,cand);
+			cand.x=rect.left;
+			if(cand.x<=com.x&&cand.y>=com.y) switch_if_bigger(bld,bl,cand);
+		}
+		int left=lp==-1?0:int(std::min(tl.x,bl.x))-int(lp);
+		int right=rp==-1?img.width():int(std::max(tr.x,br.x))+int(rp);
+		int top=tp==-1?0:int(std::min(tl.y,tr.y))-int(tp);
+		int bottom=bp==-1?img.height():int(std::max(bl.y,br.y))+int(bp);
+		if(left==0&&right==img.width()&&top==0&&bottom==img.height())
+		{
+			return false;
+		}
+		img=get_crop_fill(img,{left,right-1,top,bottom-1});
 		return true;
 	}
 
@@ -1705,9 +1782,9 @@ namespace ScoreProcessor {
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-			}
-			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
 		}
+			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
+}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -2107,7 +2184,6 @@ namespace ScoreProcessor {
 				nodes[end].layout.padding);
 		}
 		pool.start();
-		pool.wait();
 		return num_imgs;
 	}
 	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map,float const hec);
