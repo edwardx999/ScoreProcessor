@@ -570,7 +570,7 @@ namespace ScoreProcessor {
 			container[x]=limit;
 			for(unsigned int y=0;y<limit;++y)
 			{
-				if(gray_diff(image(x,y),background)>0.5f)
+				if(image(x,y)<background)
 				{
 					container[x]=y;
 					break;
@@ -609,9 +609,9 @@ namespace ScoreProcessor {
 		for(unsigned int x=0;x<image._width;++x)
 		{
 			container[x]=limit;
-			for(unsigned int y=image._height-1;y>=limit;--y)
+			for(unsigned int y=image._height-1;y>limit;--y)
 			{
-				if(gray_diff(image(x,y),background)>0.5f)
+				if(image(x,y)<background)
 				{
 					container[x]=y;
 					break;
@@ -624,14 +624,14 @@ namespace ScoreProcessor {
 	{
 		return exlib::fattened_profile(profile,horiz_padding,[](unsigned int a,unsigned int b)
 		{
-			return a<=b;
+			return a<b;
 		});
 	}
 	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
 		return exlib::fattened_profile(profile,horiz_padding,[](unsigned int a,unsigned int b)
 		{
-			return a>=b;
+			return a>b;
 		});
 	}
 	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage,float const vec);
@@ -1291,8 +1291,8 @@ namespace ScoreProcessor {
 				break;
 			}
 		}
-		if(left>right) std::swap(left,right);
-		if(top>bottom) std::swap(top,bottom);
+		if(left>right) return false;
+		if(top>bottom) return false;
 
 		unsigned int true_height=bottom-top;
 		unsigned int optimal_width=optimal_ratio*(true_height+2*vertical_padding);
@@ -1335,7 +1335,7 @@ namespace ScoreProcessor {
 	}
 	bool horiz_padding(CImg<unsigned char>& image,unsigned int const left_pad,unsigned int const right_pad,unsigned int tolerance,unsigned char background)
 	{
-		unsigned int left,right;
+		signed int x1,x2;
 		switch(image._spectrum)
 		{
 			case 1:
@@ -1343,33 +1343,27 @@ namespace ScoreProcessor {
 			{
 				auto selector=[=](auto color)
 				{
-					return color[0]<background;
+					return color[0]<=background;
 				};
-				if(left_pad!=-1)
-					left=find_left<1>(image,tolerance,selector);
-				if(right_pad!=-1)
-					right=find_right<1>(image,tolerance,selector);
+				x1=left_pad==-1?0:find_left<1>(image,tolerance,selector)-left_pad;
+				x2=right_pad==-1?image.width()-1:find_right<1>(image,tolerance,selector)+right_pad;
 				break;
 			}
 			default:
 			{
-				auto selector=[bg=3*float(background)](auto color)
+				auto selector=[bg=3*unsigned int(background)](auto color)
 				{
-					return float(color[0])+color[1]+color[2]<bg;
+					return unsigned int(color[0])+color[1]+color[2]<=bg;
 				};
-				if(left_pad!=-1)
-					left=find_left<3>(image,tolerance,selector);
-				if(right_pad!=-1)
-					right=find_right<3>(image,tolerance,selector);
+				x1=left_pad==-1?0:find_left<3>(image,tolerance,selector)-left_pad;
+				x2=right_pad==-1?image.width()-1:find_right<3>(image,tolerance,selector)+right_pad;
 				break;
 			}
 		}
-		if(left>right)
+		if(x1>x2)
 		{
-			std::swap(left,right);
+			std::swap(x1,x2);
 		}
-		signed int x1=left_pad==-1?0:(left-left_pad);
-		signed int x2=right_pad==-1?image.width()-1:right+right_pad;
 		if(x1==0&&x2==image.width()-1)
 		{
 			return false;
@@ -1383,7 +1377,7 @@ namespace ScoreProcessor {
 	}
 	bool vert_padding(CImg<unsigned char>& image,unsigned int const tp,unsigned int const bp,unsigned int tolerance,unsigned char background)
 	{
-		unsigned int top,bottom;
+		signed int y1,y2;
 		switch(image._spectrum)
 		{
 			case 1:
@@ -1391,33 +1385,27 @@ namespace ScoreProcessor {
 			{
 				auto selector=[=](auto color)
 				{
-					return color[0]<background;
+					return color[0]<=background;
 				};
-				if(tp!=-1)
-					top=find_top<1>(image,tolerance,selector);
-				if(bp!=-1)
-					bottom=find_bottom<1>(image,tolerance,selector);
+				y1=tp==-1?0:find_top<1>(image,tolerance,selector)-tp;
+				y2=bp==-1?image.height()-1:find_bottom<1>(image,tolerance,selector)+bp;
 				break;
 			}
 			default:
 			{
-				auto selector=[bg=3*float(background)](auto color)
+				auto selector=[bg=3*unsigned int(background)](auto color)
 				{
-					return float(color[0])+color[1]+color[2]<bg;
+					return unsigned int(color[0])+color[1]+color[2]<=bg;
 				};
-				if(tp!=-1)
-					top=find_top<3>(image,tolerance,selector);
-				if(bp!=-1)
-					bottom=find_bottom<3>(image,tolerance,selector);
+				y1=tp==-1?0:find_top<3>(image,tolerance,selector)-tp;
+				y2=bp==-1?image.height()-1:find_bottom<3>(image,tolerance,selector)+bp;
 				break;
 			}
 		}
-		if(top>bottom)
+		if(y1>y2)
 		{
-			std::swap(top,bottom);
+			std::swap(y1,y2);
 		}
-		signed int y1=tp==-1?0:top-tp;
-		signed int y2=bp==-1?image.height()-1:bottom+bp;
 		if(y1==0&&y2==image.height()-1)
 		{
 			return false;
@@ -1452,7 +1440,7 @@ namespace ScoreProcessor {
 		Cluster* top_cluster;
 		for(auto const& cluster:clusters)
 		{
-			auto size=cluster->size();
+			auto size=cluster->bounding_box().area();
 			if(size>top_size)
 			{
 				top_size=size;
@@ -1767,9 +1755,9 @@ namespace ScoreProcessor {
 #ifndef NDEBUG
 				std::cout<<i<<'\n';
 #endif
-				auto bot=build_bottom_profile(top,255);
+				auto bot=build_bottom_profile(top,150);
 				bot=fattened_profile_low(bot,horiz_padding.val);
-				auto tob=build_top_profile(bottom,255);
+				auto tob=build_top_profile(bottom,150);
 				tob=fattened_profile_high(tob,horiz_padding.val);
 				auto const sp=find_spacing(bot,top._height,tob);
 				pages[i].bottom_raw=*std::max_element(bot.cbegin(),bot.cend());
@@ -1782,9 +1770,9 @@ namespace ScoreProcessor {
 				}
 				top=std::move(bottom);
 				conv(bottom.assign(filenames[i+2].c_str()));
-		}
+			}
 			pages[c-1].bottom_raw=(pages[c-1].bottom_kern=find_bottom(bottom,255,bottom._width/1024+1));
-}
+		}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -1993,10 +1981,13 @@ namespace ScoreProcessor {
 				work->load();
 				auto const& top=(work-1)->image;
 				auto const& bottom=(work)->image;
-				auto bot=build_bottom_profile(top,255);
-				bot=fattened_profile_low(bot,horiz_padding);
-				auto tob=build_top_profile(bottom,255);
-				tob=fattened_profile_high(tob,horiz_padding);
+				auto bot=build_bottom_profile(top,150);
+				auto tob=build_top_profile(bottom,150);
+				if(horiz_padding!=0)
+				{
+					bot=fattened_profile_low(bot,horiz_padding);
+					tob=fattened_profile_high(tob,horiz_padding);
+				}
 				auto const sp=find_spacing(bot,top._height,tob);
 				(output-1)->bottom_raw=*std::max_element(bot.cbegin(),bot.cend());
 				(output-1)->bottom_kern=sp.bottom_sg;
@@ -2163,7 +2154,8 @@ namespace ScoreProcessor {
 					imgs[i].bottom=ibegin[i].bottom_kern;
 				}
 				imgs[0].top=ibegin[0].top_raw;
-				imgs[num_pages-1].bottom=ibegin[num_pages-1].bottom_raw;
+				auto last=num_pages-1;
+				imgs[last].bottom=ibegin[last].bottom_raw;
 				splice_images(imgs.data(),num_pages,padding).save(output,num,num_digs);
 			}
 		};

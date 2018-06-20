@@ -47,7 +47,7 @@ namespace exlib {
 			}
 			if(el<begin)
 			{
-				el=std::min_element(begin,end);
+				el=std::min_element(begin,end,comp);
 			}
 			else
 			{

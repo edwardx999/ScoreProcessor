@@ -806,7 +806,14 @@ namespace ScoreProcessor {
 							break;
 						case SaveRules::template_symbol::p:
 							check_path();
-							out.append(path.data,path.size);
+							if(path.size==0)
+							{
+								out.append(".");
+							}
+							else
+							{
+								out.append(path.data,path.size);
+							}
 							break;
 						case SaveRules::template_symbol::w:
 							check_filename();
