@@ -2571,7 +2571,7 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 	}
 	catch(std::exception const& ex)
 	{
-		std::cout<<ex.what()<<'\n';
+		std::cout<<"Error(s):\n"<<ex.what()<<'\n';
 	}
 }
 

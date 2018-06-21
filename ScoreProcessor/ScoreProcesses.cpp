@@ -1920,6 +1920,8 @@ namespace ScoreProcessor {
 		{
 			throw std::invalid_argument("Need multiple pages to splice");
 		}
+		std::string errors;
+		exlib::StringLogger err_log(errors);
 		struct manager {
 			CImg<unsigned char> image;
 			char const* filename;
@@ -1969,72 +1971,98 @@ namespace ScoreProcessor {
 
 		exlib::ThreadPool pool(num_threads);
 		class PageTask:public exlib::ThreadTask {
-			manager* work; //will find between *(work-1) and *work
-			item* output; //will write to *(output-1) and *output
+		protected:
+			manager*work;
+			item* output;
+			exlib::StringLogger* err_log;
+		public:
+			PageTask(manager* work,item* output,exlib::StringLogger* err_log):work(work),output(output),err_log(err_log)
+			{}
+		};
+		class MiddleTask:public PageTask {
 			unsigned int horiz_padding;
 		public:
-			PageTask(manager* work,item* output,unsigned int hp):work(work),output(output),horiz_padding(hp)
+			MiddleTask(manager* work,item* output,unsigned int hp,exlib::StringLogger* err_log)
+				:PageTask(work,output,err_log),horiz_padding(hp)
 			{}
 			void execute() override
 			{
-				(work-1)->load();
-				work->load();
-				auto const& top=(work-1)->image;
-				auto const& bottom=(work)->image;
-				auto bot=build_bottom_profile(top,150);
-				auto tob=build_top_profile(bottom,150);
-				if(horiz_padding!=0)
+				try
 				{
-					bot=fattened_profile_low(bot,horiz_padding);
-					tob=fattened_profile_high(tob,horiz_padding);
+					(work-1)->load();
+					work->load();
+					auto const& top=(work-1)->image;
+					auto const& bottom=(work)->image;
+					auto bot=build_bottom_profile(top,150);
+					auto tob=build_top_profile(bottom,150);
+					if(horiz_padding!=0)
+					{
+						bot=fattened_profile_low(bot,horiz_padding);
+						tob=fattened_profile_high(tob,horiz_padding);
+					}
+					auto const sp=find_spacing(bot,top._height,tob);
+					(output-1)->bottom_raw=*std::max_element(bot.cbegin(),bot.cend());
+					(output-1)->bottom_kern=sp.bottom_sg;
+					output->top_kern=sp.top_sg;
+					output->top_raw=*std::min_element(tob.cbegin(),tob.cend());
+					(work-1)->finish();
+					work->finish();
 				}
-				auto const sp=find_spacing(bot,top._height,tob);
-				(output-1)->bottom_raw=*std::max_element(bot.cbegin(),bot.cend());
-				(output-1)->bottom_kern=sp.bottom_sg;
-				output->top_kern=sp.top_sg;
-				output->top_raw=*std::min_element(tob.cbegin(),tob.cend());
-				(work-1)->finish();
-				work->finish();
+				catch(std::exception const& ex)
+				{
+					err_log->log(ex.what(),"\n");
+				}
 			}
 		};
 
-		class FirstTask:public exlib::ThreadTask {
-			manager* work;
-			item* output;
+		class FirstTask:public PageTask {
 		public:
-			FirstTask(manager* work,item* output):work(work),output(output)
-			{}
+			using PageTask::PageTask;
 			void execute() override
 			{
-				work->load();
-				output->top_raw=output->top_kern=find_top(work->image,255,work->image._width/1024+1);
-				work->finish();
+				try
+				{
+					work->load();
+					output->top_raw=output->top_kern=find_top(work->image,255,work->image._width/1024+1);
+					work->finish();
+				}
+				catch(std::exception const& ex)
+				{
+					err_log->log(ex.what(),"\n");
+				}
 			}
 		};
 
-		class LastTask:public exlib::ThreadTask {
-			manager* work;
-			item* output;
+		class LastTask:public PageTask {
 		public:
-			LastTask(manager* work,item* output):work(work),output(output)
-			{}
+			using PageTask::PageTask;
 			void execute() override
 			{
-				work->load();
-				output->bottom_raw=output->bottom_kern=find_bottom(work->image,255,work->image._width/1024+1);
-				work->finish();
+				try
+				{
+					work->load();
+					output->bottom_raw=output->bottom_kern=find_bottom(work->image,255,work->image._width/1024+1);
+					work->finish();
+				}
+				catch(std::exception const& ex)
+				{
+					err_log->log(ex.what(),"\n");
+				}
 			}
 		};
 
-		pool.add_task<FirstTask>(images.data(),pages.data());
+		pool.add_task<FirstTask>(images.data(),pages.data(),&err_log);
 		for(size_t i=1;i<c;++i)
 		{
-			pool.add_task<PageTask>(images.data()+i,pages.data()+i,horiz_padding.val);
+			pool.add_task<MiddleTask>(images.data()+i,pages.data()+i,horiz_padding.val,&err_log);
 		}
-		pool.add_task<LastTask>(images.data()+c-1,pages.data()+c-1);
+		pool.add_task<LastTask>(images.data()+c-1,pages.data()+c-1,&err_log);
 		pool.start();
 		pool.wait();
-
+		if(!errors.empty())
+		{
+			throw std::logic_error(errors);
+		}
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
@@ -2133,6 +2161,7 @@ namespace ScoreProcessor {
 			item const* ibegin;
 			size_t num_pages;
 			unsigned int padding;
+			exlib::StringLogger* err_log;
 		public:
 			SpliceTask(
 				unsigned int n,
@@ -2141,22 +2170,30 @@ namespace ScoreProcessor {
 				std::string const* b,
 				item const* ib,
 				size_t np,
-				unsigned int padding):
-				num(n),num_digs(nd),output(out),fbegin(b),ibegin(ib),num_pages(np),padding(padding)
+				unsigned int padding,
+				exlib::StringLogger* err_log):
+				num(n),num_digs(nd),output(out),fbegin(b),ibegin(ib),num_pages(np),padding(padding),err_log(err_log)
 			{}
 			void execute() override
 			{
-				vector<page> imgs(num_pages);
-				for(size_t i=0;i<num_pages;++i)
+				try
 				{
-					imgs[i].load(fbegin[i].c_str());
-					imgs[i].top=ibegin[i].top_kern;
-					imgs[i].bottom=ibegin[i].bottom_kern;
+					vector<page> imgs(num_pages);
+					for(size_t i=0;i<num_pages;++i)
+					{
+						imgs[i].load(fbegin[i].c_str());
+						imgs[i].top=ibegin[i].top_kern;
+						imgs[i].bottom=ibegin[i].bottom_kern;
+					}
+					imgs[0].top=ibegin[0].top_raw;
+					auto last=num_pages-1;
+					imgs[last].bottom=ibegin[last].bottom_raw;
+					splice_images(imgs.data(),num_pages,padding).save(output,num,num_digs);
 				}
-				imgs[0].top=ibegin[0].top_raw;
-				auto last=num_pages-1;
-				imgs[last].bottom=ibegin[last].bottom_raw;
-				splice_images(imgs.data(),num_pages,padding).save(output,num,num_digs);
+				catch(std::exception const& ex)
+				{
+					err_log->log(ex.what(),"\n");
+				}
 			}
 		};
 
@@ -2173,9 +2210,15 @@ namespace ScoreProcessor {
 				num_imgs,num_digs,
 				output,filenames.data()+start,
 				pages.data()+start,s,
-				nodes[end].layout.padding);
+				nodes[end].layout.padding,
+				&err_log);
 		}
 		pool.start();
+		pool.wait();
+		if(!errors.empty())
+		{
+			throw std::logic_error(errors);
+		}
 		return num_imgs;
 	}
 	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map,float const hec);
