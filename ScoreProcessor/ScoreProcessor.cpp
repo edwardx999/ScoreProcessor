@@ -76,14 +76,18 @@ public:
 		return false;
 	}
 };
-class RemoveTransparency:public ImageProcess<> {
+class FillTransparency:public ImageProcess<> {
+	ImageUtils::ColorRGB background;
 public:
+	FillTransparency(unsigned char r,unsigned char g,unsigned char b)
+	{
+		background={r,g,b};
+	}
 	bool process(Img& img) const
 	{
-		if(img._spectrum==4)
+		if(img._spectrum>=4)
 		{
-			return true;
-			remove_transparency(img,150,ColorRGB::WHITE);
+			return fill_transparency(img,background);
 		}
 		return false;
 	}
@@ -236,6 +240,20 @@ public:
 		return true;
 	}
 };
+
+class ExtractLayer0NoRealloc:public ImageProcess<> {
+public:
+	bool process(Img& img) const override
+	{
+		if(img._spectrum>1U)
+		{
+			img._spectrum=1U;
+			return true;
+		}
+		return false;
+	}
+};
+
 class ClusterClearGray:public ImageProcess<> {
 	unsigned int min,max;
 	Grayscale background;
@@ -549,7 +567,7 @@ public:
 			float padding_weight;
 		} splice_args;
 		struct {
-			perc_or_val min_height,min_width;
+			perc_or_val min_height,min_width,min_vert_space;
 			float horiz_weight;
 		} cut_args;
 		std::regex rgx;
@@ -1470,7 +1488,7 @@ char const* const RescaleGrayMaker::errors[3]={"Invalid argument for min value",
 
 class CutMaker:public CommandMaker {
 	CutMaker()
-		:CommandMaker(0,3,
+		:CommandMaker(0,4,
 			"Cuts the image into separate systems\n"
 			"Min dimensions are the heuristics used to determine whether\n"
 			"a group of pixels is actually a system\n"
@@ -1491,7 +1509,7 @@ protected:
 		{
 			return "Cut can not be done along with other commands";
 		}
-		perc_or_val min_width(55.0f),min_height(8.0f);
+		perc_or_val min_width(55.0f),min_height(8.0f),min_vert_space(0U);
 		float hw=20;
 		if(n>0)
 		{
@@ -1508,6 +1526,10 @@ protected:
 						{
 							return "Invalid horiz_weight input";
 						}
+						if(n>3)
+						{
+							make_perc_val(min_vert_space,min_vert_space,begin[3],,);
+						}
 					}
 			}
 		}
@@ -1516,6 +1538,7 @@ protected:
 		del.cut_args.min_width=min_width;
 		del.cut_args.min_height=min_height;
 		del.cut_args.horiz_weight=hw;
+		del.cut_args.min_vert_space=min_vert_space;
 		return nullptr;
 	}
 };
@@ -2081,6 +2104,78 @@ FillRectangleGrayMaker const FillRectangleGrayMaker::singleton;
 char const* const FillRectangleGrayMaker::invalids[4]={minv(left),minv(top),minv(right),minv(bottom)};
 #undef minv
 
+class CoverTransparencyMaker:public SingleCommandMaker {
+	CoverTransparencyMaker():SingleCommandMaker(0,3,
+		"Pixels are mixed with the specified background color according to their transparency",
+		"Cover Transparency")
+	{}
+	static CoverTransparencyMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		unsigned char r=255,g=255,b=255;
+		if(n>0)
+		{
+			if(parse_str(r,begin[0].c_str())) return "Invalid r input";
+			if(n>1)
+			{
+				if(begin[1][0]=='r')
+				{
+					g=r;
+				}
+				else
+				{
+					if(parse_str(g,begin[1].c_str())) return "Invalid g input";
+				}
+				if(n>2)
+				{
+					if(begin[2][0]=='r')
+					{
+						b=r;
+					}
+					else if(begin[2][0]=='g')
+					{
+						b=g;
+					}
+					else
+					{
+						if(parse_str(b,begin[2].c_str())) return "Invalid b input";
+					}
+				}
+			}
+		}
+		del.pl.add_process<FillTransparency>(r,g,b);
+		return nullptr;
+	}
+};
+CoverTransparencyMaker const CoverTransparencyMaker::singleton;
+
+class ExtractLayerMaker:public SingleCommandMaker {
+	ExtractLayerMaker():SingleCommandMaker(0,0,
+		"Takes only the first layer from the image\n"
+		"Will probably add more options",
+		"Extract First Layer")
+	{}
+	static ExtractLayerMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		del.pl.add_process<ExtractLayer0NoRealloc>();
+		return nullptr;
+	}
+};
+ExtractLayerMaker const ExtractLayerMaker::singleton;
+
 class RotateMaker:public SingleCommandMaker {
 	RotateMaker():SingleCommandMaker(1,1,
 		"Rotates the image by the specified amount in degrees\n"
@@ -2216,6 +2311,10 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-bsel",&BoundSelMaker::get());
 
 	commands.emplace("-cp",&ClusterPaddingMaker::get());
+
+	commands.emplace("-ct",&CoverTransparencyMaker::get());
+
+	commands.emplace("-exl",&ExtractLayerMaker::get());
 	return commands;
 }
 
@@ -2427,9 +2526,11 @@ void info_output()
 		"    Remove Border (DANGER):   -rb tolerance=0.5\n"
 		"    Rescale:                  -rs factor interpolation_mode=auto\n"
 		"    Fill Rectangle Gray:      -fr left top right bottom color=255 origin=tl\n"
+		"    Cover Transparency        -ct r=255 g=r b=r\n"
+		"    Extract First Layer       -exl\n"
 		"    Rotate:                   -rot degrees\n"
 		"  Multi Page Operations:\n"
-		"    Cut:                      -cut min_width=66% min_height=8% horiz_weight=20\n"
+		"    Cut:                      -cut min_width=66% min_height=8% horiz_weight=20 min_vert_space=0\n"
 		"    Splice:                   -spl horiz_pad=3% opt_pad=5% min_vert_pad=1.2% opt_height=55% excs_weight=10 pad_weight=1\n"
 		"  Options:\n"
 		"    Output:                   -o format move=false\n"
@@ -2459,6 +2560,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 		int verbosity;
 		perc_or_val min_width;
 		perc_or_val min_height;
+		perc_or_val min_vert_space;
 		float horiz_weight;
 	public:
 		CutProcess(std::string const* input,unsigned int index,CommandMaker::delivery const& del):
@@ -2466,6 +2568,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 			index(index),verbosity(del.pl.get_verbosity()),
 			min_width(del.cut_args.min_width),
 			min_height(del.cut_args.min_height),
+			min_vert_space(del.cut_args.min_vert_space),
 			horiz_weight(del.cut_args.horiz_weight)
 		{}
 		void execute() override
@@ -2506,6 +2609,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 				};
 				cut_args.min_height=fix_perc(in._height,min_height);
 				cut_args.min_width=fix_perc(in._width,min_width);
+				cut_args.minimum_vertical_space=fix_perc(in._height,min_vert_space);
 				auto num_pages=ScoreProcessor::cut_page(in,out.c_str(),cut_args);
 				if(verbosity>ProcessList<>::verbosity::errors_only)
 				{

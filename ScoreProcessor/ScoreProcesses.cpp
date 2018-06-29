@@ -634,7 +634,7 @@ namespace ScoreProcessor {
 			return a>b;
 		});
 	}
-	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage,float const vec);
+	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage,float const vec,unsigned int min_vertical_space);
 
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage,unsigned int const min_padding)
 	{
@@ -855,7 +855,7 @@ namespace ScoreProcessor {
 				unsigned int top,bottom,right;
 			};
 			float const VEC=100.0f;
-			CImg<float> map=create_vertical_energy(image,VEC);
+			CImg<float> map=create_vertical_energy(image,VEC,ch.minimum_vertical_space);
 			if(ch.horizontal_energy_weight!=0)
 				add_horizontal_energy(image,map,ch.horizontal_energy_weight);
 			min_energy_to_right(map);
@@ -2263,7 +2263,7 @@ namespace ScoreProcessor {
 		}
 		*/
 	}
-	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref,float const vec)
+	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref,float const vec,unsigned int min_vert_space)
 	{
 		CImg<float> map(ref._width,ref._height);
 		map.fill(INFINITY);
@@ -2276,20 +2276,23 @@ namespace ScoreProcessor {
 			{
 				return node_found=ref(x,y)>220;
 			};
-			auto place_values=[&]()
+			auto place_values=[&,min_vert_space]()
 			{
-				unsigned int mid=(node_start+y)/2;
-				float val_div=2.0f;
-				unsigned int node_y;
-				for(node_y=node_start;node_y<mid;++node_y)
+				if(y-node_start>min_vert_space)
 				{
-					++val_div;
-					map(x,node_y)=vec/(val_div*val_div*val_div);
-				}
-				for(;node_y<y;++node_y)
-				{
-					--val_div;
-					map(x,node_y)=vec/(val_div*val_div*val_div);
+					unsigned int mid=(node_start+y)/2;
+					float val_div=2.0f;
+					unsigned int node_y;
+					for(node_y=node_start;node_y<mid;++node_y)
+					{
+						++val_div;
+						map(x,node_y)=vec/(val_div*val_div*val_div);
+					}
+					for(;node_y<y;++node_y)
+					{
+						--val_div;
+						map(x,node_y)=vec/(val_div*val_div*val_div);
+					}
 				}
 			};
 			if(assign_node_found())
@@ -2323,7 +2326,7 @@ namespace ScoreProcessor {
 	float const COMPRESS_HORIZONTAL_ENERGY_CONSTANT=1.0f;
 	CImg<float> create_compress_energy(CImg<unsigned char> const& ref)
 	{
-		auto map=create_vertical_energy(ref,100.0f);
+		auto map=create_vertical_energy(ref,100.0f,0);
 		for(auto y=0U;y<map._height;++y)
 		{
 			auto x=0U;

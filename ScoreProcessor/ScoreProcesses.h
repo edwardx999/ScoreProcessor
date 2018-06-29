@@ -391,6 +391,7 @@ namespace ScoreProcessor {
 		unsigned int min_width;
 		unsigned int min_height;
 		float horizontal_energy_weight;
+		unsigned int minimum_vertical_space;
 	};
 	/*
 		Cuts a specified score page into multiple smaller images
@@ -399,7 +400,7 @@ namespace ScoreProcessor {
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const ch={1000,80,20});
+	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const ch={1000,80,20,0});
 
 	/*
 		Finds the line that is the top of the score image

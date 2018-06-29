@@ -21,29 +21,70 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include <atomic>
 #include <utility>
+#include <type_traits>
 namespace exlib {
+
+	namespace {
+		template<typename... Args>
+		struct no_references;
+
+		template<>
+		struct no_references<> {
+			constexpr static bool const value=true;
+		};
+
+		template<typename T>
+		struct no_references<T> {
+			constexpr static bool const value=!std::is_reference<T>::value;
+		};
+
+		template<typename First,typename... Args>
+		struct no_references<First,Args...> {
+			constexpr static bool const value=no_references<First>::value&&no_references<Args...>::value;
+		};
+	}
 	/*
-	Overload void execute() to use this as a task in ThreadPool
+	Overload void execute(...) to use this as a task in ThreadPool
 	*/
-	class ThreadTask {
+	template<typename... Args>
+	class ThreadTaskA {
 	protected:
-		ThreadTask()=default;
+		ThreadTaskA()=default;
 	public:
-		virtual ~ThreadTask()=default;
-		virtual void execute()=0;
+		static_assert(no_references<Args...>::value,"References not allowed as execute arguments");
+		virtual ~ThreadTaskA()=default;
+		virtual void execute(Args...)=0;
 	};
 
-	class ThreadPool {
+	using ThreadTask=ThreadTaskA<>;
+	/*
+	Creates a ThreadTask that calls whatever object of type Task.
+	*/
+	template<typename Task>
+	class AutoTask:public ThreadTaskA<> {
+		Task task;
+	public:
+		AutoTask(Task task):task(task)
+		{}
+		void execute() override
+		{
+			task();
+		}
+	};
+
+	template<typename... Args>
+	class ThreadPoolA {
 	private:
+		typedef ThreadTaskA<Args...> Task;
 		std::vector<std::thread> workers;
-		std::queue<std::unique_ptr<ThreadTask>> tasks;
+		std::queue<std::unique_ptr<Task>> tasks;
 		std::mutex locker;
 		std::atomic<bool> running;
-		inline void task_loop()
+		inline void task_loop(Args... args)
 		{
 			while(running)
 			{
-				std::unique_ptr<ThreadTask> task;
+				std::unique_ptr<Task> task;
 				bool has_task;
 				{
 					std::lock_guard<std::mutex> guard(locker);
@@ -55,7 +96,7 @@ namespace exlib {
 				}
 				if(has_task)
 				{
-					task->execute();
+					task->execute(args...);
 				}
 				else
 				{
@@ -64,37 +105,40 @@ namespace exlib {
 			}
 		}
 	public:
-		ThreadPool(ThreadPool const&)=delete;
-		ThreadPool(ThreadPool&&)=delete;
+		static_assert(no_references<Args...>::value,"References not allowed as start arguments");
+		ThreadPoolA(ThreadPoolA const&)=delete;
+		ThreadPoolA(ThreadPoolA&&)=delete;
 
 		/*
 		Creates a thread pool with a certain number of threads
 		*/
-		inline explicit ThreadPool(size_t num_threads):workers(num_threads)
+		inline explicit ThreadPoolA(size_t num_threads):workers(num_threads)
 		{}
 		/*
 		Creates a thread pool with number of threads equal to the hardware concurrency
 		*/
-		inline ThreadPool():ThreadPool(std::thread::hardware_concurrency())
+		inline ThreadPoolA():ThreadPoolA(std::thread::hardware_concurrency())
 		{}
 
 		/*
 		Adds a task of type Task constructed with args unsynchronized with running threads
 		*/
-		template<typename Task,typename... Args>
-		void add_task(Args&&... args)
+		template<typename ConsTask,typename... ConsArgs>
+		void add_task(ConsArgs&&... args)
 		{
-			tasks.push(std::make_unique<Task>(std::forward<Args>(args)...));
+			tasks.push(std::make_unique<ConsTask>(std::forward<ConsArgs>(args)...));
 		}
+
 		/*
 		Adds a task of type Task constructed with args synchronized with running threads
 		*/
-		template<typename Task,typename... Args>
-		void add_task_sync(Args&&... args)
+		template<typename ConsTask,typename... ConsArgs>
+		void add_task_sync(ConsArgs&&... args)
 		{
 			std::lock_guard<std::mutex> guard(locker);
-			tasks.push(std::make_unique<Task>(std::forward<Args>(args)...));
+			add_task<ConsTask>(std::forward<ConsArgs>(args)...);
 		}
+
 		/*
 		Whether the thread pool is running
 		*/
@@ -106,18 +150,17 @@ namespace exlib {
 		Starts all the threads
 		Calling start on a pool that has not been stopped will result in undefined behavior
 		*/
-		void start()
+		void start(Args... args)
 		{
 			running=true;
 			for(size_t i=0;i<workers.size();++i)
 			{
-				workers[i]=std::thread(&ThreadPool::task_loop,this);
+				workers[i]=std::thread(&ThreadPoolA::task_loop,this,args...);
 			}
 		}
 
 		/*
 		Waits for all tasks to be finished and then stops the thread pool
-		Calling wait on a pool that is not started will result in undefined behavior
 		*/
 		inline void wait()
 		{
@@ -130,7 +173,6 @@ namespace exlib {
 
 		/*
 		Stops as soon as all threads are done with their current tasks
-		Calling stop on a pool that is not started will result in undefined behavior
 		*/
 		inline void stop()
 		{
@@ -146,11 +188,13 @@ namespace exlib {
 		/*
 		Destroys the thread pool after waiting for its threads
 		*/
-		inline ~ThreadPool()
+		inline ~ThreadPoolA()
 		{
 			wait();
 		}
 	};
+
+	using ThreadPool=ThreadPoolA<>;
 
 	template<typename Output>
 	class Logger {

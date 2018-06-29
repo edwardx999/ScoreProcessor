@@ -43,6 +43,7 @@ namespace cimg_library {
 				color[s]=*(pix+s*size);
 			}
 			auto new_color=func(color);
+			static_assert(new_color.size()>=NumLayers,"Mapping function outputs too few layers");
 			for(unsigned int s=0;s<NumLayers;++s)
 			{
 				*(pix+s*size)=new_color[s];
@@ -68,6 +69,7 @@ namespace cimg_library {
 			if(pred(color))
 			{
 				auto new_color=func(color);
+				static_assert(new_color.size()>=NumLayers,"Mapping function outputs too few layers");
 				for(unsigned int s=0;s<NumLayers;++s)
 				{
 					*(pix+s*size)=new_color[s];
@@ -94,6 +96,7 @@ namespace cimg_library {
 				input[s]=*(ipix+s*size);
 			}
 			auto output=func(input);
+			static_assert(output.size()>=OutputLayers,"Mapping function outputs too few layers");
 			auto const opix=odata+i;
 			for(auto s=0U;s<OutputLayers;++s)
 			{
@@ -126,6 +129,7 @@ namespace cimg_library {
 					input[s]=*(ipix+s*isize);
 				}
 				auto output=func(input);
+				static_assert(output.size()>=OutputLayers,"Mapping function outputs too few layers");
 				for(auto s=0U;s<OutputLayers;++s)
 				{
 					*(opix+s*osize)=output[s];
@@ -153,6 +157,7 @@ namespace cimg_library {
 					color[s]=*(pix+s*size);
 				}
 				auto new_color=func(color);
+				static_assert(new_color.size()>=NumLayers,"Mapping function outputs too few layers");
 				for(unsigned int s=0;s<NumLayers;++s)
 				{
 					*(pix+s*size)=color[s];
@@ -439,8 +444,9 @@ namespace cimg_library {
 		}
 		img._spectrum=1;
 	}
+	bool fill_transparency(::cil::CImg<unsigned char>& img,ImageUtils::ColorRGB back);
 
-	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer);
+	bool remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer);
 
 	template<typename CountType>
 	class HoughArray:public CImg<CountType> {

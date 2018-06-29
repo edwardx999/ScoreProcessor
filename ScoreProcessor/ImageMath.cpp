@@ -261,20 +261,46 @@ namespace cimg_library {
 		});
 	}
 
-	void remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer)
+	bool remove_transparency(::cimg_library::CImg<unsigned char>& img,unsigned char threshold,ImageUtils::ColorRGB replacer)
 	{
-		for(unsigned int x=0;x<img._width;++x)
+		bool edited=false;
+		map_if<4>(img,[color=std::array<unsigned char,4>({replacer.r,replacer.g,replacer.b,255})](auto pixel){
+			return color;
+		},[&,threshold](auto color)
 		{
-			for(unsigned int y=0;y<img._height;++y)
+			if(color[3]<threshold)
 			{
-				if(img(x,y,3)<threshold)
-				{
-					img(x,y,0)=replacer.r;
-					img(x,y,1)=replacer.g;
-					img(x,y,2)=replacer.b;
-				}
+				edited=true;
+				return true;
 			}
-		}
+			return false;
+		});
+		return edited;
+	}
+
+	bool fill_transparency(::cimg_library::CImg<unsigned char>& img,ImageUtils::ColorRGB replacer)
+	{
+		bool edited=false;
+		map_if<4>(img,[color=std::array<unsigned char,3>({replacer.r,replacer.g,replacer.b}),&edited](auto pixel){
+			float opac=pixel[3]/255.0f;
+			float trans=1.0f-opac;
+			decltype(pixel) new_color;
+			for(size_t i=0;i<3;++i)
+			{
+				new_color[i]=pixel[i]*opac+color[i]*trans;
+			}
+			new_color[3]=255;
+			return new_color;
+		},[&](auto pixel)
+		{
+			if(pixel[3]==255)
+			{
+				return false;
+			}
+			edited=true;
+			return true;
+		});
+		return edited;
 	}
 
 }
