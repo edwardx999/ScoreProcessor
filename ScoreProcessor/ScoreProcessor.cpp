@@ -549,9 +549,9 @@ private:
 	unsigned int num_digs;
 	size_t buffer_length;
 	std::unique_ptr<char[]> message_buffer;
-	static constexpr size_t const fl=9;
+	static constexpr size_t const fl=9/*=strlen("Finished ")*/;
 public:
-	AmountLog(size_t amount):amount(amount),count(0),num_digs(exlib::num_digits(amount)),buffer_length(12+2*num_digs),message_buffer(new char[buffer_length])
+	AmountLog(size_t amount):amount(amount),count(0),num_digs(exlib::num_digits(amount)),buffer_length(fl+3+2*num_digs),message_buffer(new char[buffer_length])
 	{
 		memcpy(message_buffer.get(),"Finished ",fl);
 		for(auto it=message_buffer.get()+fl;it<message_buffer.get()+fl+num_digs-1;++it)
@@ -566,7 +566,7 @@ public:
 	}
 	void log(char const* msg,size_t) override
 	{
-		char buffer[50];
+		char buffer[55];
 		if(msg[0]=='F')
 		{
 			auto c=++count;
@@ -1942,7 +1942,7 @@ RescaleMaker const RescaleMaker::singleton;
 
 class LogMaker:public CommandMaker {
 	LogMaker()
-		:CommandMaker(1,1,"Changes verbosity of output: Silent=0=s, Errors-only=1=e (default), Count=2=c, Loud=3=l","Verbosity")
+		:CommandMaker(1,1,"Changes verbosity of output: Silent=0=s, Errors-only=1=e, Count=2=c (default), Loud=3=l","Verbosity")
 	{}
 	static LogMaker const singleton;
 public:
@@ -2521,6 +2521,11 @@ int main(int argc,char** argv)
 	switch(del.lt)
 	{
 		case del.unassigned_log:
+		case del.count:
+			al.emplace(files.size());
+			del.pl.set_log(&al.value());
+			del.pl.set_verbosity(del.pl.loud);
+			break;
 		case del.errors_only:
 			del.pl.set_log(&CoutLog::get());
 			del.pl.set_verbosity(del.pl.errors_only);
@@ -2528,11 +2533,6 @@ int main(int argc,char** argv)
 		case del.quiet:
 			del.pl.set_log(&CoutLog::get());
 			del.pl.set_verbosity(del.pl.silent);
-			break;
-		case del.count:
-			al.emplace(files.size());
-			del.pl.set_log(&al.value());
-			del.pl.set_verbosity(del.pl.loud);
 			break;
 		case del.full_message:
 			del.pl.set_log(&CoutLog::get());
