@@ -542,6 +542,58 @@ public:
 };
 CoutLog CoutLog::singleton;
 
+class AmountLog:public Log {
+private:
+	std::atomic<size_t> count;
+	size_t amount;
+	unsigned int num_digs;
+	size_t buffer_length;
+	std::unique_ptr<char[]> message_buffer;
+	static constexpr size_t const fl=9;
+public:
+	AmountLog(size_t amount):amount(amount),count(0),num_digs(exlib::num_digits(amount)),buffer_length(12+2*num_digs),message_buffer(new char[buffer_length])
+	{
+		memcpy(message_buffer.get(),"Finished ",fl);
+		for(auto it=message_buffer.get()+fl;it<message_buffer.get()+fl+num_digs-1;++it)
+		{
+			*it=' ';
+		}
+		message_buffer[fl-1+num_digs]='0';
+		message_buffer[fl+num_digs]='/';
+		std::to_chars(message_buffer.get()+fl+num_digs+1,message_buffer.get()+fl+2*num_digs+1,amount);
+		message_buffer[fl+1+2*num_digs]='\r';
+		message_buffer[fl+2+2*num_digs]='\0';
+	}
+	void log(char const* msg,size_t) override
+	{
+		char buffer[50];
+		if(msg[0]=='F')
+		{
+			auto c=++count;
+			{
+				if(c==count)
+				{
+					memcpy(buffer,message_buffer.get(),buffer_length);
+					auto nd=exlib::num_digits(c);
+					std::to_chars(buffer+fl+num_digs-nd,buffer+fl+num_digs,count);
+				}
+				else
+				{
+					return;
+				}
+				if(c==count)
+				{
+					std::cout<<buffer;
+				}
+			}
+		}
+	}
+	void log_error(char const* msg,size_t) override
+	{
+		std::cout<<msg;
+	}
+};
+
 class CommandMaker {
 public:
 	typedef std::vector<std::string>::iterator iter;
@@ -558,6 +610,14 @@ public:
 			do_splice
 		};
 		do_state flag;
+		enum log_type {
+			unassigned_log,
+			quiet,
+			errors_only,
+			count,
+			full_message
+		};
+		log_type lt;
 		struct {
 			perc_or_val horiz_padding;
 			perc_or_val optimal_padding;
@@ -582,7 +642,7 @@ public:
 		regex_state rgxst;
 		unsigned int num_threads;
 		bool list_files;
-		delivery():starting_index(1),flag(do_absolutely_nothing),num_threads(0),rgxst(unassigned),do_move(false),list_files(false)
+		delivery():starting_index(1),flag(do_absolutely_nothing),num_threads(0),rgxst(unassigned),do_move(false),list_files(false),lt(unassigned_log)
 		{}
 	};
 private:
@@ -1882,7 +1942,7 @@ RescaleMaker const RescaleMaker::singleton;
 
 class LogMaker:public CommandMaker {
 	LogMaker()
-		:CommandMaker(1,1,"Changes verbosity of output: Silent=0, Errors-only=1 (default), Loud=2","Verbosity")
+		:CommandMaker(1,1,"Changes verbosity of output: Silent=0=s, Errors-only=1=e (default), Count=2=c, Loud=3=l","Verbosity")
 	{}
 	static LogMaker const singleton;
 public:
@@ -1893,26 +1953,44 @@ public:
 protected:
 	char const* parse_command(iter begin,size_t,delivery& del) const override
 	{
-		if(del.pl.get_log())
+		char const* const invl="Invalid level";
+		if(del.lt)
 		{
 			return "Verbosity level already given";
 		}
-		try
+#define read_second if(begin[0][1]!='\0') return invl
+		switch(begin[0][0])
 		{
-			int lvl=std::stoi(*begin);
-			if(lvl<0||lvl>2)
-			{
-				return "Invalid level";
-			}
-			del.pl.set_log(&CoutLog::get());
-			del.pl.set_verbosity(decltype(del.pl)::verbosity(lvl));
-			return nullptr;
+			case '0':
+				read_second;
+			case 'S':
+			case 's':
+				del.lt=del.quiet;
+				break;
+			case '1':
+				read_second;
+			case 'e':
+			case 'E':
+				del.lt=del.errors_only;
+				break;
+			case '2':
+				read_second;
+			case 'c':
+			case 'C':
+				del.lt=del.count;
+				break;
+			case '3':
+				read_second;
+			case 'l':
+			case 'L':
+				del.lt=del.full_message;
+				break;
+			default:
+				return invl;
 		}
-		catch(std::exception const&)
-		{
-			return "Invalid input for level";
-		}
+		return nullptr;
 	}
+#undef read_second
 };
 LogMaker const LogMaker::singleton;
 
@@ -2439,32 +2517,27 @@ int main(int argc,char** argv)
 	del.num_threads=std::min(
 		del.num_threads,
 		unsigned int(std::min(size_t(std::numeric_limits<decltype(del.num_threads)>::max()),files.size())));
-
-	auto num_threads=[def=del.num_threads](size_t num_files)
+	std::optional<AmountLog> al;
+	switch(del.lt)
 	{
-		unsigned int cand;
-		if(def)
-		{
-			cand=def;
-		}
-		else
-		{
-			auto nt=std::thread::hardware_concurrency();
-			if(nt)
-			{
-				cand=nt;
-			}
-			else
-			{
-				cand=2;
-			}
-		}
-		if(num_files>std::numeric_limits<unsigned int>::max())
-		{
-			num_files=std::numeric_limits<unsigned int>::max();
-		}
-		return std::min(cand,static_cast<unsigned int>(num_files));
-	};
+		case del.unassigned_log:
+		case del.errors_only:
+			del.pl.set_log(&CoutLog::get());
+			del.pl.set_verbosity(del.pl.errors_only);
+			break;
+		case del.quiet:
+			del.pl.set_log(&CoutLog::get());
+			del.pl.set_verbosity(del.pl.silent);
+			break;
+		case del.count:
+			al.emplace(files.size());
+			del.pl.set_log(&al.value());
+			del.pl.set_verbosity(del.pl.loud);
+			break;
+		case del.full_message:
+			del.pl.set_log(&CoutLog::get());
+			del.pl.set_verbosity(del.pl.loud);
+	}
 	switch(del.flag)
 	{
 		case del.do_absolutely_nothing:
@@ -2489,7 +2562,7 @@ int main(int argc,char** argv)
 	stop();
 #endif
 	return 0;
-	}
+}
 
 void info_output()
 {
@@ -2625,6 +2698,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 			{
 				if(verbosity>ProcessList<>::verbosity::silent)
 				{
+
 					std::cout<<std::string(ex.what()).append(1,'\n');
 				}
 			}
@@ -2838,11 +2912,6 @@ CommandMaker::delivery parse_commands(CommandMaker::iter arg_start,CommandMaker:
 	if(del.sr.empty())
 	{
 		del.sr.assign("%w");
-	}
-	if(!del.pl.get_log())
-	{
-		del.pl.set_log(&CoutLog::get());
-		del.pl.set_verbosity(decltype(del.pl)::errors_only);
 	}
 	return del;
 }

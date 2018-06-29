@@ -1440,7 +1440,7 @@ namespace ScoreProcessor {
 		Cluster* top_cluster;
 		for(auto const& cluster:clusters)
 		{
-			auto size=cluster->bounding_box().area();
+			auto size=cluster->size();
 			if(size>top_size)
 			{
 				top_size=size;
