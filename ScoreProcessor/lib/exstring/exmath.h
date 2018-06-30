@@ -5,11 +5,9 @@
 #include <functional>
 #include <algorithm>
 namespace exlib {
-	template<typename T>
-	unsigned int num_digits(T n,T base=10);
 
 	template<typename T>
-	unsigned int num_digits(T num,T base)
+	constexpr unsigned int num_digits(T num,T base=10)
 	{
 		static_assert(std::is_integral<typename T>::value,"Requires integral type");
 		unsigned int num_digits=1;

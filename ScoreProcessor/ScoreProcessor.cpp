@@ -550,9 +550,10 @@ private:
 	unsigned int num_digs;
 	size_t buffer_length;
 	std::unique_ptr<char[]> message_buffer;
+	bool begun;//atomicity not needed
 	static constexpr size_t const fl=9/*=strlen("Finished ")*/;
 public:
-	AmountLog(size_t amount):amount(amount),count(0),num_digs(exlib::num_digits(amount)),buffer_length(fl+3+2*num_digs),message_buffer(new char[buffer_length])
+	AmountLog(size_t amount):amount(amount),count(0),num_digs(exlib::num_digits(amount)),buffer_length(fl+3+2*num_digs),message_buffer(new char[buffer_length]),begun(false)
 	{
 		memcpy(message_buffer.get(),"Finished ",fl);
 		for(auto it=message_buffer.get()+fl;it<message_buffer.get()+fl+num_digs-1;++it)
@@ -567,24 +568,41 @@ public:
 	}
 	void log(char const* msg,size_t) override
 	{
-		char buffer[55];
-		if(msg[0]=='F')
+		if(msg[0]=='S')
 		{
-			auto c=++count;
+			if(!begun)
 			{
-				if(c==count)
+				begun=true;
+				std::cout<<message_buffer.get();
+			}
+		}
+		else
+		{
+			char buffer[55];
+			//if(msg[0]=='F')
+			{
+				auto c=++count;
 				{
-					memcpy(buffer,message_buffer.get(),buffer_length);
-					auto nd=exlib::num_digits(c);
-					std::to_chars(buffer+fl+num_digs-nd,buffer+fl+num_digs,count);
-				}
-				else
-				{
-					return;
-				}
-				if(c==count)
-				{
-					std::cout<<buffer;
+					if(c==count)
+					{
+						memcpy(buffer,message_buffer.get(),buffer_length);
+						char* it=buffer+fl+num_digs-1;
+						auto value=c;
+						do
+						{
+							*it=value%10+'0';
+							--it;
+							value/=10;
+						} while(value);
+					}
+					else
+					{
+						return;
+					}
+					if(c==count)
+					{
+						std::cout<<buffer;
+					}
 				}
 			}
 		}
