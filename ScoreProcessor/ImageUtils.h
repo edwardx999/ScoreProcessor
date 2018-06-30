@@ -33,6 +33,26 @@ namespace ImageUtils {
 		{}
 		inline perc_or_val()
 		{}
+		unsigned int operator()(unsigned int base_val) const
+		{
+			if(is_perc)
+			{
+				return std::round(perc/100.0*base_val);
+			}
+			return val;
+		}
+		unsigned int value(unsigned int base_val) const
+		{
+			return operator()(base_val);
+		}
+		void fix_value(unsigned int base_val)
+		{
+			if(is_perc)
+			{
+				is_perc=false;
+				val=std::round(perc/100.0*base_val);
+			}
+		}
 	};
 	/*
 		A cartesian vertical line.

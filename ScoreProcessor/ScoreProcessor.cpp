@@ -45,8 +45,7 @@ using namespace ImageUtils;
 	{\
 		##pv##.is_perc=true;\
 		##str##.back()='\0';\
-		res=parse_str(##pv##.perc,##str##.c_str());\
-		if(res)\
+		if(parse_str(##pv##.perc,##str##.c_str()))\
 		{\
 			return "Invalid " #valname " input";\
 		}\
@@ -56,8 +55,7 @@ using namespace ImageUtils;
 	else\
 	{\
 		##pv##.is_perc=false;\
-		int res=parse_str(##pv##.val,##str##.c_str());\
-		if(res)\
+		if(parse_str(##pv##.val,##str##.c_str()))\
 		{\
 			return "Invalid" #valname " input";\
 		}\
@@ -166,23 +164,26 @@ public:
 };
 class PadHoriz:public ImageProcess<> {
 	unsigned int left,right;
-
+	perc_or_val tol;
+	unsigned char background;
 public:
-	PadHoriz(unsigned int const left,unsigned int const right):left(left),right(right)
+	PadHoriz(unsigned int const left,unsigned int const right,perc_or_val tol,unsigned char bg):left(left),right(right),tol(tol),background(bg)
 	{}
 	bool process(Img& img) const
 	{
-		return horiz_padding(img,left,right);
+		return horiz_padding(img,left,right,tol(img._height),background);
 	}
 };
 class PadVert:public ImageProcess<> {
 	unsigned int top,bottom;
+	perc_or_val tol;
+	unsigned char background;
 public:
-	PadVert(unsigned int const top,unsigned int const bottom):top(top),bottom(bottom)
+	PadVert(unsigned int const top,unsigned int const bottom,perc_or_val tol,unsigned char bg):top(top),bottom(bottom),tol(tol),background(bg)
 	{}
 	bool process(Img& img) const
 	{
-		return vert_padding(img,top,bottom);
+		return vert_padding(img,top,bottom,tol(img._width),background);
 	}
 };
 class PadAuto:public ImageProcess<> {
@@ -1174,7 +1175,7 @@ ClusterClearAltMaker const ClusterClearAltMaker::singleton;
 
 class HorizontalPaddingMaker:public SingleCommandMaker {
 	HorizontalPaddingMaker():
-		SingleCommandMaker(1,2,"Pads the left and right sides of the image with given number of pixels","Horizontal Padding")
+		SingleCommandMaker(1,4,"Pads the left and right sides of the image with given number of pixels","Horizontal Padding")
 	{}
 	static HorizontalPaddingMaker const singleton;
 public:
@@ -1186,35 +1187,40 @@ protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 #define padding_maker(type,first,second,match)\
-			int amount;\
-			int res=parse_str(amount,begin[0].c_str());\
-			if(res)\
+			int amount;int a;perc_or_val tol(0.5f);unsigned char bg(128);\
+			if(parse_str(amount,begin[0].c_str()))\
 			{\
 				return "Invalid " #first " input";\
 			}\
 			if(amount<-1) return "Input for " #first " must be non-negative";\
 			if(n>1)\
 			{\
-				int a;\
 				if(begin[1][0]==##match##)\
 				{\
 					a=amount;\
 				}\
 				else\
 				{\
-					res=parse_str(a,begin[1].c_str());\
-					if(res)\
+					if(parse_str(a,begin[1].c_str()))\
 					{\
 						return "Invalid " #second " input";\
 					}\
 					if(a<-1) return "Input for " #second " must be non-negative";\
 				}\
-				del.pl.add_process<##type##>(amount,a);\
+				if(n>2)\
+				{\
+					make_perc_val(tol,tolerance,begin[2],,);\
+					if(n>3)\
+					{\
+						if(parse_str(bg,begin[3].c_str())) return "Invalid tolerance input";\
+					}\
+				}\
 			}\
 			else\
 			{\
-				del.pl.add_process<##type##>(unsigned int(amount),unsigned int(amount));\
+				a=amount;\
 			}\
+			del.pl.add_process<##type##>(unsigned int(amount),unsigned int(a),tol,bg);\
 			return nullptr;
 		padding_maker(PadHoriz,left,right,'l');
 	}
@@ -1223,7 +1229,7 @@ HorizontalPaddingMaker const HorizontalPaddingMaker::singleton;
 
 class VerticalPaddingMaker:public SingleCommandMaker {
 	VerticalPaddingMaker()
-		:SingleCommandMaker(1,2,"Pads the top and bottom of the image with given number of pixels","Vertical Padding")
+		:SingleCommandMaker(1,4,"Pads the top and bottom of the image with given number of pixels","Vertical Padding")
 	{}
 	static VerticalPaddingMaker const singleton;
 public:
@@ -2465,7 +2471,7 @@ bool could_be_command(std::string const& str)
 		return str[1]>='a'&&str[1]<='z';
 	}
 	return false;
-	}
+}
 bool is_folder(std::string const& str)
 {
 	return str.back()=='\\'||str.back()=='/';
@@ -2599,8 +2605,8 @@ void info_output()
 		"    Filter RGB:               -frgb start_rgb=,, end_rgb=,, replacer_rgb=255,255,255\n"
 		"    Cluster Clear Gray:       -ccg max_size min_size=0 background_color=255 tolerance=0.042\n"
 		"    Cluster Clear Gray Alt:   -ccga required_color_range=0, bad_size_range=0, sel_range=0,200 bg_color=255\n"
-		"    Horizontal Padding:       -hp left right=left\n"
-		"    Vertical Padding:         -vp top bottom=top\n"
+		"    Horizontal Padding:       -hp left right=left tolerance=0.5% background_threshold=128\n"
+		"    Vertical Padding:         -vp top bottom=top tolerance=0.5% background_threshold=128\n"
 		"    Cluster Padding:          -cp left right top bottom background_threshold=254\n"
 		"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
 		"    Rescale Colors Grayscale: -rcg min mid max\n"
