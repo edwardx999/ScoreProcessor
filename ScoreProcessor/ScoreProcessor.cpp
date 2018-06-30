@@ -2063,7 +2063,17 @@ protected:
 		}
 		for(size_t i=0;i<n;i+=2)
 		{
-			del.selections.emplace_back(delivery::sel_boundary({begin[i],begin[i+1]}));
+			delivery::sel_boundary b={begin[i],begin[i+1]};
+			auto remove_start_dash=[](std::string_view& sv)
+			{
+				if(sv[0]=='-'&&sv[1]=='-')
+				{
+					sv.remove_prefix(1);
+				}
+			};
+			remove_start_dash(b.begin);
+			remove_start_dash(b.end);
+			del.selections.push_back(b);
 		}
 		return nullptr;
 	}
@@ -2455,7 +2465,7 @@ bool could_be_command(std::string const& str)
 		return str[1]>='a'&&str[1]<='z';
 	}
 	return false;
-}
+	}
 bool is_folder(std::string const& str)
 {
 	return str.back()=='\\'||str.back()=='/';
