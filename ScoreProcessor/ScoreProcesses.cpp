@@ -1842,10 +1842,10 @@ namespace ScoreProcessor {
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
 				}
-				else
+				/*else
 				{
 					break;
-				}
+				}*/
 				if(j==0)
 				{
 					break;
@@ -1959,10 +1959,7 @@ namespace ScoreProcessor {
 		images[0].image.load(filenames[0].c_str());
 		auto fix_perc=[basis=images[0].image._width](ImageUtils::perc_or_val& pv)
 		{
-			if(pv.is_perc)
-			{
-				pv.val=unsigned int(std::round(basis*pv.perc/100.0f));
-			}
+			pv.val=pv(basis);
 		};
 		fix_perc(optimal_height);
 		fix_perc(optimal_padding);
@@ -2132,10 +2129,10 @@ namespace ScoreProcessor {
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
 				}
-				else
+				/*else
 				{
 					break;
-				}
+				}*/
 				if(j==0)
 				{
 					break;
