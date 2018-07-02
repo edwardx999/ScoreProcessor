@@ -2659,26 +2659,16 @@ void do_single(CommandMaker::delivery const& del,std::vector<std::string> const&
 
 void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
-	class CutProcess:public exlib::ThreadTask {
+	class CutProcess:public exlib::ThreadTaskA<SaveRules const*,int,perc_or_val,perc_or_val,perc_or_val,float,Log*> {
 	private:
 		std::string const* input;
-		SaveRules const* output;
 		unsigned int index;
-		int verbosity;
-		perc_or_val min_width;
-		perc_or_val min_height;
-		perc_or_val min_vert_space;
-		float horiz_weight;
 	public:
 		CutProcess(std::string const* input,unsigned int index,CommandMaker::delivery const& del):
-			input(input),output(&del.sr),
-			index(index),verbosity(del.pl.get_verbosity()),
-			min_width(del.cut_args.min_width),
-			min_height(del.cut_args.min_height),
-			min_vert_space(del.cut_args.min_vert_space),
-			horiz_weight(del.cut_args.horiz_weight)
+			input(input),
+			index(index)
 		{}
-		void execute() override
+		void execute(SaveRules const* output,int verbosity,perc_or_val min_width,perc_or_val min_height,perc_or_val min_vert_space,float horiz_weight,Log* plog) override
 		{
 			try
 			{
@@ -2687,7 +2677,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 					std::string coutput("Starting ");
 					coutput.append(*input);
 					coutput.append(1,'\n');
-					std::cout<<coutput;
+					plog->log(coutput.c_str(),index);
 				}
 				auto out=output->make_filename(*input,index);
 				auto ext=exlib::find_extension(out.begin(),out.end());
@@ -2725,25 +2715,26 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 					coutput.append(" and created ");
 					coutput.append(std::to_string(num_pages));
 					coutput.append(num_pages==1?" page\n":" pages\n");
-					std::cout<<coutput;
+					plog->log(coutput.c_str(),index);
 				}
 			}
 			catch(std::exception const& ex)
 			{
 				if(verbosity>ProcessList<>::verbosity::silent)
 				{
-
-					std::cout<<std::string(ex.what()).append(1,'\n');
+					std::string err(ex.what());
+					err+='\n';
+					plog->log_error(err.c_str(),index);
 				}
 			}
 		}
 	};
-	exlib::ThreadPool tp(del.num_threads);
+	exlib::ThreadPoolA<SaveRules const*,int,perc_or_val,perc_or_val,perc_or_val,float,Log*> tp(del.num_threads);
 	for(size_t i=0;i<files.size();++i)
 	{
 		tp.add_task<CutProcess>(&files[i],i+del.starting_index,del);
 	}
-	tp.start();
+	tp.start(&del.sr,del.pl.get_verbosity(),del.cut_args.min_width,del.cut_args.min_height,del.cut_args.min_vert_space,del.cut_args.horiz_weight,del.pl.get_log());
 }
 
 void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const& files)
