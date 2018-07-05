@@ -431,6 +431,29 @@ namespace cimg_library {
 	*/
 	::cimg_library::CImg<unsigned char> get_grayscale_simple(::cimg_library::CImg<unsigned char> const& image);
 
+	inline void apply_gamma(::cil::CImg<unsigned char>& img,float gamma)
+	{
+		size_t const limit=size_t(img._width)*img._height*img._depth*img._spectrum;
+		auto const data=img._data;
+		for(size_t i=0;i<limit;++i)
+		{
+			data[i]=std::round(255.0f*std::pow(float(data[i])/255.0f,gamma));
+		}
+	}
+
+	inline ::cil::CImg<unsigned char> get_gamma(::cil::CImg<unsigned char> const& img,float gamma)
+	{
+		::cil::CImg<unsigned char> ret(img._width,img._height,img._depth,img._spectrum);
+		size_t const limit=size_t(img._width)*img._height*img._depth*img._spectrum;
+		auto const in=img._data;
+		auto const out=ret._data;
+		for(size_t i=0;i<limit;++i)
+		{
+			out[i]=std::round(255.0f*std::pow(float(in[i])/255.0f,gamma));
+		}
+		return ret;
+	}
+
 	inline void convert_grayscale_simple(cil::CImg<unsigned char>& img)
 	{
 		assert(img._spectrum>=3);

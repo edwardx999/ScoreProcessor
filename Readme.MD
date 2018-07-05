@@ -29,6 +29,7 @@ Available commands:
 &nbsp;&nbsp;&nbsp;&nbsp;Cover Transparency        -ct r=255 g=r b=r  
 &nbsp;&nbsp;&nbsp;&nbsp;Extract First Layer       -exl  
 &nbsp;&nbsp;&nbsp;&nbsp;Rotate:                   -rot degrees  
+&nbsp;&nbsp;&nbsp;&nbsp;Gamma Correction:         -gam gamma=2=1/previous  
 &nbsp;&nbsp;Multi Page Operations:  
 &nbsp;&nbsp;&nbsp;&nbsp;Cut:                      -cut min_width=66% min_height=8% horiz_weight=20 min_vert_space=0  
 &nbsp;&nbsp;&nbsp;&nbsp;Splice:                   -spl horiz_pad=3% opt_pad=5% min_vert_pad=1.2% opt_height=55% excs_weight=10 pad_weight=1  

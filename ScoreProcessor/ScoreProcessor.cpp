@@ -517,6 +517,18 @@ public:
 	}
 };
 
+class Gamma:public ImageProcess<> {
+	float gamma;
+public:
+	Gamma(float g):gamma(g)
+	{}
+	bool process(Img& img) const override
+	{
+		apply_gamma(img,gamma);
+		return true;
+	}
+};
+
 void stop()
 {
 	cout<<"Stopped\n";
@@ -2363,6 +2375,39 @@ protected:
 };
 RotateMaker const RotateMaker::singleton;
 
+class GammaMaker:public SingleCommandMaker {
+	mutable float previous;//I know this is bad practice bad I don't feel like removing const from everything
+	GammaMaker():SingleCommandMaker(0,1,
+		"Applies a gamma correction to the image\n",
+		"Gamma Correction"),previous(0.5)
+	{}
+	static GammaMaker const singleton;
+public:
+	static CommandMaker const& get()
+	{
+		return singleton;
+	}
+protected:
+	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
+	{
+		float gamma=1/previous;
+		if(n>0)
+		{
+			if(ScoreProcessor::parse_str(gamma,(*begin).c_str()))
+			{
+				return "Invalid argument for gamma input";
+			}
+		}
+		previous=gamma;
+		if(gamma!=1)
+		{
+			del.pl.add_process<Gamma>(gamma);
+		}
+		return nullptr;
+	}
+};
+GammaMaker const GammaMaker::singleton;
+
 class NumThreadMaker:public CommandMaker {
 private:
 	NumThreadMaker():
@@ -2467,6 +2512,8 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-ct",&CoverTransparencyMaker::get());
 
 	commands.emplace("-exl",&ExtractLayerMaker::get());
+
+	commands.emplace("-gam",&GammaMaker::get());
 	return commands;
 }
 
@@ -2642,7 +2689,7 @@ int main(int argc,char** argv)
 	stop();
 #endif
 	return 0;
-}
+	}
 
 void info_output()
 {
@@ -2682,6 +2729,7 @@ void info_output()
 		"    Cover Transparency        -ct r=255 g=r b=r\n"
 		"    Extract First Layer       -exl\n"
 		"    Rotate:                   -rot degrees\n"
+		"    Gamma Correction:         -gam gamma=2=1/previous\n"
 		"  Multi Page Operations:\n"
 		"    Cut:                      -cut min_width=66% min_height=8% horiz_weight=20 min_vert_space=0\n"
 		"    Splice:                   -spl horiz_pad=3% opt_pad=5% min_vert_pad=1.2% opt_height=55% excs_weight=10 pad_weight=1\n"
