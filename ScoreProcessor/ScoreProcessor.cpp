@@ -2545,7 +2545,7 @@ int main(int argc,char** argv)
 	{
 		info_output();
 		return 0;
-}
+	}
 	auto args=conv_strings(argc,argv);
 	auto const& arg1=args[1];
 	if(could_be_command(arg1))
@@ -2568,6 +2568,11 @@ int main(int argc,char** argv)
 	try
 	{
 		del=parse_commands(arg_find,args.end());
+		if(del.flag==del.do_absolutely_nothing&&!del.list_files)
+		{
+			std::cout<<"No commands given\n";
+			return 0;
+		}
 		files=get_files(args.begin()+1,arg_find);
 		filter_out_files(files,del);
 	}
