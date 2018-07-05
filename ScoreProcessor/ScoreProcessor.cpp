@@ -2064,8 +2064,7 @@ class RegexMaker:public CommandMaker {
 			1,2,
 			"Filters the folder of files using a regex pattern\n"
 			"Files that match are kept, unless inversion option is specified as true\n"
-			"Giving a string starting with 0 or f is false, otherwise is true\n"
-			"Does nothing if you give only a single file",
+			"Giving a string starting with 0 or f is false, otherwise is true",
 			"Filter Files")
 	{}
 	static RegexMaker const singleton;
@@ -2310,6 +2309,7 @@ CoverTransparencyMaker const CoverTransparencyMaker::singleton;
 class ExtractLayerMaker:public SingleCommandMaker {
 	ExtractLayerMaker():SingleCommandMaker(0,0,
 		"Takes only the first layer from the image\n"
+		"Basically a cheap convert to grayscale\n"
 		"Will probably add more options",
 		"Extract First Layer")
 	{}
