@@ -550,6 +550,7 @@ private:
 	unsigned int num_digs;
 	size_t buffer_length;
 	std::unique_ptr<char[]> message_buffer;
+	std::mutex mtx;
 	bool begun;//atomicity not needed
 	static constexpr size_t const fl=9/*=strlen("Finished ")*/;
 public:
@@ -566,6 +567,19 @@ public:
 		message_buffer[fl+1+2*num_digs]='\r';
 		message_buffer[fl+2+2*num_digs]='\0';
 	}
+private:
+	void insert_message(char* place,size_t num)
+	{
+		memcpy(place,message_buffer.get(),buffer_length);
+		char* it=place+fl+num_digs-1;
+		do
+		{
+			*it=num%10+'0';
+			--it;
+			num/=10;
+		} while(num);
+	}
+public:
 	void log(char const* msg,size_t) override
 	{
 		if(msg[0]=='S')
@@ -583,25 +597,14 @@ public:
 			{
 				auto c=++count;
 				{
-					if(c==count)
+					//if(c==count)
 					{
-						memcpy(buffer,message_buffer.get(),buffer_length);
-						char* it=buffer+fl+num_digs-1;
-						auto value=c;
-						do
+						insert_message(buffer,c);
+						std::lock_guard lock(mtx);
+						if(c==count)
 						{
-							*it=value%10+'0';
-							--it;
-							value/=10;
-						} while(value);
-					}
-					else
-					{
-						return;
-					}
-					if(c==count)
-					{
-						std::cout<<buffer;
+							std::cout<<buffer;
+						}
 					}
 				}
 			}
@@ -609,7 +612,16 @@ public:
 	}
 	void log_error(char const* msg,size_t) override
 	{
-		std::cout<<msg;
+		auto sl=strlen(msg);
+		std::unique_ptr<char[]> buffer(new char[sl+55]);
+		memcpy(buffer.get(),msg,sl);
+		size_t c=count;
+		insert_message(buffer.get()+sl,c);
+		std::lock_guard lock(mtx);
+		if(c==count)
+		{
+			std::cout<<buffer.get();
+		}
 	}
 };
 
@@ -2445,7 +2457,7 @@ std::vector<std::string> conv_strings(int argc,char** argv)
 std::pair<std::string,std::string> pretty_date()
 {
 	std::pair<std::string,std::string> ret;
-	char* const date=__DATE__;
+	char const* const date=__DATE__;
 	ret.first.assign(date);
 	if(ret.first[4]==' ')
 	{
@@ -2548,9 +2560,10 @@ int main(int argc,char** argv)
 			del.num_threads=2;
 		}
 	}
+	using ui=decltype(del.num_threads);
 	del.num_threads=std::min(
 		del.num_threads,
-		unsigned int(std::min(size_t(std::numeric_limits<decltype(del.num_threads)>::max()),files.size())));
+		ui((std::min(size_t(std::numeric_limits<ui>::max()),files.size()))));
 	std::optional<AmountLog> al;
 	switch(del.lt)
 	{
