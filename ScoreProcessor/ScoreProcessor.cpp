@@ -553,38 +553,46 @@ private:
 	std::mutex mtx;
 	bool begun;//atomicity not needed, double writing the first thing is ok
 	static constexpr size_t const START_STRLEN=9/*=strlen("Finished ")*/;
-	static constexpr size_t const BUFFER_SIZE=START_STRLEN+3+2*exlib::num_digits(size_t(-1));//enough to fit message and digits of max value of size_t
+	static constexpr size_t const EXTRA_CHARS=2;//slash and carriage return
+	static constexpr size_t const BUFFER_SIZE=START_STRLEN+EXTRA_CHARS+2*exlib::num_digits(size_t(-1));//enough to fit message and digits of max value of size_t
+	static void insert_numbers(char* place,size_t num)
+	{
+		while(true)
+		{
+			*place=num%10+'0';
+			num/=10;
+			if(num==0)
+			{
+				break;
+			}
+			--place;
+		}
+	}
+	void insert_message(char* place,size_t num)
+	{
+		memcpy(place,message_template.get(),buffer_length);
+		char* it=place+START_STRLEN+num_digs-1;
+		insert_numbers(it,num);
+	}
 public:
 	AmountLog(size_t amount):
 		amount(amount),
 		count(0),
 		num_digs(exlib::num_digits(amount)),
-		buffer_length(START_STRLEN+3+2*num_digs),
+		buffer_length(START_STRLEN+EXTRA_CHARS+2*num_digs),
 		message_template(new char[buffer_length]),
 		begun(false)
 	{
 		memcpy(message_template.get(),"Finished ",START_STRLEN);
-		for(auto it=message_template.get()+START_STRLEN;it<message_template.get()+START_STRLEN+num_digs-1;++it)
+		size_t const end=START_STRLEN+num_digs-1;
+		for(size_t i=START_STRLEN;i<end;++i)
 		{
-			*it=' ';
+			message_template[i]=' ';
 		}
-		message_template[START_STRLEN-1+num_digs]='0';
+		message_template[end]='0';
 		message_template[START_STRLEN+num_digs]='/';
-		std::to_chars(message_template.get()+START_STRLEN+num_digs+1,message_template.get()+START_STRLEN+2*num_digs+1,amount);
+		insert_numbers(message_template.get()+buffer_length-2,amount);
 		message_template[START_STRLEN+1+2*num_digs]='\r';
-		message_template[START_STRLEN+2+2*num_digs]='\0';
-	}
-private:
-	void insert_message(char* place,size_t num)
-	{
-		memcpy(place,message_template.get(),buffer_length);
-		char* it=place+START_STRLEN+num_digs-1;
-		do
-		{
-			*it=num%10+'0';
-			--it;
-			num/=10;
-		} while(num);
 	}
 public:
 	void log(char const* msg,size_t) override
@@ -594,7 +602,7 @@ public:
 			if(!begun)
 			{
 				begun=true;
-				std::cout<<message_template.get();
+				std::cout.write(message_template.get(),buffer_length);
 			}
 		}
 		else
@@ -604,17 +612,15 @@ public:
 			{
 				auto c=++count;
 				assert(c<=amount);
+				//if(c==count)
 				{
-					//if(c==count)
+					insert_message(buffer,c);
+					if(c==count)
 					{
-						insert_message(buffer,c);
+						std::lock_guard lock(mtx);
 						if(c==count)
 						{
-							std::lock_guard lock(mtx);
-							if(c==count)
-							{
-								std::cout<<buffer;
-							}
+							std::cout.write(buffer,buffer_length);
 						}
 					}
 				}
@@ -628,26 +634,21 @@ public:
 		memcpy(buffer.get(),msg,sl);
 		size_t const c=count;
 		insert_message(buffer.get()+sl,c);
-		auto disp_only_error=[&]()
-		{
-			buffer[sl]='\0';
-			std::cout<<buffer.get();
-		};
 		if(c==count)
 		{
 			std::lock_guard lock(mtx);
 			if(c==count)
 			{
-				std::cout<<buffer.get();
+				std::cout.write(buffer.get(),sl+buffer_length);
 			}
 			else
 			{
-				disp_only_error();
+				std::cout.write(buffer.get(),sl);
 			}
 		}
 		else
 		{
-			disp_only_error();
+			std::cout.write(buffer.get(),sl);
 		}
 	}
 };
@@ -2544,7 +2545,7 @@ int main(int argc,char** argv)
 	{
 		info_output();
 		return 0;
-	}
+}
 	auto args=conv_strings(argc,argv);
 	auto const& arg1=args[1];
 	if(could_be_command(arg1))
