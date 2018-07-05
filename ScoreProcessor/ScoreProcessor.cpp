@@ -545,33 +545,40 @@ CoutLog CoutLog::singleton;
 
 class AmountLog:public Log {
 private:
-	std::atomic<size_t> count;
+	std::atomic<size_t> count;//count of finished pages
 	size_t amount;
 	unsigned int num_digs;
 	size_t buffer_length;
-	std::unique_ptr<char[]> message_buffer;
+	std::unique_ptr<char[]> message_template;
 	std::mutex mtx;
-	bool begun;//atomicity not needed
-	static constexpr size_t const fl=9/*=strlen("Finished ")*/;
+	bool begun;//atomicity not needed, double writing the first thing is ok
+	static constexpr size_t const START_STRLEN=9/*=strlen("Finished ")*/;
+	static constexpr size_t const BUFFER_SIZE=START_STRLEN+3+2*exlib::num_digits(size_t(-1));//enough to fit message and digits of max value of size_t
 public:
-	AmountLog(size_t amount):amount(amount),count(0),num_digs(exlib::num_digits(amount)),buffer_length(fl+3+2*num_digs),message_buffer(new char[buffer_length]),begun(false)
+	AmountLog(size_t amount):
+		amount(amount),
+		count(0),
+		num_digs(exlib::num_digits(amount)),
+		buffer_length(START_STRLEN+3+2*num_digs),
+		message_template(new char[buffer_length]),
+		begun(false)
 	{
-		memcpy(message_buffer.get(),"Finished ",fl);
-		for(auto it=message_buffer.get()+fl;it<message_buffer.get()+fl+num_digs-1;++it)
+		memcpy(message_template.get(),"Finished ",START_STRLEN);
+		for(auto it=message_template.get()+START_STRLEN;it<message_template.get()+START_STRLEN+num_digs-1;++it)
 		{
 			*it=' ';
 		}
-		message_buffer[fl-1+num_digs]='0';
-		message_buffer[fl+num_digs]='/';
-		std::to_chars(message_buffer.get()+fl+num_digs+1,message_buffer.get()+fl+2*num_digs+1,amount);
-		message_buffer[fl+1+2*num_digs]='\r';
-		message_buffer[fl+2+2*num_digs]='\0';
+		message_template[START_STRLEN-1+num_digs]='0';
+		message_template[START_STRLEN+num_digs]='/';
+		std::to_chars(message_template.get()+START_STRLEN+num_digs+1,message_template.get()+START_STRLEN+2*num_digs+1,amount);
+		message_template[START_STRLEN+1+2*num_digs]='\r';
+		message_template[START_STRLEN+2+2*num_digs]='\0';
 	}
 private:
 	void insert_message(char* place,size_t num)
 	{
-		memcpy(place,message_buffer.get(),buffer_length);
-		char* it=place+fl+num_digs-1;
+		memcpy(place,message_template.get(),buffer_length);
+		char* it=place+START_STRLEN+num_digs-1;
 		do
 		{
 			*it=num%10+'0';
@@ -587,23 +594,27 @@ public:
 			if(!begun)
 			{
 				begun=true;
-				std::cout<<message_buffer.get();
+				std::cout<<message_template.get();
 			}
 		}
 		else
 		{
-			char buffer[55];
+			char buffer[BUFFER_SIZE];
 			//if(msg[0]=='F')
 			{
 				auto c=++count;
+				assert(c<=amount);
 				{
 					//if(c==count)
 					{
 						insert_message(buffer,c);
-						std::lock_guard lock(mtx);
 						if(c==count)
 						{
-							std::cout<<buffer;
+							std::lock_guard lock(mtx);
+							if(c==count)
+							{
+								std::cout<<buffer;
+							}
 						}
 					}
 				}
@@ -612,15 +623,31 @@ public:
 	}
 	void log_error(char const* msg,size_t) override
 	{
-		auto sl=strlen(msg);
-		std::unique_ptr<char[]> buffer(new char[sl+55]);
+		auto const sl=strlen(msg);
+		std::unique_ptr<char[]> buffer(new char[sl+buffer_length]);
 		memcpy(buffer.get(),msg,sl);
-		size_t c=count;
+		size_t const c=count;
 		insert_message(buffer.get()+sl,c);
-		std::lock_guard lock(mtx);
+		auto disp_only_error=[&]()
+		{
+			buffer[sl]='\0';
+			std::cout<<buffer.get();
+		};
 		if(c==count)
 		{
-			std::cout<<buffer.get();
+			std::lock_guard lock(mtx);
+			if(c==count)
+			{
+				std::cout<<buffer.get();
+			}
+			else
+			{
+				disp_only_error();
+			}
+		}
+		else
+		{
+			disp_only_error();
 		}
 	}
 };
