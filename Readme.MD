@@ -21,7 +21,7 @@ Available commands:
 &nbsp;&nbsp;&nbsp;&nbsp;Cluster Padding:          -cp left right top bottom background_threshold=254  
 &nbsp;&nbsp;&nbsp;&nbsp;Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778  
 &nbsp;&nbsp;&nbsp;&nbsp;Rescale Colors Grayscale: -rcg min mid max  
-&nbsp;&nbsp;&nbsp;&nbsp;Blur:                     -bl radius  
+&nbsp;&nbsp;&nbsp;&nbsp;Blur:                     -bl radius gamma_correction=2  
 &nbsp;&nbsp;&nbsp;&nbsp;Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128  
 &nbsp;&nbsp;&nbsp;&nbsp;Remove Border (DANGER):   -rb tolerance=0.5  
 &nbsp;&nbsp;&nbsp;&nbsp;Rescale:                  -rs factor interpolation_mode=auto  

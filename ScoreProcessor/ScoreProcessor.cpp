@@ -1761,7 +1761,7 @@ SpliceMaker const SpliceMaker::singleton;
 
 class BlurMaker:public SingleCommandMaker {
 	BlurMaker()
-		:SingleCommandMaker(1,1,"Gaussian blur of given standard deviation","Blur")
+		:SingleCommandMaker(1,2,"Gaussian blur of given standard deviation and using gamma_correction factor","Blur")
 	{}
 	static BlurMaker const singleton;
 public:
@@ -1772,22 +1772,38 @@ public:
 protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		float radius;
-		try
+		float radius,gamma_factor=2;
+		if(parse_str(radius,begin[0].c_str()))
 		{
-			radius=std::stof(*begin);
-			if(radius<0)
-			{
-				return "Blur radius must be non-negative";
-			}
+			return "Invalid blur radius input";
 		}
-		catch(std::exception const&)
+		if(radius<0)
 		{
-			return "Invalid arguments given for blur";
+			return "Blur radius must be non-negative";
+		}
+		if(n>1)
+		{
+			if(parse_str(gamma_factor,begin[1].c_str()))
+			{
+				return "Invalid gamma factor input";
+			}
+			if(gamma_factor<0)
+			{
+				return "Gamma factor must be non-negative";
+			}
 		}
 		if(radius>0)
 		{
-			del.pl.add_process<Blur>(radius);
+			if(gamma_factor!=1)
+			{
+				del.pl.add_process<Gamma>(gamma_factor);
+				del.pl.add_process<Blur>(radius);
+				del.pl.add_process<Gamma>(1/gamma_factor);
+			}
+			else
+			{
+				del.pl.add_process<Blur>(radius);
+			}
 		}
 		return nullptr;
 	}
@@ -2376,7 +2392,7 @@ protected:
 RotateMaker const RotateMaker::singleton;
 
 class GammaMaker:public SingleCommandMaker {
-	mutable float previous;//I know this is bad practice bad I don't feel like removing const from everything
+	mutable float previous;//I know this is bad practice but I don't feel like removing const from everything
 	GammaMaker():SingleCommandMaker(0,1,
 		"Applies a gamma correction to the image\n",
 		"Gamma Correction"),previous(0.5)
@@ -2396,6 +2412,10 @@ protected:
 			if(ScoreProcessor::parse_str(gamma,(*begin).c_str()))
 			{
 				return "Invalid argument for gamma input";
+			}
+			if(gamma<0)
+			{
+				return "Gamma must be non-negative";
 			}
 		}
 		previous=gamma;
@@ -2689,7 +2709,7 @@ int main(int argc,char** argv)
 	stop();
 #endif
 	return 0;
-	}
+}
 
 void info_output()
 {
@@ -2721,7 +2741,7 @@ void info_output()
 		"    Cluster Padding:          -cp left right top bottom background_threshold=254\n"
 		"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
 		"    Rescale Colors Grayscale: -rcg min mid max\n"
-		"    Blur:                     -bl radius\n"
+		"    Blur:                     -bl radius gamma_correction=2\n"
 		"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128\n"
 		"    Remove Border (DANGER):   -rb tolerance=0.5\n"
 		"    Rescale:                  -rs factor interpolation_mode=auto\n"

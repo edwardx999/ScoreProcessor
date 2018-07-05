@@ -433,6 +433,7 @@ namespace cimg_library {
 
 	inline void apply_gamma(::cil::CImg<unsigned char>& img,float gamma)
 	{
+		assert(gamma>=0);
 		size_t const limit=size_t(img._width)*img._height*img._depth*img._spectrum;
 		auto const data=img._data;
 		for(size_t i=0;i<limit;++i)
@@ -443,6 +444,7 @@ namespace cimg_library {
 
 	inline ::cil::CImg<unsigned char> get_gamma(::cil::CImg<unsigned char> const& img,float gamma)
 	{
+		assert(gamma>=0);
 		::cil::CImg<unsigned char> ret(img._width,img._height,img._depth,img._spectrum);
 		size_t const limit=size_t(img._width)*img._height*img._depth*img._spectrum;
 		auto const in=img._data;
