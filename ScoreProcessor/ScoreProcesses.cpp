@@ -1006,17 +1006,34 @@ namespace ScoreProcessor {
 		{
 			return 0;
 		}
-		auto selector_gs=[&img,boundary](unsigned int x,unsigned int y)
+		if(img._spectrum<3)
 		{
-			auto top=img(x,y);
-			auto bottom=img(x,y+1);
-			return
-				//(top<=boundary&&bottom>boundary)||
-				(top>boundary&&bottom<=boundary);
-		};
-		HoughArray<unsigned short> ha(selector_gs,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
-		double ha_angle=M_PI_2-ha.angle();
-		return ha_angle;
+			auto selector=[&img,boundary](unsigned int x,unsigned int y)
+			{
+				auto top=img(x,y);
+				auto bottom=img(x,y+1);
+				return
+					//(top<=boundary&&bottom>boundary)||
+					(top>boundary&&bottom<=boundary);
+			};
+			HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
+			return M_PI_2-ha.angle();
+		}
+		else
+		{
+			auto selector=[&img,boundary=3U*boundary,size=size_t(img._width)*img._height](unsigned int x,unsigned int y)
+			{
+				auto ptop=&img(x,y);
+				auto pbottom=&img(x,y+1);
+				auto const top=unsigned int(*ptop)+*(ptop+size)+*(ptop+2*size);
+				auto const bottom=unsigned int(*pbottom)+*(pbottom+size)+*(pbottom+2*size);
+				return
+					//(top<=boundary&&bottom>boundary)||
+					(top>boundary&&bottom<=boundary);
+			};
+			HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
+			return M_PI_2-ha.angle();
+		}
 	}
 
 	float auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)

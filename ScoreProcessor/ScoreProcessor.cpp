@@ -2443,7 +2443,8 @@ RotateMaker const RotateMaker::singleton;
 class GammaMaker:public SingleCommandMaker {
 	mutable float previous;//I know this is bad practice but I don't feel like removing const from everything
 	GammaMaker():SingleCommandMaker(0,1,
-		"Applies a gamma correction to the image\n",
+		"Applies a gamma correction to the image\n"
+		"There is little need to apply this yourself",
 		"Gamma Correction"),previous(0.5)
 	{}
 	static GammaMaker const singleton;
