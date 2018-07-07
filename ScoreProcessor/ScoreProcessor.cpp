@@ -1945,7 +1945,7 @@ protected:
 RemoveBorderMaker const RemoveBorderMaker::singleton;
 
 class RescaleMaker:public SingleCommandMaker {
-	RescaleMaker():SingleCommandMaker(1,2,
+	RescaleMaker():SingleCommandMaker(1,3,
 		"Rescales image by given factor\n"
 		"Rescale modes are:\n"
 		"  auto (moving average if downscaling, else cubic)\n"
@@ -1970,6 +1970,7 @@ protected:
 		try
 		{
 			size_t idx;
+			float gamma=2;
 			double factor=std::stod(*begin,&idx);
 			if(factor<0)
 			{
@@ -2028,8 +2029,28 @@ protected:
 					default:
 						return "Mode does not exist";
 				}
+				if(n>2)
+				{
+					if(parse_str(gamma,begin[2].c_str()))
+					{
+						return "Invalid gamma input";
+					}
+					if(gamma<0)
+					{
+						return "Gamma must be non-negative";
+					}
+				}
 			}
-			del.pl.add_process<Rescale>(factor,mode);
+			if(gamma!=1&&mode!=Rescale::nearest_neighbor)
+			{
+				del.pl.add_process<Gamma>(gamma);
+				del.pl.add_process<Rescale>(factor,mode);
+				del.pl.add_process<Gamma>(1/gamma);
+			}
+			else
+			{
+				del.pl.add_process<Rescale>(factor,mode);
+			}
 		}
 		catch(std::exception const&)
 		{
@@ -2775,7 +2796,7 @@ void info_output()
 		"    Blur:                     -bl radius gamma_correction=2\n"
 		"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2\n"
 		"    Remove Border (DANGER):   -rb tolerance=0.5\n"
-		"    Rescale:                  -rs factor interpolation_mode=auto\n"
+		"    Rescale:                  -rs factor interpolation_mode=auto gamma=2\n"
 		"    Fill Rectangle Gray:      -fr left top right bottom color=255 origin=tl\n"
 		"    Cover Transparency        -ct r=255 g=r b=r\n"
 		"    Extract First Layer       -exl\n"
