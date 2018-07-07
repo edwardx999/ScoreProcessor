@@ -997,7 +997,7 @@ namespace ScoreProcessor {
 		return RAD_DEG*auto_rotate_bare(image,pixel_prec,min_angle*DEG_RAD+M_PI_2,max_angle*DEG_RAD+M_PI_2,(max_angle-min_angle)/angle_prec+1,boundary);
 	}
 
-	float auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)
+	float find_angle_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)
 	{
 		assert(angle_steps>0);
 		assert(pixel_prec>0);
@@ -1006,7 +1006,7 @@ namespace ScoreProcessor {
 		{
 			return 0;
 		}
-		auto selector=[&img,boundary](unsigned int x,unsigned int y)
+		auto selector_gs=[&img,boundary](unsigned int x,unsigned int y)
 		{
 			auto top=img(x,y);
 			auto bottom=img(x,y+1);
@@ -1014,12 +1014,16 @@ namespace ScoreProcessor {
 				//(top<=boundary&&bottom>boundary)||
 				(top>boundary&&bottom<=boundary);
 		};
-		HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
-		auto max=*std::max_element(ha.begin(),ha.end());
+		HoughArray<unsigned short> ha(selector_gs,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
 		double ha_angle=M_PI_2-ha.angle();
-		double angle=ha_angle*RAD_DEG;
-		img.rotate(angle,2,1);
 		return ha_angle;
+	}
+
+	float auto_rotate_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)
+	{
+		auto angle=find_angle_bare(img,pixel_prec,min_angle,max_angle,angle_steps,boundary);
+		img.rotate(angle*RAD_DEG,2,1);
+		return angle;
 	}
 
 	bool auto_skew(CImg<unsigned char>& image)
@@ -1351,7 +1355,7 @@ namespace ScoreProcessor {
 			}
 			default:
 			{
-				auto selector=[bg=3*unsigned int(background)](auto color)
+				auto selector=[bg=3U*unsigned int(background)](auto color)
 				{
 					return unsigned int(color[0])+color[1]+color[2]<=bg;
 				};
@@ -1393,7 +1397,7 @@ namespace ScoreProcessor {
 			}
 			default:
 			{
-				auto selector=[bg=3*unsigned int(background)](auto color)
+				auto selector=[bg=3U*unsigned int(background)](auto color)
 				{
 					return unsigned int(color[0])+color[1]+color[2]<=bg;
 				};
@@ -1423,7 +1427,7 @@ namespace ScoreProcessor {
 		unsigned char bt)
 	{
 		auto selections=img._spectrum>2?
-			global_select<3>(img,[threshold=3*unsigned short(bt)](auto color)
+			global_select<3>(img,[threshold=3U*unsigned short(bt)](auto color)
 		{
 			return unsigned short(color[0])+color[1]+color[2]<=threshold;
 		}):

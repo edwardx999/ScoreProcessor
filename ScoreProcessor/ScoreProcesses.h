@@ -437,6 +437,7 @@ namespace ScoreProcessor {
 	*/
 	float auto_rotate(::cimg_library::CImg<unsigned char>& image,double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary=128);
 
+	float find_angle_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary=128);
 	/*
 		Automatically levels the image.
 		@param image

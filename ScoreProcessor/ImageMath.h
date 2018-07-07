@@ -33,7 +33,7 @@ namespace cimg_library {
 	{
 		assert(NumLayers<=img._spectrum);
 		auto const data=img._data;
-		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		size_t const size=size_t(img._width)*img._height; //I hope the compiler can realize this is unused if NumLayers==1
 		std::array<T,NumLayers> color;
 		for(unsigned int i=0;i<size;++i)
 		{
@@ -57,7 +57,7 @@ namespace cimg_library {
 	{
 		assert(NumLayers<=img._spectrum);
 		auto const data=img._data;
-		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		size_t const size=size_t(img._width)*img._height; //I hope the compiler can realize this is unused if NumLayers==1
 		std::array<T,NumLayers> color;
 		for(unsigned int i=0;i<size;++i)
 		{
@@ -85,7 +85,7 @@ namespace cimg_library {
 		std::array<T,InputLayers> input;
 		typedef std::remove_reference<decltype(func(input)[0])>::type R;
 		CImg<R> ret(img._width,img._height,1,OutputLayers);
-		auto const size=img._width*img._height;
+		size_t const size=size_t(img._width)*img._height;
 		auto const idata=img._data;
 		auto const odata=ret._data;
 		for(auto i=0U;i<size;++i)
@@ -112,9 +112,9 @@ namespace cimg_library {
 		std::array<T,InputLayers> input;
 		auto const owidth=selection.width();
 		auto const oheight=selection.height();
-		auto const osize=owidth*oheight;
+		auto const osize=size_t(owidth)*oheight;
 		CImg<std::remove_reference<decltype(func(input)[0])>::type> ret(owidth,oheight,1,OutputLayers);
-		auto const isize=img._width*img._height;
+		auto const isize=size_t(img._width)*img._height;
 		auto const idata=img._data;
 		for(auto y=0U;x<oheight;++x)
 		{
@@ -143,7 +143,7 @@ namespace cimg_library {
 	CImg<T>& map(CImg<T>& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
 	{
 		unsigned int const width=img._width;
-		unsigned int const size=width*img._height;
+		size_t const size=size_t(width)*img._height;
 		auto const data=img._data;
 		std::array<T,NumLayers> color;
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
@@ -171,7 +171,7 @@ namespace cimg_library {
 	bool or_map(CImg<T> const& img,ArrayToBool pred)
 	{
 		auto const data=img._data;
-		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		auto const size=size_t(img._width)*img._height; //I hope the compiler can realize this is unused if NumLayers==1
 		std::array<T,NumLayers> color;
 		for(unsigned int i=0;i<size;++i)
 		{
@@ -192,7 +192,7 @@ namespace cimg_library {
 	bool or_map(CImg<T>& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
 	{
 		auto const width=img._width;
-		auto const size=width*img._height;
+		auto const size=size_t(width)*img._height;
 		auto const data=img._data;
 		std::array<T,NumLayers> color;
 		for(auto y=selection.top;y<selection.bottom;++y)
@@ -219,7 +219,7 @@ namespace cimg_library {
 	bool and_map(CImg<T> const& img,ArrayToBool pred)
 	{
 		auto const data=img._data;
-		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		auto const size=size_t(img._width)*img._height;
 		std::array<T,NumLayers> color;
 		for(unsigned int i=0;i<size;++i)
 		{
@@ -240,7 +240,7 @@ namespace cimg_library {
 	bool and_map(CImg<T>& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
 	{
 		unsigned int const width=img._width;
-		unsigned int const size=width*img._height;
+		auto const size=size_t(width)*img._height;
 		auto const data=img._data;
 		std::array<T,NumLayers> color;
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
@@ -267,7 +267,7 @@ namespace cimg_library {
 	R fold(CImg<T>const & img,ArrayRToR func,R acc)
 	{
 		auto const data=img._data;
-		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		auto const size=size_t(img._width)*img._height; //I hope the compiler can realize this is unused if NumLayers==1
 		std::array<T,NumLayers> color;
 		for(unsigned int i=0;i<size;++i)
 		{
@@ -285,7 +285,7 @@ namespace cimg_library {
 	R fold(CImg<T>const & img,ArrayRToR func,R acc,ImageUtils::Rectangle<unsigned int> const selection)
 	{
 		unsigned int const width=img._width;
-		unsigned int const size=width*img._height;
+		auto const size=size_t(width)*img._height;
 		auto const data=img._data;
 		std::array<T,NumLayers> color;
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
@@ -311,7 +311,7 @@ namespace cimg_library {
 		auto const data=img._data;
 		auto loc=data;
 		std::array<T,NumLayers> min_value;
-		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		auto const size=size_t(img._width)*img._height;
 		std::array<T,NumLayers> color;
 		for(unsigned int i=0;i<size;++i)
 		{
@@ -336,11 +336,11 @@ namespace cimg_library {
 		auto const data=img._data;
 		auto loc=data;
 		std::array<T,NumLayers> min_value;
-		auto const size=img._width*img._height; //I hope the compiler can realize this is unused if NumLayers==1
+		auto const size=size_t(img._width)*img._height;
 		std::array<T,NumLayers> color;
 		for(unsigned int y=selection.top;y<selection.bottom;++y)
 		{
-			auto const row=y*width;
+			auto const row=y*width+data;
 			for(unsigned int x=selection.left;x<selection.right;++x)
 			{
 				auto const pix=row+x;

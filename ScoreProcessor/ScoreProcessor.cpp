@@ -493,16 +493,25 @@ class Straighten:public ImageProcess<> {
 	unsigned int num_steps;
 	double min_angle,max_angle;
 	unsigned char boundary;
+	float gamma;
 public:
-	Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary)
+	Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary,float gamma)
 		:pixel_prec(pixel_prec),
 		min_angle(M_PI_2+min_angle*DEG_RAD),max_angle(M_PI_2+max_angle*DEG_RAD),
 		num_steps(std::ceil((max_angle-min_angle)/angle_prec)),
-		boundary(boundary)
+		boundary(boundary),gamma(gamma)
 	{}
 	bool process(Img& img) const override
 	{
-		return auto_rotate_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary)!=0;
+		auto angle=find_angle_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary);
+		if(angle==0)
+		{
+			return false;
+		}
+		apply_gamma(img,gamma);
+		img.rotate(angle*RAD_DEG,2,1);
+		apply_gamma(img,1/gamma);
+		return true;
 	}
 };
 class Rotate:public ImageProcess<> {
@@ -1813,7 +1822,7 @@ BlurMaker const BlurMaker::singleton;
 class StraightenMaker:public SingleCommandMaker {
 	StraightenMaker()
 		:SingleCommandMaker(
-			0,5,
+			0,6,
 			"Straightens the image\n"
 			"Min angle is minimum angle of range to consider rotation (in degrees)\n"
 			"Max angle is maximum angle of range to consider rotation (in degrees)\n"
@@ -1831,47 +1840,57 @@ public:
 protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
-		double pixel_prec,min_angle,max_angle,angle_prec;
-		unsigned char boundary;
-#define assign_val(val,index,cond,check_statement,error_statement)\
-		if(n>##index##)\
-		{\
-			try\
-			{\
-				##val##=std::stod(begin[##index##]);\
-				if(##cond##)\
-				{\
-					return ##check_statement##;\
-				}\
-			}\
-			catch(std::exception const&)\
-			{\
-				return "Invalid input for " ## error_statement ##;\
-			}\
-		}\
-		else\
-		{\
-			goto init_##val##;\
-		}
-		assign_val(min_angle,0,false,"","minimum angle");
-		assign_val(max_angle,1,false,"","maximum angle");
-		assign_val(angle_prec,2,angle_prec<=0,"Angle precision must be positive","angle precision");
-		assign_val(pixel_prec,3,pixel_prec<=0,"Pixel precision must be positive","pixel precision");
-#undef assign_val
-		;
-		if(n>4)
+		double pixel_prec=1,min_angle=-5,max_angle=5,angle_prec=0.1;
+		unsigned char boundary=128;
+		float gamma=2;
+		if(n>0)
 		{
-			auto res=parse_str(boundary,begin[4].c_str());
-			if(res)
+			if(parse_str(min_angle,begin[0].c_str()))
 			{
-				return "Invalid input for boundary";
+				return "Invalid minimum angle input";
+			}
+			if(n>1)
+			{
+				if(parse_str(max_angle,begin[1].c_str()))
+				{
+					return "Invalid max angle input";
+				}
+				if(n>2)
+				{
+					if(parse_str(angle_prec,begin[2].c_str()))
+					{
+						return "Invalid angle precision input";
+					}
+					angle_prec=std::abs(angle_prec);
+					if(n>3)
+					{
+						if(parse_str(pixel_prec,begin[3].c_str()))
+						{
+							return "Invalid pixel precision input";
+						}
+						pixel_prec=std::abs(pixel_prec);
+						if(n>4)
+						{
+							if(parse_str(boundary,begin[4].c_str()))
+							{
+								return "Invalid boundary input";
+							}
+							if(n>5)
+							{
+								if(parse_str(gamma,begin[5].c_str()))
+								{
+									return "Invalid gamma input";
+								}
+								if(gamma<0)
+								{
+									return "Gamma must be non-negative";
+								}
+							}
+						}
+					}
+				}
 			}
 		}
-		else
-		{
-			goto init_boundary;
-		}
-	end:
 		if(min_angle>max_angle)
 		{
 			return "Max angle must be greater than min angle";
@@ -1880,19 +1899,8 @@ protected:
 		{
 			return "Difference between angles must be less than or equal to 180";
 		}
-		del.pl.add_process<Straighten>(pixel_prec,min_angle,max_angle,angle_prec,boundary);
+		del.pl.add_process<Straighten>(pixel_prec,min_angle,max_angle,angle_prec,boundary,gamma);
 		return nullptr;
-	init_min_angle:
-		min_angle=-5.0;
-	init_max_angle:
-		max_angle=5.0;
-	init_angle_prec:
-		angle_prec=0.1;
-	init_pixel_prec:
-		pixel_prec=1.0;
-	init_boundary:
-		boundary=128;
-		goto end;
 	}
 };
 StraightenMaker const StraightenMaker::singleton;
@@ -2357,7 +2365,7 @@ protected:
 ExtractLayerMaker const ExtractLayerMaker::singleton;
 
 class RotateMaker:public SingleCommandMaker {
-	RotateMaker():SingleCommandMaker(1,1,
+	RotateMaker():SingleCommandMaker(1,2,
 		"Rotates the image by the specified amount in degrees\n"
 		"Counterclockwise is positive",
 		"Rotate")
@@ -2372,8 +2380,8 @@ protected:
 	char const* parse_command_h(iter begin,size_t n,delivery& del) const override
 	{
 		float angle;
-		auto res=ScoreProcessor::parse_str(angle,(*begin).c_str());
-		if(res)
+		float gamma=2;
+		if(ScoreProcessor::parse_str(angle,(*begin).c_str()))
 		{
 			return "Invalid argument for angle input";
 		}
@@ -2382,9 +2390,30 @@ protected:
 		{
 			angle+=360;
 		}
+		if(n>1)
+		{
+			if(parse_str(gamma,begin[1].c_str()))
+			{
+				return "Invalid argument for gamma";
+			}
+			if(gamma<0)
+			{
+				return "Gamma must be non-negative";
+			}
+		}
 		if(angle!=0)
 		{
-			del.pl.add_process<Rotate>(-angle);
+			if(gamma!=1)
+			{
+				del.pl.add_process<Gamma>(gamma);
+				del.pl.add_process<Rotate>(-angle);
+				del.pl.add_process<Gamma>(1/gamma);
+
+			}
+			else
+			{
+				del.pl.add_process<Rotate>(-angle);
+			}
 		}
 		return nullptr;
 	}
@@ -2435,7 +2464,7 @@ private:
 			1,1,
 			"Controls the number of CPU threads used when processing multiple images\n"
 			"Defaults to max number supported by the CPU\n"
-			"Number of threads created will not exceed number number of images"
+			"Number of threads created will not exceed number of images"
 			,"Number of Threads")
 	{}
 	static NumThreadMaker const singleton;
@@ -2510,6 +2539,7 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-rescale",&RescaleMaker::get());
 
 	commands.emplace("-flt",&RegexMaker::get());
+	commands.emplace("-filter",&RegexMaker::get());
 
 	commands.emplace("-fr",&FillRectangleGrayMaker::get());
 
@@ -2534,6 +2564,7 @@ std::unordered_map<std::string,CommandMaker const*> const init_commands()
 	commands.emplace("-exl",&ExtractLayerMaker::get());
 
 	commands.emplace("-gam",&GammaMaker::get());
+	commands.emplace("-gamma",&GammaMaker::get());
 	return commands;
 }
 
@@ -2542,7 +2573,7 @@ auto commands=init_commands();
 std::vector<std::string> conv_strings(int argc,char** argv)
 {
 	std::vector<std::string> ret;
-	ret.reserve(argc+1);
+	ret.reserve(argc);
 	for(int i=0;i<argc;++i)
 	{
 		ret.emplace_back(argv[i]);
@@ -2742,13 +2773,13 @@ void info_output()
 		"    Auto Padding:             -ap vert_pad min_horiz_pad max_horiz_pad horiz_offset=0 opt_ratio=1.777778\n"
 		"    Rescale Colors Grayscale: -rcg min mid max\n"
 		"    Blur:                     -bl radius gamma_correction=2\n"
-		"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128\n"
+		"    Straighten:               -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2\n"
 		"    Remove Border (DANGER):   -rb tolerance=0.5\n"
 		"    Rescale:                  -rs factor interpolation_mode=auto\n"
 		"    Fill Rectangle Gray:      -fr left top right bottom color=255 origin=tl\n"
 		"    Cover Transparency        -ct r=255 g=r b=r\n"
 		"    Extract First Layer       -exl\n"
-		"    Rotate:                   -rot degrees\n"
+		"    Rotate:                   -rot degrees gamma=2\n"
 		"    Gamma Correction:         -gam gamma=2=1/previous\n"
 		"  Multi Page Operations:\n"
 		"    Cut:                      -cut min_width=66% min_height=8% horiz_weight=20 min_vert_space=0\n"
