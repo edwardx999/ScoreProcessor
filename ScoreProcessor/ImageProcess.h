@@ -804,7 +804,8 @@ namespace ScoreProcessor {
 					char* start=last-p.info.tmplt;
 					if(start<end)
 					{
-						for(char* it=start;it<end;++it)
+						*start='0';
+						for(char* it=start+1;it<end;++it)
 						{
 							*it='0';
 						}

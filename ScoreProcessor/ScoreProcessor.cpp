@@ -2825,7 +2825,16 @@ void do_single(CommandMaker::delivery const& del,std::vector<std::string> const&
 
 void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
-	class CutProcess:public exlib::ThreadTaskA<SaveRules const*,int,perc_or_val,perc_or_val,perc_or_val,float,Log*> {
+	struct cut_args {
+		SaveRules const* output;
+		int verbosity;
+		perc_or_val min_width;
+		perc_or_val min_height;
+		perc_or_val min_vert_space;
+		float horiz_weight;
+		Log* log;
+	};
+	class CutProcess:public exlib::ThreadTaskA<cut_args> {
 	private:
 		std::string const* input;
 		unsigned int index;
@@ -2834,73 +2843,65 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 			input(input),
 			index(index)
 		{}
-		void execute(SaveRules const* output,int verbosity,perc_or_val min_width,perc_or_val min_height,perc_or_val min_vert_space,float horiz_weight,Log* plog) override
+		void execute(cut_args ca) override
 		{
 			try
 			{
-				if(verbosity>ProcessList<>::verbosity::errors_only)
+				if(ca.verbosity>ProcessList<>::verbosity::errors_only)
 				{
 					std::string coutput("Starting ");
 					coutput.append(*input);
 					coutput.append(1,'\n');
-					plog->log(coutput.c_str(),index);
+					ca.log->log(coutput.c_str(),index);
 				}
-				auto out=output->make_filename(*input,index);
+				auto out=ca.output->make_filename(*input,index);
 				auto ext=exlib::find_extension(out.begin(),out.end());
 				auto s=supported(&*ext);
 				if(s==support_type::no)
 				{
-					if(verbosity>ProcessList<>::verbosity::silent)
+					if(ca.verbosity>ProcessList<>::verbosity::silent)
 					{
-						std::cout<<(std::string("Unsupported file type ").append(&*ext,std::distance(ext,out.end())).append(1,'\n'));
+						std::string err("Error processing ");
+						err.append(*input).append(": Unsupported file type ");
+						err.append(&*ext,out.end()-ext).append(1,'\n');
+						ca.log->log_error(err.c_str(),index);
 					}
 					return;
 				}
 				CImg<unsigned char> in(input->c_str());
 				cut_heuristics cut_args;
-				cut_args.horizontal_energy_weight=horiz_weight;
-				auto fix_perc=[](unsigned int val,perc_or_val pv)
-				{
-					if(pv.is_perc)
-					{
-						return unsigned int(std::round(pv.perc*val/100.0));
-					}
-					else
-					{
-						return pv.val;
-					}
-				};
-				cut_args.min_height=fix_perc(in._height,min_height);
-				cut_args.min_width=fix_perc(in._width,min_width);
-				cut_args.minimum_vertical_space=fix_perc(in._height,min_vert_space);
+				cut_args.horizontal_energy_weight=ca.horiz_weight;
+				cut_args.min_height=ca.min_height(in._height);
+				cut_args.min_width=ca.min_width(in._width);
+				cut_args.minimum_vertical_space=ca.min_vert_space(in._height);
 				auto num_pages=ScoreProcessor::cut_page(in,out.c_str(),cut_args);
-				if(verbosity>ProcessList<>::verbosity::errors_only)
+				if(ca.verbosity>ProcessList<>::verbosity::errors_only)
 				{
 					std::string coutput("Finished ");
 					coutput.append(*input);
 					coutput.append(" and created ");
 					coutput.append(std::to_string(num_pages));
 					coutput.append(num_pages==1?" page\n":" pages\n");
-					plog->log(coutput.c_str(),index);
+					ca.log->log(coutput.c_str(),index);
 				}
 			}
 			catch(std::exception const& ex)
 			{
-				if(verbosity>ProcessList<>::verbosity::silent)
+				if(ca.verbosity>ProcessList<>::verbosity::silent)
 				{
 					std::string err(ex.what());
 					err+='\n';
-					plog->log_error(err.c_str(),index);
+					ca.log->log_error(err.c_str(),index);
 				}
 			}
 		}
 	};
-	exlib::ThreadPoolA<SaveRules const*,int,perc_or_val,perc_or_val,perc_or_val,float,Log*> tp(del.num_threads);
+	exlib::ThreadPoolA<cut_args> tp(del.num_threads);
 	for(size_t i=0;i<files.size();++i)
 	{
 		tp.add_task<CutProcess>(&files[i],i+del.starting_index,del);
 	}
-	tp.start(&del.sr,del.pl.get_verbosity(),del.cut_args.min_width,del.cut_args.min_height,del.cut_args.min_vert_space,del.cut_args.horiz_weight,del.pl.get_log());
+	tp.start({&del.sr,del.pl.get_verbosity(),del.cut_args.min_width,del.cut_args.min_height,del.cut_args.min_vert_space,del.cut_args.horiz_weight,del.pl.get_log()});
 }
 
 void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const& files)
@@ -3120,6 +3121,7 @@ void list_files(std::vector<std::string> const& files)
 		{
 			std::cout<<file<<'\n';
 		}
+		std::cout<<'\n'<<files.size()<<" files were found.\n";
 	}
 	std::cout<<'\n';
 }

@@ -903,6 +903,22 @@ namespace ScoreProcessor {
 			image.save(filename,1,3U);
 			return 1;
 		}
+		/*std::sort(paths.begin(),paths.end(),[](auto const& a,auto const& b)
+		{
+			assert(a.size()==b.size());
+			for(size_t i=a.size();i-->0;)
+			{
+				if(a[i]<b[i])
+				{
+					return true;
+				}
+				if(a[i]>b[i])
+				{
+					return false;
+				}
+			}
+			throw std::runtime_error("Duplicate paths found (a bug), aborting");
+		});*/
 		unsigned int num_images=0;
 		unsigned int bottom_of_old=0;
 		for(unsigned int path_num=0;path_num<paths.size();++path_num)
