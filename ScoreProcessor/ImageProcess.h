@@ -790,7 +790,30 @@ namespace ScoreProcessor {
 			{
 				if(p.info.tmplt<10)
 				{
-					out+=exlib::front_padded_string(std::to_string(index),p.info.tmplt,'0');
+					char buffer[10];
+					char* const last=buffer+10;
+					char* end=last-1;
+					auto n=index;
+					while(true)
+					{
+						*end=n%10+'0';
+						n/=10;
+						if(n==0) break;
+						--end;
+					}
+					char* start=last-p.info.tmplt;
+					if(start<end)
+					{
+						for(char* it=start;it<end;++it)
+						{
+							*it='0';
+						}
+					}
+					else
+					{
+						start=end;
+					}
+					out.append(start,size_t(last-start));
 				}
 				else
 				{
