@@ -103,10 +103,12 @@ namespace exlib {
 			} while(FindNextFileA(hFind,&fdata));
 			FindClose(hFind);
 		}
-		std::sort(rec_searches.begin(),rec_searches.end(),[](auto const& a,auto const& b)
+		auto sorter=[](auto const& a,auto const& b)
 		{
 			return strncmp_wind(a.c_str(),b.c_str())<0;
-		});
+		};
+		std::sort(rec_searches.begin(),rec_searches.end(),sorter);
+		std::sort(end_files.begin(),end_files.end(),sorter);
 		std::vector<String> files;
 		for(auto const& rec:rec_searches)
 		{

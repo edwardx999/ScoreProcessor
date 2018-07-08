@@ -2722,7 +2722,7 @@ int main(int argc,char** argv)
 		case del.unassigned_log:
 		case del.count:
 			al.emplace(files.size());
-			del.pl.set_log(&al.value());
+			del.pl.set_log(&*al);
 			del.pl.set_verbosity(del.pl.loud);
 			break;
 		case del.errors_only:
@@ -2760,6 +2760,10 @@ int main(int argc,char** argv)
 #ifdef STOP_CONSOLE
 	stop();
 #endif
+	/*if(al)
+	{
+		std::cout<<'\n'; //actually kind of ugly so no
+	}*/
 	return 0;
 }
 
