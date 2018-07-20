@@ -326,7 +326,7 @@
     <ClInclude Include="neuralnet.h" />
     <ClInclude Include="old.txt" />
     <ClInclude Include="parse.h" />
-    <ClInclude Include="ProcessMakers.h">
+    <ClInclude Include="Interface.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="ScoreProcesses.h" />
@@ -343,7 +343,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debugger|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='WeakDebug|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="ProcessMakers.cpp">
+    <ClCompile Include="Interface.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ScoreProcesses.cpp" />

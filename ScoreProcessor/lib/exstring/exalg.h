@@ -18,7 +18,7 @@ namespace exlib {
 
 	template<>
 	struct less<char const*> {
-		constexpr bool operator()(char const* a,char const* b)
+		constexpr bool operator()(char const* a,char const* b) const
 		{
 			for(size_t i=0;;++i)
 			{
@@ -30,7 +30,7 @@ namespace exlib {
 				{
 					return false;
 				}
-				if(a[i]==0||b[i]==0)
+				if(a[i]==0)
 				{
 					return false;
 				}
@@ -67,7 +67,7 @@ namespace exlib {
 	template<typename iter>
 	constexpr void qsort(iter begin,iter end)
 	{
-		using T=std::decay<decltype(*begin)>::type;
+		using T=typename std::decay<decltype(*begin)>::type;
 		qsort(begin,end,less<T>());
 	}
 
@@ -91,7 +91,7 @@ namespace exlib {
 	template<typename iter>
 	constexpr void isort(iter begin,iter end)
 	{
-		using T=std::decay<decltype(*begin)>::type;
+		using T=typename std::decay<decltype(*begin)>::type;
 		isort(begin,end,less<T>());
 	}
 
@@ -131,9 +131,24 @@ namespace exlib {
 		return sorted(arr,less<T>());
 	}
 
+	namespace detail {
+		template<typename T,size_t N,size_t M,size_t... I,size_t... J>
+		constexpr auto concat(std::array<T,N> const& a,std::array<T,M> const& b,std::index_sequence<I...>,std::index_sequence<J...>)
+		{
+			std::array<T,N+M> ret{{a[I]...,b[J]...}};
+			return ret;
+		}
+	}
+
+	template<typename T,size_t N,size_t M>
+	constexpr auto concat(std::array<T,N> const& a,std::array<T,M> const& b)
+	{
+		return detail::concat(a,b,std::make_index_sequence<N>(),std::make_index_sequence<M>());
+	}
+
 	template<typename T>
 	struct compare {
-		constexpr int operator()(T const& a,T const& b)
+		constexpr int operator()(T const& a,T const& b) const
 		{
 			if(a<b)
 			{
@@ -149,7 +164,7 @@ namespace exlib {
 
 	template<>
 	struct compare<char const*> {
-		constexpr int operator()(char const* a,char const* b)
+		constexpr int operator()(char const* a,char const* b) const
 		{
 			for(size_t i=0;;++i)
 			{
@@ -161,7 +176,7 @@ namespace exlib {
 				{
 					return 1;
 				}
-				if(a[i]==0||b[i]==0)
+				if(a[i]==0)
 				{
 					return 0;
 				}
@@ -206,48 +221,109 @@ namespace exlib {
 		return binary_find(begin,end,target,compare<std::decay<decltype(*begin)>::type>());
 	}
 
+	//converts three way comparison into a less than comparison
+	template<typename ThreeWayComp>
+	struct lt_comp:private ThreeWayComp {
+		template<typename A,typename B>
+		constexpr bool operator()(A const& a,B const& b) const
+		{
+			return ThreeWayComp::operator()(a,b)<0;
+		}
+	};
+
+	//converts three way comparison into a greater than comparison
+	template<typename ThreeWayComp>
+	struct gt_comp:private ThreeWayComp {
+		template<typename A,typename B>
+		constexpr bool operator()(A const& a,B const& b) const
+		{
+			return ThreeWayComp::operator()(a,b)>0;
+		}
+	};
+
+	//converts three way comparison into a less than or equal to comparison
+	template<typename ThreeWayComp>
+	struct le_comp:private ThreeWayComp {
+		template<typename A,typename B>
+		constexpr bool operator()(A const& a,B const& b) const
+		{
+			return ThreeWayComp::operator()(a,b)<=0;
+		}
+	};
+
+	//converts three way comparison into a greater than or equal to comparison
+	template<typename ThreeWayComp>
+	struct ge_comp:private ThreeWayComp {
+		template<typename A,typename B>
+		constexpr bool operator()(A const& a,B const& b) const
+		{
+			return ThreeWayComp::operator()(a,b)>=0;
+		}
+	};
+
+	//converts three way comparison into equality comparison
+	template<typename ThreeWayComp>
+	struct eq_comp:private ThreeWayComp {
+		template<typename A,typename B>
+		constexpr bool operator()(A const& a,B const& b) const
+		{
+			return ThreeWayComp::operator()(a,b)==0;
+		}
+	};
+
+	//inverts three way comparison
+	template<typename ThreeWayComp>
+	struct inv_comp:private ThreeWayComp {
+		template<typename A,typename B>
+		constexpr int operator()(A const& a,B const& b) const
+		{
+			return ThreeWayComp::operator()(b,a);
+		}
+	};
+
+	//use this to initialize ct_map
 	template<typename Key,typename Value>
 	struct map_pair {
-		Key key;
-		Value value;
+	private:
+		Key _key;
+		Value _value;
+	public:
+		using key_type=Key;
+		using mapped_type=Value;
 		template<typename A,typename B>
-		constexpr map_pair(A&& a,B&& b):key(std::forward<A>(a)),value(std::forward<B>(b))
+		constexpr map_pair(A&& a,B&& b):_key(std::forward<A>(a)),_value(std::forward<B>(b))
 		{}
-		constexpr map_pair(map_pair const& other):key(other.key),value(other.value)
-		{}
-		constexpr map_pair(map_pair&& other):key(std::move(other.key)),value(std::move(other.value))
-		{}
-		constexpr map_pair()
-		{}
-		constexpr map_pair& operator=(map_pair&& other)
+		constexpr Key const& key() const
 		{
-			key=std::move(other.key);
-			value=std::move(other.value);
-			return *this;
+			return _key;
 		}
-		constexpr map_pair operator=(map_pair const& other)
+		constexpr Value const& value() const
 		{
-			key=other.key;
-			value=other.value;
-			return *this;
+			return _value;
+		}
+		constexpr Value& value()
+		{
+			return _value;
 		}
 	};
 
-	template<typename Comp,typename Key,typename Value>
-	struct map_compare:protected Comp {
-		int operator()(Key const& target,map_pair<Key,Value> const& b)
-		{
-			return Comp::operator()(target,b.key);
-		}
-		int operator()(map_pair<Key,Value> const& a,map_pair<Key,Value> const& b)
-		{
-			return Comp::operator()(a.key,b.key);
-		}
-	};
+	namespace detail {
+		template<typename Comp,typename Key,typename Value>
+		struct map_compare:protected Comp {
+			constexpr int operator()(Key const& target,map_pair<Key,Value> const& b) const
+			{
+				return Comp::operator()(target,b.key());
+			}
+			constexpr int operator()(map_pair<Key,Value> const& a,map_pair<Key,Value> const& b) const
+			{
+				return Comp::operator()(a.key(),b.key());
+			}
+		};
+	}
 
-	//Comp defines operator()(Key(&),Key(&)) that returns <0, 0, or >0
+	//Comp defines operator()(Key(&),Key(&)) that is a three-way comparison
 	template<typename Key,typename Value,size_t entries,typename Comp=compare<Key>>
-	class ct_map:protected map_compare<Comp,Key,Value>,protected std::array<map_pair<Key,Value>,entries> {
+	class ct_map:protected detail::map_compare<Comp,Key,Value>,protected std::array<map_pair<Key,Value>,entries> {
 	public:
 		using key_type=Key;
 		using mapped_type=Value;
@@ -257,7 +333,7 @@ namespace exlib {
 	public:
 		using size_type=size_t;
 		using difference_type=std::ptrdiff_t;
-		using key_compare=map_compare<Comp,Key,Value>;
+		using key_compare=detail::map_compare<Comp,Key,Value>;
 		using typename Data::reference;
 		using typename Data::const_reference;
 		using typename Data::iterator;
@@ -266,25 +342,8 @@ namespace exlib {
 		using typename Data::const_reverse_iterator;
 	private:
 		using pair=value_type;
-		template<size_t N,typename K,typename V,typename... Args>
-		constexpr void init(K&& k,V&& v,Args... rest)
-		{
-			if constexpr(N<entries)
-			{
-				Data::operator[](N)=value_type(std::forward<K>(k),std::forward<V>(v));
-				if constexpr(sizeof...(rest)>0)
-				{
-					init<N+1>(std::forward<Args>(rest)...);
-				}
-			}
-		}
 	public:
-		template<typename... Args>
-		constexpr ct_map(Args... rest):Data{{rest...}}
-		{
-			static_assert(sizeof...(Args)%2==0,"pairs required");
-			detail::sort(static_cast<Data&>(*this),static_cast<key_compare>(*this),0,entries);
-		}
+
 		using Data::size;
 		using Data::max_size;
 		using Data::empty;
@@ -303,6 +362,20 @@ namespace exlib {
 		using Data::front;
 		using Data::data;
 
+		template<typename... Args>
+		constexpr ct_map(Args&&... rest):Data{{std::forward<Args>(rest)...}}
+		{
+			static_assert(sizeof...(Args)==entries,"Wrong number of entries");
+			qsort(begin(),end(),lt_comp<key_compare>());
+		}
+
+	private:
+		template<size_t... Is>
+		constexpr ct_map(std::array<value_type,entries> const& in,std::index_sequence<Is...>):Data{{in[I]...}}
+		{}
+	public:
+		constexpr ct_map(std::array<value_type,entries> const& in):ct_map(in,std::make_index_sequence<entries>())
+		{}
 		constexpr iterator find(Key const& k)
 		{
 			return binary_find(begin(),end(),k,static_cast<key_compare>(*this));
@@ -313,20 +386,58 @@ namespace exlib {
 		}
 	};
 
-
-	template<typename Comp,typename K,typename V,typename... T>
-	constexpr auto make_ct_map(K&& k,V&& v,T&&... rest)
+	//inputs should be of type map_pair<Key,Value>
+	template<typename Comp,typename First,typename... Rest>
+	constexpr auto make_ct_map(First&& f,Rest&&... r)
 	{
-		static_assert(sizeof...(rest)%2==0,"Pairs of args required");
-		ct_map<std::decay<K>::type,std::decay<V>::type,sizeof...(rest)/2+1,Comp> ret(std::forward<K>(k),std::forward<V>(v),std::forward<T>(rest)...);
-		return ret;
+		return ct_map<First::key_type,First::mapped_type,1+sizeof...(r),Comp>(std::forward<First>(f),std::forward<Rest>(r)...);
 	}
 
-	template<typename K,typename V,typename... T>
-	constexpr auto make_ct_map(K&& k,V&& v,T&&... rest)
+	//inputs should be of type map_pair<Key,Value>
+	template<typename First,typename... T>
+	constexpr auto make_ct_map(First&& k,T&&... rest)
 	{
-		return make_ct_map<compare<K>>(std::forward<K>(k),std::forward<V>(v),std::forward<T>(rest)...);
+		return make_ct_map<compare<First::key_type>>(std::forward<First>(k),std::forward<T>(rest)...);
 	}
 
+	template<typename Comp,typename T,size_t N>
+	constexpr auto make_ct_map(std::array<T,N> const& in)
+	{
+		return ct_map<T::key_type,T::mapped_type,N,Comp>(in);
+	}
+
+	template<typename T,size_t N>
+	constexpr auto make_ct_map(std::array<T,N> const& in)
+	{
+		return make_ct_map<comp<First::key_type>>(in);
+	}
+
+	template<typename Type,typename... Args>
+	constexpr auto make_array(Args&&... args)
+	{
+		return std::array<Type,sizeof...(Args)>{
+			{
+				std::forward<Args>(args)...
+			}};
+	}
+
+	template<typename F,typename... Args>
+	constexpr auto make_array(F&& arg,Args&&... args)
+	{
+		return std::array<std::decay<F>::type,sizeof...(args)+1> {
+			{
+				std::forward<F>(arg),std::forward<Args>(args)...
+			}};
+	}
+
+	template<typename FindNext,typename... IndParser>
+	class CSVParserBase:protected FindNext,protected std::tuple<IndParser...> {
+
+	public:
+		size_t parse(std::string_view s)
+		{
+
+		}
+	};
 }
 #endif
