@@ -4,7 +4,4 @@
 
 namespace ScoreProcessor {
 
-
-
-
 }
