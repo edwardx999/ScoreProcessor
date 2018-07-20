@@ -211,6 +211,56 @@ public:
 		return cluster_padding(img,left,right,top,bottom,bt);
 	}
 };
+class Crop:public ImageProcess<> {
+public:
+	struct mark {
+		enum class basis {
+			fixed,width,height
+		};
+		basis base;
+		union {
+			int value;
+			float part;
+		};
+		int operator ()(int width,int height) const
+		{
+			switch(base)
+			{
+				case basis::fixed:
+					return value;
+				case basis::width:
+					return std::round(part*width);
+				case basis::height:
+					return std::round(part*height);
+			}
+			assert(false);
+		}
+	};
+private:
+	mark left,top,right,bottom;
+public:
+	Crop(mark l,mark t,mark r,mark b):left(l),top(t),right(r),bottom(b)
+	{}
+	bool process(Img& img) const override
+	{
+		auto const w=img.width();
+		auto const h=img.height();
+		using rint=ImageUtils::Rectangle<int>;
+		rint region;
+		region.left=left(w,h);
+		region.right=right(w,h);
+		region.top=top(w,h);
+		region.bottom=bottom(w,h);
+		if(region==rint({0,w,0,h}))
+		{
+			return false;
+		}
+		region.right--;
+		region.bottom--;
+		img=get_crop_fill(img,region,unsigned char(255));
+		return true;
+	}
+};
 class Rescale:public ImageProcess<> {
 	double val;
 	int interpolation;
@@ -365,8 +415,7 @@ public:
 							{
 								brightness+=*(pix+s*img_size);
 							}
-							brightness/=3;
-							if(brightness>=required_min&&brightness<=required_max)
+							if(brightness>=3U*required_min&&brightness<=3U*required_max)
 							{
 								return false;
 							}
@@ -2765,7 +2814,7 @@ int main(int argc,char** argv)
 		std::cout<<'\n'; //actually kind of ugly so no
 	}*/
 	return 0;
-}
+	}
 
 void info_output()
 {

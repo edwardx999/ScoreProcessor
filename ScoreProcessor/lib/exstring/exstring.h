@@ -26,8 +26,29 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <typeindex>
 //#include "exmeta.h"
 namespace exlib {
+
+	template<typename T,typename U>
+	constexpr int strcmp(T const* a,U const* b)
+	{
+		for(size_t i=0;;++i)
+		{
+			if(a[i]<b[i])
+			{
+				return -1;
+			}
+			if(a[i]>b[i])
+			{
+				return 1;
+			}
+			if(a[i]==0)
+			{
+				return 0;
+			}
+		}
+	}
+
 	template<typename T>
-	size_t strlen(T const* p)
+	constexpr size_t strlen(T const* p)
 	{
 		assert(p!=nullptr);
 		size_t i=0;

@@ -4,10 +4,27 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include <array>
+#if defined(_CONSTEXPR17)
+#define EX_CONSTEXPR _CONSTEXPR17
+#elif defined(_HAS_CXX17) || __cplusplus>201100L
+#define EX_CONSTEXPR constexpr
+#else
+#define EX_CONSTEXPR
+#endif
+
+#define CONSTEXPR
+#ifdef _CONSTEXPR_IF
+#define EX_CONSTIF _CONSTEXPR_IF
+#elif defined(_HAS_CXX17) || __cplusplus>201700L
+#define EX_CONSTIF constexpr
+#else
+#define EX_CONSTIF
+#endif
 namespace exlib {
 
 	template<typename T>
-	constexpr unsigned int num_digits(T num,T base=10)
+	EX_CONSTEXPR unsigned int num_digits(T num,T base=10)
 	{
 		static_assert(std::is_integral<typename T>::value,"Requires integral type");
 		unsigned int num_digits=1;
@@ -16,6 +33,53 @@ namespace exlib {
 			++num_digits;
 		}
 		return num_digits;
+	}
+
+	template<unsigned long long val,typename CharType=char>
+	constexpr auto to_string_unsigned()
+	{
+		std::array<CharType,num_digits(val)+1> number{{}};
+		auto v=val;
+		number.back()='\0';
+		auto it=number.end()-2;
+		do
+		{
+			*it=v%10+'0';
+			--it;
+			v/=10;
+		} while(v);
+		return number;
+	}
+
+	template<long long val,typename CharType=char>
+	constexpr auto to_string()
+	{
+		if constexpr(val<0)
+		{
+			std::array<CharType,num_digits(val)+2> number{{}};
+			auto v=val;
+			number.back()='\0';
+			number.front()='-';
+			auto it=number.end()-2;
+			do
+			{
+				if constexpr(-1%10==-1)
+				{
+					*it=-(v%10)+'0';
+				}
+				else
+				{
+					*it=10-(v%10)+'0';
+				}
+				--it;
+				v/=10;
+			} while(v);
+			return number;
+		}
+		else
+		{
+			return to_string_unsigned<val,CharType>();
+		}
 	}
 
 	/*
@@ -57,6 +121,30 @@ namespace exlib {
 			*rit=*el;
 		}
 		return res;
+	}
+
+	template<typename RandomAccessContainer>
+	RandomAccessContainer fattened_profile(RandomAccessContainer const& prof,size_t hp)
+	{
+		typedef std::decay<decltype(*prof.begin())>::type T;
+		if
+#if __cplusplus > 201700L
+			constexpr
+#endif
+			(std::is_trivially_copyable<T>::value&&sizeof(T)<=2*sizeof(size_t))
+		{
+			return fattened_profile(prof,hp,[](auto a,auto b)
+			{
+				return a<b;
+			});
+		}
+		else
+		{
+			return fattened_profile(prof,hp,[](auto const& a,auto const& b)
+			{
+				return a<b;
+			});
+		}
 	}
 
 	template<typename T>
@@ -102,10 +190,9 @@ namespace exlib {
 		{
 			return _data.size();
 		}
-
 	private:
-		template<typename U>
-		void _insert(U&& in,std::function<bool(T const&,T const&)> const& comp=std::less<T>())
+		template<typename U,typename Comp>
+		void _insert(U&& in,Comp comp)
 		{
 			if(_data.empty()&&_max_size)
 			{
@@ -122,29 +209,27 @@ namespace exlib {
 				_data.insert(_data.end(),std::forward<U>(in));
 				goto end;
 			}
+			auto b=_data.begin();
+			auto e=_data.end();
+			decltype(b) m;
+			while(b<e)
 			{
-				auto b=_data.begin();
-				auto e=_data.end();
-				decltype(b) m;
-				while(b<e)
+				m=b+std::distance(b,e)/2;
+				if(comp(in,*m))
 				{
-					m=b+std::distance(b,e)/2;
-					if(comp(in,*m))
+					if(!(comp(in,*(m-1))))
 					{
-						if(!(comp(in,*(m-1))))
-						{
-							_data.insert(m,std::forward<U>(in));
-							break;
-						}
-						else
-						{
-							e=m;
-						}
+						_data.insert(m,std::forward<U>(in));
+						goto end;
 					}
 					else
 					{
-						b=m+1;
+						e=m;
 					}
+				}
+				else
+				{
+					b=m+1;
 				}
 			}
 		end:
@@ -154,13 +239,23 @@ namespace exlib {
 			}
 		}
 	public:
-		void insert(T&& in,std::function<bool(T const&,T const&)> const& comp=std::less<T>())
+		template<typename Compare>
+		void insert(T&& in,Compare comp)
 		{
 			_insert(std::move(in),comp);
 		}
-		void insert(T const& in,std::function<bool(T const&,T const&)> const& comp=std::less<T>())
+		template<typename Compare>
+		void insert(T const& in,Compare comp)
 		{
 			_insert(in,comp);
+		}
+		void insert(T&& in)
+		{
+			_insert(std::move(in),std::less<T>());
+		}
+		void insert(T const& in)
+		{
+			_insert(in,std::less<T>());
 		}
 	};
 	/*
@@ -267,4 +362,6 @@ namespace exlib {
 		size_t limit=std::min(other.size(),size());
 	}
 }
+#undef EX_CONSTIF
+#undef EX_CONSTEXPR
 #endif

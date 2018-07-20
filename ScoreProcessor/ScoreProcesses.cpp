@@ -1026,8 +1026,8 @@ namespace ScoreProcessor {
 		{
 			auto selector=[&img,boundary](unsigned int x,unsigned int y)
 			{
-				auto top=img(x,y);
-				auto bottom=img(x,y+1);
+				auto const top=img(x,y);
+				auto const bottom=img(x,y+1);
 				return
 					//(top<=boundary&&bottom>boundary)||
 					(top>boundary&&bottom<=boundary);
@@ -1039,8 +1039,8 @@ namespace ScoreProcessor {
 		{
 			auto selector=[&img,boundary=3U*boundary,size=size_t(img._width)*img._height](unsigned int x,unsigned int y)
 			{
-				auto ptop=&img(x,y);
-				auto pbottom=&img(x,y+1);
+				auto const ptop=&img(x,y);
+				auto const pbottom=&img(x,y+1);
 				auto const top=unsigned int(*ptop)+*(ptop+size)+*(ptop+2*size);
 				auto const bottom=unsigned int(*pbottom)+*(pbottom+size)+*(pbottom+2*size);
 				return

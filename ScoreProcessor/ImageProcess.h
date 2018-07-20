@@ -550,13 +550,9 @@ namespace ScoreProcessor {
 			log.push_back('\n');
 			plog->log(log.c_str(),index);
 		}
-		if(psr==nullptr)
 		{
-			process(filename);
-		}
-		else
-		{
-			auto output=psr->make_filename(exlib::weak_string(const_cast<char*>(filename),len),index);
+			decltype(psr->make_filename(std::string_view(),index)) output;
+			output=psr?psr->make_filename(std::string_view(filename,len),index):filename;
 			try
 			{
 				process_unsafe(filename,output.c_str(),move);

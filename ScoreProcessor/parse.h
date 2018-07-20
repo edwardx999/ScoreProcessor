@@ -19,9 +19,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <numeric>
 #include <cctype>
 #include <charconv>
+#include <optional>
 namespace ScoreProcessor {
 	//I really need MSVC to implement from_chars.
-	int parse_str(double& out,char const* str)
+	inline int parse_str(double& out,char const* str)
 	{
 		int& errno_ref=errno;
 		errno_ref=0;
@@ -29,7 +30,7 @@ namespace ScoreProcessor {
 		out=std::strtod(str,&end);
 		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
-	int parse_str(float& out,char const* str)
+	inline int parse_str(float& out,char const* str)
 	{
 		int& errno_ref=errno;
 		errno_ref=0;
@@ -37,7 +38,7 @@ namespace ScoreProcessor {
 		out=std::strtof(str,&end);
 		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
-	int parse_str(unsigned long& out,char const* str)
+	inline int parse_str(unsigned long& out,char const* str)
 	{
 		int& errno_ref=errno;
 		errno_ref=0;
@@ -45,7 +46,7 @@ namespace ScoreProcessor {
 		out=std::strtoul(str,&end,10);
 		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
-	int parse_str(long& out,char const* str)
+	inline int parse_str(long& out,char const* str)
 	{
 		int& errno_ref=errno;
 		errno_ref=0;
@@ -54,7 +55,7 @@ namespace ScoreProcessor {
 		return errno_ref||str==end||(*end!='\0'&&!std::isspace(*end));
 	}
 #define make_parse_str_signed(type)\
-	int parse_str(##type##& out,char const* str){\
+	inline int parse_str(##type##& out,char const* str){\
 		int& errno_ref=errno;\
 		errno_ref=0;\
 		char* end;\
@@ -75,7 +76,7 @@ namespace ScoreProcessor {
 		make_parse_str_signed(int)
 #undef make_parse_str_signed
 #define make_parse_str_unsigned(type)\
-	int parse_str(##type##& out,char const* str){\
+	inline int parse_str(##type##& out,char const* str){\
 		int& errno_ref=errno;\
 		errno_ref=0;\
 		char* end;\

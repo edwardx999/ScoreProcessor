@@ -230,6 +230,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MaybeFixed.cpp" />
     <ClCompile Include="SaveRuleTests.cpp" />
     <ClCompile Include="ScoreProcessesTest.cpp" />
     <ClCompile Include="stdafx.cpp">

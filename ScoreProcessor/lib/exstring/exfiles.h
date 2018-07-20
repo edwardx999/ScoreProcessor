@@ -21,7 +21,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <Windows.h>
 #endif
 #include <stdio.h>
-#include "exstring.h"
 namespace exlib {
 	/*
 	Returns a vector containing the filenames of all files in the first level of the given directory.

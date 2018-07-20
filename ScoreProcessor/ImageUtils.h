@@ -20,6 +20,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include <iostream>
 #include <algorithm>
+#include <type_traits>
 namespace ImageUtils {
 	struct perc_or_val {
 		bool is_perc;
@@ -119,6 +120,11 @@ namespace ImageUtils {
 			If equal, value of tops.
 		*/
 		bool operator>(Rectangle<T> const& other) const;
+
+		bool operator==(Rectangle<T> const& other) const
+		{
+			return left==other.left&&right==other.right&&top==other.top&&bottom==other.bottom;
+		}
 		/*
 			Calculates the area.
 		*/
