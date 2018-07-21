@@ -435,7 +435,7 @@ namespace ScoreProcessor {
 				}
 				else
 				{
-					CImg<T> img;
+					cil::CImg<T> img;
 					switch(s.first)
 					{
 						case support_type::bmp:
@@ -470,7 +470,7 @@ namespace ScoreProcessor {
 			auto s=support();
 			bool edited=false;
 			{
-				CImg<T> img;
+				cil::CImg<T> img;
 				switch(s.first)
 				{
 					case support_type::bmp:

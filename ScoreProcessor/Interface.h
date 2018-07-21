@@ -24,7 +24,7 @@
 #define PMINLINE inline
 namespace ScoreProcessor {
 
-	using InputType=char const*;
+	using InputType=char*;
 	using iter=InputType*;
 
 	class CommandMaker {
@@ -275,7 +275,7 @@ namespace ScoreProcessor {
 		struct has_def_val {
 		private:
 			template<typename U>
-			constexpr static auto val(int) -> decltype(std::declval<U>.def_val(),bool())
+			constexpr static auto val(int) -> decltype(std::declval<U>().def_val(),bool())
 			{
 				return true;
 			}
@@ -813,14 +813,8 @@ namespace ScoreProcessor {
 				}
 				return false;
 			}
-			static PMINLINE constexpr bool def_val()
-			{
-				return false;
-			}
-			static PMINLINE constexpr std::string_view name()
-			{
-				return "move";
-			}
+			cndf(false)
+			cnnm("move")
 		};
 
 		class UseTuple {
@@ -1500,13 +1494,21 @@ namespace ScoreProcessor {
 	};
 
 	namespace {
-		constexpr auto scl=exlib::make_array<compair>(compair("-cg",&CGMaker::maker),
+		constexpr auto scl=exlib::make_array<compair>(
+			compair("-cg",&CGMaker::maker),
 			compair("-str",&StrMaker::maker),
 			compair("-rot",&RotMaker::maker),
 			compair("-fr",&FRMaker::maker));
+
 		constexpr auto mcl=exlib::make_array<compair>();
-		constexpr auto ol=exlib::make_array<compair>(compair("-o",&Output::maker));
+
+		constexpr auto ol=exlib::make_array<compair>(
+			compair("-o",&Output::maker),
+			compair("-vb",&Verbosity::maker),
+			compair("-nt",&NumThreads::maker));
+
 		constexpr auto aliases=exlib::make_array<compair>(compair("-rotate",&RotMaker::maker));
+
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const
 			{
