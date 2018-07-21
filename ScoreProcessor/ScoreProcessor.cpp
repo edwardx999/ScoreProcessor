@@ -1,6 +1,14 @@
 #include "stdafx.h"
 #include <iostream>
 #include "Interface.h"
+#include <vector>
+#include <string>
+#include "lib/exstring/exfiles.h"
+
+using namespace ScoreProcessor;
+
+using Input=char*;
+using InputIter=Input*;
 
 bool could_be_command(char const* str)
 {
@@ -36,9 +44,8 @@ void info_output()
 {
 	char date[]=__DATE__;
 	if(date[4]==' ') date[4]=='0';
-	char const* time=__TIME__;
 	std::cout<<"Version: ";
-	std::cout<<date<<' '<<time<<"Copyright 2017-";
+	std::cout<<date<<" " __TIME__ " Copyright 2017-";
 	std::cout.write(date+7,4);
 	std::cout<<" Edward Xie\n";
 	std::cout<<
@@ -79,7 +86,24 @@ void info_output()
 		"A Multi Page Operation can not be done with other operations.\n";
 }
 
-int main(int argc,char** argv)
+void help_output(CommandMaker const& cm)
+{
+	std::cout<<cm.name()<<'\n';
+	std::cout<<"Args: "<<cm.argument_list()<<'\n';
+	std::cout<<cm.help_message()<<'\n';
+}
+
+void list_files(std::vector<std::string> const& files)
+{}
+
+//returns files and sets iter to the end of file list
+std::vector<std::string> find_files(InputIter& iter)
+{}
+
+CommandMaker::delivery parse_commands(InputIter iter)
+{}
+
+int main(int argc,InputIter argv)
 {
 	info_output();
 	ScoreProcessor::CommandMaker::delivery del;
