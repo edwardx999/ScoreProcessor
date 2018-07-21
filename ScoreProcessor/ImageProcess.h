@@ -30,6 +30,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "lib\exstring\exfiles.h"
 #include <fstream>
 #include <filesystem>
+#include <string_view>
 #include "support.h"
 namespace ScoreProcessor {
 	template<typename T=unsigned char>
@@ -50,8 +51,8 @@ namespace ScoreProcessor {
 	class Log {
 	public:
 		virtual ~Log()=default;
-		virtual void log(char const* message,size_t id)=0;
-		virtual void log_error(char const* message,size_t id)=0;
+		virtual void log(std::string_view message,size_t id)=0;
+		virtual void log_error(std::string_view message,size_t id)=0;
 	};
 
 	/*
@@ -319,7 +320,7 @@ namespace ScoreProcessor {
 				{
 					std::string log(ex.what());
 					log.push_back('\n');
-					plog->log_error(log.c_str(),0);
+					plog->log_error(log,0);
 				}
 			}
 			else
@@ -548,7 +549,7 @@ namespace ScoreProcessor {
 			std::string log("Starting ");
 			log.append(filename,len);
 			log.push_back('\n');
-			plog->log(log.c_str(),index);
+			plog->log(log,index);
 		}
 		{
 			decltype(psr->make_filename(std::string_view(),index)) output;
@@ -568,7 +569,7 @@ namespace ScoreProcessor {
 						log.append(": ",2);
 						log.append(ex.what());
 						log.push_back('\n');
-						plog->log_error(log.c_str(),index);
+						plog->log_error(log,index);
 					}
 					return;
 				}
@@ -583,7 +584,7 @@ namespace ScoreProcessor {
 			std::string log("Finished ");
 			log.append(filename,len);
 			log.push_back('\n');
-			plog->log(log.c_str(),index);
+			plog->log(log,index);
 		}
 	}
 

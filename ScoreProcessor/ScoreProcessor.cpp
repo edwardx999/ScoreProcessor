@@ -35,6 +35,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <sstream>
 #include <variant>
 #include "parse.h"
+#include "Logs.h"
 using namespace cimg_library;
 using namespace std;
 using namespace ScoreProcessor;
@@ -591,136 +592,6 @@ void stop()
 	cout<<"Stopped\n";
 	std::this_thread::sleep_for(std::chrono::seconds(1000));
 }
-
-class CoutLog:public Log {
-	CoutLog()
-	{}
-	static CoutLog singleton;
-public:
-	static Log& get()
-	{
-		return singleton;
-	}
-	void log(char const* msg,size_t) override
-	{
-		std::cout<<msg;
-	}
-	void log_error(char const* msg,size_t) override
-	{
-		std::cout<<msg;
-	}
-};
-CoutLog CoutLog::singleton;
-
-class AmountLog:public Log {
-private:
-	std::atomic<size_t> count;//count of finished pages
-	size_t amount;
-	unsigned int num_digs;
-	size_t buffer_length;
-	std::unique_ptr<char[]> message_template;
-	std::mutex mtx;
-	bool begun;//atomicity not needed, double writing the first thing is ok
-	static constexpr size_t const START_STRLEN=9/*=strlen("Finished ")*/;
-	static constexpr size_t const EXTRA_CHARS=2;//slash and carriage return
-	static constexpr size_t const BUFFER_SIZE=START_STRLEN+EXTRA_CHARS+2*exlib::num_digits(size_t(-1));//enough to fit message and digits of max value of size_t
-	static void insert_numbers(char* place,size_t num)
-	{
-		while(true)
-		{
-			*place=num%10+'0';
-			num/=10;
-			if(num==0)
-			{
-				break;
-			}
-			--place;
-		}
-	}
-	void insert_message(char* place,size_t num)
-	{
-		memcpy(place,message_template.get(),buffer_length);
-		char* it=place+START_STRLEN+num_digs-1;
-		insert_numbers(it,num);
-	}
-public:
-	AmountLog(size_t amount):
-		amount(amount),
-		count(0),
-		num_digs(exlib::num_digits(amount)),
-		buffer_length(START_STRLEN+EXTRA_CHARS+2*num_digs),
-		message_template(new char[buffer_length]),
-		begun(false)
-	{
-		memcpy(message_template.get(),"Finished ",START_STRLEN);
-		size_t const end=START_STRLEN+num_digs-1;
-		for(size_t i=START_STRLEN;i<end;++i)
-		{
-			message_template[i]=' ';
-		}
-		message_template[end]='0';
-		message_template[START_STRLEN+num_digs]='/';
-		insert_numbers(message_template.get()+buffer_length-2,amount);
-		message_template[START_STRLEN+1+2*num_digs]='\r';
-	}
-public:
-	void log(char const* msg,size_t) override
-	{
-		if(msg[0]=='S')
-		{
-			if(!begun)
-			{
-				begun=true;
-				std::cout.write(message_template.get(),buffer_length);
-			}
-		}
-		else
-		{
-			char buffer[BUFFER_SIZE];
-			//if(msg[0]=='F')
-			{
-				auto c=++count;
-				assert(c<=amount);
-				//if(c==count)
-				{
-					insert_message(buffer,c);
-					if(c==count)
-					{
-						std::lock_guard lock(mtx);
-						if(c==count)
-						{
-							std::cout.write(buffer,buffer_length);
-						}
-					}
-				}
-			}
-		}
-	}
-	void log_error(char const* msg,size_t) override
-	{
-		auto const sl=strlen(msg);
-		std::unique_ptr<char[]> buffer(new char[sl+buffer_length]);
-		memcpy(buffer.get(),msg,sl);
-		size_t const c=count;
-		insert_message(buffer.get()+sl,c);
-		if(c==count)
-		{
-			std::lock_guard lock(mtx);
-			if(c==count)
-			{
-				std::cout.write(buffer.get(),sl+buffer_length);
-			}
-			else
-			{
-				std::cout.write(buffer.get(),sl);
-			}
-		}
-		else
-		{
-			std::cout.write(buffer.get(),sl);
-		}
-	}
-};
 
 class CommandMaker {
 public:
@@ -2765,7 +2636,8 @@ int main(int argc,char** argv)
 	del.num_threads=std::min(
 		del.num_threads,
 		ui((std::min(size_t(std::numeric_limits<ui>::max()),files.size()))));
-	std::optional<AmountLog> al;
+	std::optional<Loggers::AmountLog> al;
+	Loggers::CoutLog cl;
 	switch(del.lt)
 	{
 		case del.unassigned_log:
@@ -2775,15 +2647,15 @@ int main(int argc,char** argv)
 			del.pl.set_verbosity(del.pl.loud);
 			break;
 		case del.errors_only:
-			del.pl.set_log(&CoutLog::get());
+			del.pl.set_log(&cl);
 			del.pl.set_verbosity(del.pl.errors_only);
 			break;
 		case del.quiet:
-			del.pl.set_log(&CoutLog::get());
+			del.pl.set_log(&cl);
 			del.pl.set_verbosity(del.pl.silent);
 			break;
 		case del.full_message:
-			del.pl.set_log(&CoutLog::get());
+			del.pl.set_log(&cl);
 			del.pl.set_verbosity(del.pl.loud);
 	}
 	switch(del.flag)

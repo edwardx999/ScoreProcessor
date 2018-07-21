@@ -146,6 +146,12 @@ namespace exlib {
 		return detail::concat(a,b,std::make_index_sequence<N>(),std::make_index_sequence<M>());
 	}
 
+	template<typename A,typename B,typename... C>
+	constexpr auto concat(A const& a,B const& b,C const&... c)
+	{
+		return concat(concat(a,b),c...);
+	}
+
 	template<typename T>
 	struct compare {
 		constexpr int operator()(T const& a,T const& b) const

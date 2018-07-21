@@ -322,6 +322,7 @@
     <ClInclude Include="ImageMath.h" />
     <ClInclude Include="ImageProcess.h" />
     <ClInclude Include="ImageUtils.h" />
+    <ClInclude Include="Logs.h" />
     <ClInclude Include="moreAlgorithms.h" />
     <ClInclude Include="neuralnet.h" />
     <ClInclude Include="old.txt" />
@@ -329,6 +330,7 @@
     <ClInclude Include="Interface.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="Processes.h" />
     <ClInclude Include="ScoreProcesses.h" />
     <ClInclude Include="shorthand.h" />
     <ClInclude Include="stdafx.h" />
@@ -346,6 +348,8 @@
     <ClCompile Include="Interface.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Logs.cpp" />
+    <ClCompile Include="Processes.cpp" />
     <ClCompile Include="ScoreProcesses.cpp" />
     <ClCompile Include="ScoreProcessor.cpp" />
     <ClCompile Include="stdafx.cpp">
