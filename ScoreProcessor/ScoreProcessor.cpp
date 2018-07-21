@@ -2535,6 +2535,7 @@ std::pair<std::string,std::string> pretty_date()
 }
 void test()
 {
+	auto e=
 	stop();
 }
 //help screen of single input

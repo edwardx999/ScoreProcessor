@@ -22,7 +22,7 @@ namespace Loggers {
 		static constexpr char const* START_MSG="Finished ";
 		static constexpr size_t const START_STRLEN=exlib::strlen(START_MSG);
 		static constexpr size_t const EXTRA_CHARS=2;//slash and carriage return
-		static constexpr size_t const BUFFER_SIZE=START_STRLEN+EXTRA_CHARS+2*exlib::num_digits(size_t(-1));//enough to fit message and digits of max value of size_t
+		static constexpr size_t const BUFFER_SIZE=START_STRLEN+EXTRA_CHARS+2*exlib::num_digits(std::numeric_limits<size_t>::max());//enough to fit message and digits of max value of size_t
 		inline static void insert_numbers(char* place,size_t num)
 		{
 			while(true)

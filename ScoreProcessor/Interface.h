@@ -20,6 +20,7 @@
 #include "ImageMath.h"
 #include "ScoreProcesses.h"
 #include "lib/exstring/exstring.h"
+#include "Processes.h"
 #define PMINLINE inline
 namespace ScoreProcessor {
 
@@ -252,7 +253,7 @@ namespace ScoreProcessor {
 	//the colon.
 	//UseTuple must define a function use_tuple(CommandMaker::delivery&,Args...), which uses the tuple result
 	//from parsing to change the delivery. The tuple may optionally be expanded into its components
-	//if Precheck defines check(CommandMaker::delivery(&)), this checks the delivery before parsing, 
+	//if Precheck defines check(CommandMaker::delivery (const)(&)), this checks the delivery before parsing, 
 	//throwing or doing nothing
 	template<typename UseTuple,typename Precheck,typename LabelId,typename... ArgParsers>
 	class MakerTFull:protected LabelId,protected Precheck,protected UseTuple,protected std::tuple<ArgParsers...>,public CommandMaker {
@@ -925,7 +926,7 @@ namespace ScoreProcessor {
 		MakerTFull<UseTuple,Precheck,empty,Level> maker("Changes verbosity of output: Silent=0=s, Errors-only=1=e, Count=2=c (default), Loud=3=l","Verbosity","level");
 	}
 
-	namespace Straighten {
+	namespace StrMaker {
 		struct MinAngle {
 			cnnm("min angle")
 				cndf(double(-5))
@@ -973,33 +974,6 @@ namespace ScoreProcessor {
 			}
 		};
 
-		class Process:public ImageProcess<> {
-			double pixel_prec;
-			unsigned int num_steps;
-			double min_angle,max_angle;
-			unsigned char boundary;
-			float gamma;
-		public:
-			PMINLINE Process(double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary,float gamma)
-				:pixel_prec(pixel_prec),
-				min_angle(M_PI_2+min_angle*DEG_RAD),max_angle(M_PI_2+max_angle*DEG_RAD),
-				num_steps(std::ceil((max_angle-min_angle)/angle_prec)),
-				boundary(boundary),gamma(gamma)
-			{}
-			PMINLINE bool process(Img& img) const override
-			{
-				auto angle=find_angle_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary);
-				if(angle==0)
-				{
-					return false;
-				}
-				apply_gamma(img,gamma);
-				img.rotate(angle*RAD_DEG,2,1);
-				apply_gamma(img,1/gamma);
-				return true;
-			}
-		};
-
 		struct UseTuple {
 			PMINLINE static void use_tuple(CommandMaker::delivery& del,double mn,double mx,double a,double p,unsigned char b,float g)
 			{
@@ -1011,7 +985,7 @@ namespace ScoreProcessor {
 				{
 					throw std::invalid_argument("Difference between angles must be less than or equal to 180");
 				}
-				del.pl.add_process<Process>(p,mn,mx,a,b,g);
+				del.pl.add_process<Straighten>(p,mn,mx,a,b,g);
 			}
 		};
 
@@ -1030,130 +1004,18 @@ namespace ScoreProcessor {
 				"min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2");
 	}
 
-	namespace ConvertToGrayscale {
-
-		class Process:public ImageProcess<> {
-		public:
-			PMINLINE bool process(Img& img) const
-			{
-				if(img._spectrum>=3)
-				{
-					img=get_grayscale_simple(img);
-					return true;
-				}
-				return false;
-			}
-		};
+	namespace CGMaker {
 
 		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del)
 			{
-				del.pl.add_process<Process>();
+				del.pl.add_process<ChangeToGrayscale>();
 			}
 		};
 		SingMaker<UseTuple,empty> maker("Converts the image to grayscale","Convert to Grayscale","");
 	}
 
-	namespace FillRectangle {
-		class Process:public ImageProcess<> {
-		public:
-			enum origin_reference {
-				top_left,top_middle,top_right,
-				middle_left,middle,middle_right,
-				bottom_left,bottom_middle,bottom_right
-			};
-		private:
-			ImageUtils::Rectangle<signed int> offsets;
-			origin_reference origin;
-			std::array<unsigned char,4> color;
-			unsigned int num_layers;
-			PMINLINE static ImageUtils::Point<signed int> get_origin(origin_reference origin_code,int width,int height)
-			{
-				ImageUtils::Point<signed int> porigin;
-				switch(origin_code%3)
-				{
-					case 0:
-						porigin.x=0;
-						break;
-					case 1:
-						porigin.x=width/2;
-						break;
-					case 2:
-						porigin.x=width;
-				}
-				switch(origin_code/3)
-				{
-					case 0:
-						porigin.y=0;
-						break;
-					case 1:
-						porigin.y=height/2;
-						break;
-					case 2:
-						porigin.y=height;
-				}
-				return porigin;
-			}
-		public:
-			PMINLINE Process(ImageUtils::Rectangle<signed int> offsets,std::array<unsigned char,4> color,unsigned int num_layers,origin_reference orgn):offsets(offsets),color(color),num_layers(num_layers),origin(orgn)
-			{
-				assert(origin>=top_left&&origin<=bottom_right);
-			}
-			PMINLINE bool process(Img& img) const override
-			{
-				auto const porigin=get_origin(origin,img.width(),img.height());
-				ImageUtils::Rectangle<signed int> rect;
-				rect.left=offsets.left+porigin.x;
-				rect.right=offsets.right+porigin.x;
-				rect.top=offsets.top+porigin.y;
-				rect.bottom=offsets.bottom+porigin.y;
-				if(rect.left<0)
-				{
-					rect.left=0;
-				}
-				if(rect.top<0)
-				{
-					rect.top=0;
-				}
-				if(rect.right>img.width())
-				{
-					rect.right=img.width();
-				}
-				if(rect.bottom>img.height())
-				{
-					rect.bottom=img.height();
-				}
-				if(num_layers<5)
-				{
-					switch(img._spectrum)
-					{
-						case 1:
-						case 2:
-							if(num_layers==3||num_layers==4&&color[3]==255)
-								img=cil::get_map<1,3>(img,[](auto color)
-							{
-								return std::array<unsigned char,3>({color[0],color[0],color[0]});
-							});
-							else if(num_layers==4)
-								img=cil::get_map<1,4>(img,[a=color[3]](auto color)
-							{
-								return std::array<unsigned char,4>({color[0],color[0],color[0],a});
-							});
-							break;
-						case 3:
-							if(num_layers==4&&color[3]!=255)
-								img=cil::get_map<3,4>(img,[a=color[3]](auto color){
-								return std::array<unsigned char,4>({color[0],color[1],color[2],a});});
-					}
-				}
-#define ucast static_cast<unsigned int>
-				return fill_selection(
-					img,
-					{ucast(rect.left),ucast(rect.right),ucast(rect.top),ucast(rect.bottom)},
-					color.data(),check_fill_t());
-#undef ucast
-			}
-		};
+	namespace FRMaker {
 
 		struct Left {
 			cnnm("left")
@@ -1284,7 +1146,7 @@ namespace ScoreProcessor {
 
 		struct Origin {
 			cnnm("origin")
-				PMINLINE static Process::origin_reference parse(std::string_view sv)
+				PMINLINE static FillRectangle::origin_reference parse(std::string_view sv)
 			{
 				auto error=[=]()
 				{
@@ -1325,12 +1187,12 @@ namespace ScoreProcessor {
 					default:
 						error();
 				}
-				return Process::origin_reference(ret);
+				return FillRectangle::origin_reference(ret);
 			}
 		};
 
 		struct UseTuple {
-			PMINLINE static void use_tuple(CommandMaker::delivery& del,std::tuple<int,int,flagged,flagged,color,Process::origin_reference> const& args)
+			PMINLINE static void use_tuple(CommandMaker::delivery& del,std::tuple<int,int,flagged,flagged,color,FillRectangle::origin_reference> const& args)
 			{
 				auto const& left=std::get<0>(args);
 				auto const& top=std::get<1>(args);
@@ -1365,7 +1227,7 @@ namespace ScoreProcessor {
 				rect.top=std::get<1>(args);
 				rect.right=right.flag?left+right.value:right.value;
 				rect.bottom=bottom.flag?top+bottom.value:bottom.value;
-				del.pl.add_process<Process>(rect,std::get<4>(args).data,std::get<4>(args).num_layers,std::get<5>(args));
+				del.pl.add_process<FillRectangle>(rect,std::get<4>(args).data,std::get<4>(args).num_layers,std::get<5>(args));
 			}
 		};
 
@@ -1404,21 +1266,9 @@ namespace ScoreProcessor {
 				"left top horiz vert color=255 origin=tl");
 	}
 
-	namespace Gamma {
+	namespace GamMaker {
 		struct Name {
 			cnnm("gamma value")
-		};
-
-		class Process:public ImageProcess<> {
-			float gamma;
-		public:
-			PMINLINE Process(float g):gamma(g)
-			{}
-			PMINLINE bool process(Img& img) const override
-			{
-				apply_gamma(img,gamma);
-				return true;
-			}
 		};
 
 		struct Maker:public CommandMaker {
@@ -1442,14 +1292,14 @@ namespace ScoreProcessor {
 				{
 					value=1/value;
 				}
-				del.pl.add_process<Process>(value);
+				del.pl.add_process<Gamma>(value);
 			}
 		};
 
 		Maker maker;
 	}
 
-	namespace Rotate {
+	namespace RotMaker {
 		struct RadName {
 			cnnm("angle")
 		};
@@ -1458,18 +1308,18 @@ namespace ScoreProcessor {
 			{
 				if(len==0)
 				{
-					return FloatParser<RadName,no_check>().parse(sv)*DEG_RAD;
+					return FloatParser<RadName,no_check>().parse(sv);
 				}
 				auto const c=sv[0];
 				sv.remove_prefix(len+1);
 				if(c=='d')
 				{
-					return FloatParser<RadName,no_check>().parse(sv)*DEG_RAD;
+					return FloatParser<RadName,no_check>().parse(sv);
 				}
-				return FloatParser<RadName,no_check>().parse(sv);
+				return FloatParser<RadName,no_check>().parse(sv)*RAD_DEG;
 			}
 		};
-		struct Gamma {
+		struct GammaP {
 			cnnm("gamma")
 				cndf(float(2))
 		};
@@ -1487,38 +1337,19 @@ namespace ScoreProcessor {
 				bad_pf(sv);
 			}
 		};
-		class Process:public ImageProcess<> {
-		public:
-			enum mode {
-				nearest_neighbor,
-				linear,
-				cubic
-			};
-		private:
-			float angle;
-			mode md;
-		public:
-			PMINLINE Process(float angle,mode md):angle(angle),md(md)
-			{}
-			PMINLINE bool process(Img& img) const override
-			{
-				img.rotate(angle,md,0);
-				return true;
-			}
-		};
 
 		struct Mode {
-			cndf(Process::mode(Process::cubic))
-				PMINLINE static Process::mode parse(std::string_view sv)
+			cndf(Rotate::interp_mode(Rotate::cubic))
+				PMINLINE static Rotate::interp_mode parse(std::string_view sv)
 			{
 				switch(sv[0])
 				{
 					case 'n':
-						return Process::nearest_neighbor;
+						return Rotate::nearest_neighbor;
 					case 'l':
-						return Process::linear;
+						return Rotate::linear;
 					case 'c':
-						return Process::cubic;
+						return Rotate::cubic;
 					default:
 						std::string err("Unknown mode ");
 						err.append(sv);
@@ -1529,7 +1360,7 @@ namespace ScoreProcessor {
 		};
 
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,float angle,Process::mode m,float gamma)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,float angle,Rotate::interp_mode m,float gamma)
 			{
 				angle=fmod(angle,360);
 				if(angle<0)
@@ -1540,19 +1371,19 @@ namespace ScoreProcessor {
 				{
 					if(gamma!=1)
 					{
-						del.pl.add_process<ScoreProcessor::Gamma::Process>(gamma);
-						del.pl.add_process<Process>(angle,m);
-						del.pl.add_process<ScoreProcessor::Gamma::Process>(1/gamma);
+						del.pl.add_process<Gamma>(gamma);
+						del.pl.add_process<Rotate>(angle,m);
+						del.pl.add_process<Gamma>(1/gamma);
 					}
 					else
 					{
-						del.pl.add_process<Process>(angle,m);
+						del.pl.add_process<Rotate>(angle,m);
 					}
 				}
 			}
 		};
 
-		using GammaParser=FloatParser<Gamma,no_negatives>;
+		using GammaParser=FloatParser<GammaP,no_negatives>;
 
 		SingMaker<UseTuple,LabelId,Radians,Mode,GammaParser> maker(
 			"Rotates the image\n"
@@ -1568,67 +1399,37 @@ namespace ScoreProcessor {
 			"angle mode=cubic gamma=2");
 	}
 
-	namespace Rescale {
+	namespace RsMaker {
 		struct Factor {
 			cnnm("factor")
 		};
-		class Process:public ImageProcess<> {
-			double val;
-			int interpolation;
-		public:
-			enum rescale_mode {
-				automatic=-2,
-				raw_mem,
-				boundary_fill,
-				nearest_neighbor,
-				moving_average,
-				linear,
-				grid,
-				cubic,
-				lanczos
-			};
-			PMINLINE Process(double val,int interpolation):
-				val(val),
-				interpolation(interpolation==automatic?(val>1?cubic:moving_average):interpolation)
-			{}
-			PMINLINE bool process(Img& img) const override
-			{
-				img.resize(
-					static_cast<int>(std::round(img._width*val)),
-					static_cast<int>(std::round(img._height*val)),
-					img._depth,
-					img._spectrum,
-					interpolation);
-				return true;
-			}
-		};
 
 		struct Mode {
-			PMINLINE static constexpr Process::rescale_mode def_val()
+			PMINLINE static constexpr Rescale::rescale_mode def_val()
 			{
-				return Process::automatic;
+				return Rescale::automatic;
 			}
-			static Process::rescale_mode parse(std::string_view mode_string)
+			static Rescale::rescale_mode parse(std::string_view mode_string)
 			{
 				switch(mode_string[0]) //thank you null-termination
 				{
 					case 'a':
-						return Process::automatic;
+						return Rescale::automatic;
 						break;
 					case 'n':
-						return Process::nearest_neighbor;
+						return Rescale::nearest_neighbor;
 						break;
 					case 'm':
-						return Process::moving_average;
+						return Rescale::moving_average;
 						break;
 					case 'l':
 						switch(mode_string[1])
 						{
 							case 'i':
-								return Process::linear;
+								return Rescale::linear;
 								break;
 							case 'a':
-								return Process::lanczos;
+								return Rescale::lanczos;
 								break;
 							case '\0':
 								throw std::invalid_argument("Ambiguous mode starting with l");
@@ -1638,10 +1439,10 @@ namespace ScoreProcessor {
 						}
 						break;
 					case 'g':
-						return Process::grid;
+						return Rescale::grid;
 						break;
 					case 'c':
-						return Process::cubic;
+						return Rescale::cubic;
 						break;
 					default:
 						throw std::invalid_argument("Mode does not exist");
@@ -1664,25 +1465,25 @@ namespace ScoreProcessor {
 		};
 
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,float f,Process::rescale_mode rm,float g)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,float f,Rescale::rescale_mode rm,float g)
 			{
 				if(f!=1)
 				{
-					if(g!=1&&rm!=Process::nearest_neighbor)
+					if(g!=1&&rm!=Rescale::nearest_neighbor)
 					{
-						del.pl.add_process<ScoreProcessor::Gamma::Process>(g);
-						del.pl.add_process<Process>(f,rm);
-						del.pl.add_process<ScoreProcessor::Gamma::Process>(1/g);
+						del.pl.add_process<Gamma>(g);
+						del.pl.add_process<Rescale>(f,rm);
+						del.pl.add_process<Gamma>(1/g);
 					}
 					else
 					{
-						del.pl.add_process<Process>(f,rm);
+						del.pl.add_process<Rescale>(f,rm);
 					}
 				}
 			}
 		};
 
-		SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,ScoreProcessor::Rotate::GammaParser>
+		SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
 			maker("Rescales image by given factor\n"
 				"factor: factor to scale image by; tags: f, fact\n"
 				"interpolation_mode: see below; tags: i, im\n"
@@ -1722,19 +1523,20 @@ namespace ScoreProcessor {
 	};
 
 	namespace {
-		constexpr auto scl=exlib::make_array<compair>(compair("-cg",&ConvertToGrayscale::maker),
-			compair("-str",&Straighten::maker),
-			compair("-rot",&Rotate::maker),
-			compair("-fr",&FillRectangle::maker));
+		constexpr auto scl=exlib::make_array<compair>(compair("-cg",&CGMaker::maker),
+			compair("-str",&StrMaker::maker),
+			compair("-rot",&RotMaker::maker),
+			compair("-fr",&FRMaker::maker));
 		constexpr auto mcl=exlib::make_array<compair>();
 		constexpr auto ol=exlib::make_array<compair>(compair("-o",&Output::maker));
+		constexpr auto aliases=exlib::make_array<compair>(compair("-rotate",&RotMaker::maker));
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const
 			{
 				return exlib::strcmp(a.key(),b.key())<0;
 			}
 		};
-		constexpr auto com_map=exlib::sorted(exlib::concat(scl,mcl,ol),comp());
+		constexpr auto com_map=exlib::sorted(exlib::concat(scl,mcl,ol,aliases),comp());
 	}
 
 	PMINLINE constexpr auto const& single_command_list()
