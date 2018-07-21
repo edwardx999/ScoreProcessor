@@ -27,6 +27,30 @@ namespace ScoreProcessor {
 	using InputType=char const*;
 	using iter=InputType*;
 
+	class CommandInfo {
+	private:
+		std::string_view _help_message;
+		std::string_view _name;
+		std::string_view _args;
+	public:
+		//COMPILE TIME CONSTANT STRINGS REQUIRED
+		template<typename SV1,typename SV2,typename SV3>
+		constexpr PMINLINE CommandInfo(SV1& help,SV2& name,SV3& args):_help_message(help),_name(name),_args(args)
+		{}
+		constexpr PMINLINE std::string_view help_message() const
+		{
+			return _help_message;
+		}
+		constexpr PMINLINE std::string_view name() const
+		{
+			return _name;
+		}
+		constexpr PMINLINE std::string_view argument_list() const
+		{
+			return _args;
+		}
+	};
+
 	class CommandMaker {
 	public:
 		struct delivery {
@@ -77,27 +101,6 @@ namespace ScoreProcessor {
 			PMINLINE delivery():starting_index(1),flag(do_absolutely_nothing),num_threads(0),rgxst(unassigned),do_move(false),list_files(false),lt(unassigned_log)
 			{}
 		};
-	private:
-		std::string_view _help_message;
-		std::string_view _name;
-		std::string_view _args;
-	public:
-		//COMPILE-TYPE CONSTANT STRINGS REQUIRED
-		template<typename SV1,typename SV2,typename SV3>
-		CommandMaker(SV1& help,SV2& name,SV3& args):_help_message(help),_name(name),_args(args)
-		{}
-		PMINLINE std::string_view help_message() const
-		{
-			return _help_message;
-		}
-		PMINLINE std::string_view name() const
-		{
-			return _name;
-		}
-		PMINLINE std::string_view argument_list() const
-		{
-			return _args;
-		}
 		virtual void make_command(iter begin,iter end,delivery& del)=0;
 	};
 
@@ -787,7 +790,7 @@ namespace ScoreProcessor {
 #define cnnm(n) static PMINLINE constexpr std::string_view name() { return n; }
 #define cndf(n) static PMINLINE constexpr auto def_val() { return n; }
 #define ncdf(n) static PMINLINE auto def_val() { return n; }
-
+#define INFO(help,name,args) constexpr PMINLINE CommandInfo info() { return CommandInfo(help,name,args); }
 	namespace Output {
 
 		struct PatternParser {
@@ -865,6 +868,19 @@ namespace ScoreProcessor {
 
 		extern MakerTFull<UseTuple,Precheck,LabelId,PatternParser,MoveParser>
 			maker;
+
+		INFO("Specifies the output format:\n"
+			" %w filename and extension\n"
+			" %c entire filename\n"
+			" %p path without trailing slash\n"
+			" %0 numbers 0-9 indicate index with number of padding\n"
+			" %f filename\n"
+			" %x extension\n"
+			" %% literal percent\n"
+			"pattern tags: o, out, p, pat\n"
+			"move tags: mv, move",
+			"Output",
+			"pattern move=false")
 	}
 
 	namespace NumThreads {
@@ -888,6 +904,8 @@ namespace ScoreProcessor {
 			}
 		};
 		extern MakerTFull<UseTuple,empty,empty2,IntegerParser<unsigned int,Name,positive>> maker;
+
+		INFO("Controls number of threads, will not exceed number of files","Number of Threads","num")
 	}
 
 	namespace Verbosity {
@@ -938,8 +956,8 @@ namespace ScoreProcessor {
 				del.lt=level;
 			}
 		};
-		extern 
-		MakerTFull<UseTuple,Precheck,empty,Level> maker;
+		extern MakerTFull<UseTuple,Precheck,empty,Level> maker;
+		INFO("Changes verbosity of output: Silent=0=s, Errors-only=1=e, Count=2=c (default), Loud=3=l","Verbosity","level")
 	}
 
 	namespace StrMaker {
@@ -1004,12 +1022,22 @@ namespace ScoreProcessor {
 				del.pl.add_process<Straighten>(p,mn,mx,a,b,g);
 			}
 		};
-		extern 
-		SingMaker<UseTuple,LabelId,
+		extern
+			SingMaker<UseTuple,LabelId,
 			DoubleParser<MinAngle,no_check>,DoubleParser<MaxAngle,no_check>,
 			DoubleParser<AnglePrec>,DoubleParser<PixelPrec>,
 			IntegerParser<unsigned char,Boundary>,FloatParser<Gamma>>
 			maker;
+
+		INFO("Straightens the image\n"
+			"min angle: minimum angle to consider rotation; tags: mn, min, mna\n"
+			"max angle: maximum angle to consider rotation; tags: mx, max, mxa\n"
+			"angle prec: quantization of angles to consider; tags: a, ap\n"
+			"pixel prec: pixels this close are considered the same; tags: p, pp\n"
+			"boundary, vertical transition across this is considered an edge; tags: b\n"
+			"gamma: gamma correction applied; tags: g, gam",
+			"Straighten",
+			"min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2")
 	}
 
 	namespace CGMaker {
@@ -1021,6 +1049,8 @@ namespace ScoreProcessor {
 			}
 		};
 		extern SingMaker<UseTuple,empty> maker;
+
+		INFO("Converts the image to grayscale","Convert to Grayscale","")
 	}
 
 	namespace FRMaker {
@@ -1263,8 +1293,19 @@ namespace ScoreProcessor {
 		};
 
 		extern
-		SingMaker<UseTuple,LabelId,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
+			SingMaker<UseTuple,LabelId,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
 			maker;
+
+		INFO("Fills in a rectangle of specified color\n"
+			"left: left coord of rectangle; tags: l, left\n"
+			"top: top coord of rectangle; tags: t, top\n"
+			"horiz: right coord or width, defaults to right coord; tags: r, right, w, width\n"
+			"vert: bottom coord or height, defaults to bottom coord; tags: b, bottom, h, height\n"
+			"color: color to fill with, can be grayscale, rgb, or rgba with comma-separated values,\n"
+			"  tags: clr, color\n"
+			"origin: origin from which coords are taken, +y is always down, +x is always right; tags: o, or",
+			"Fill Rectangle",
+			"left top horiz vert color=255 origin=tl")
 	}
 
 	namespace GamMaker {
@@ -1276,7 +1317,7 @@ namespace ScoreProcessor {
 		private:
 			float value;
 		public:
-			PMINLINE Maker():value(0.5),CommandMaker("Applies a gamma correction","Gamma","value=2=1/previous")
+			PMINLINE Maker():value(0.5)
 			{}
 			PMINLINE void make_command(iter begin,iter end,CommandMaker::delivery& del) override
 			{
@@ -1298,6 +1339,8 @@ namespace ScoreProcessor {
 		};
 
 		extern Maker maker;
+
+		INFO("Applies a gamma correction","Gamma","value=2=1/previous")
 	}
 
 	namespace RotMaker {
@@ -1387,7 +1430,20 @@ namespace ScoreProcessor {
 		using GammaParser=FloatParser<GammaP,no_negatives>;
 
 		extern
-		SingMaker<UseTuple,LabelId,Radians,Mode,GammaParser> maker;
+			SingMaker<UseTuple,LabelId,Radians,Mode,GammaParser> maker;
+
+		INFO(
+			"Rotates the image\n"
+			"angle: angle to rotate the image, ccw is positive, defaults to degrees; tags: d, deg, r, rad\n"
+			"interpolation_mode: see below; tags: i, im\n"
+			"gamma: gamma correction for rotation; tags: g, gam\n"
+			"Modes are:\n"
+			"  nearest neighbor\n"
+			"  linear\n"
+			"  cubic\n"
+			"To specify mode, type as many letters as needed to unambiguously identify mode",
+			"Rotate",
+			"angle mode=cubic gamma=2")
 	}
 
 	namespace RsMaker {
@@ -1474,20 +1530,35 @@ namespace ScoreProcessor {
 			}
 		};
 		extern
-		SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
+			SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
 			maker;
+
+		INFO("Rescales image by given factor\n"
+			"factor: factor to scale image by; tags: f, fact\n"
+			"interpolation_mode: see below; tags: i, im\n"
+			"gamma: gamma correction applied; tags: g, gam\n"
+			"Rescale modes are:\n"
+			"  auto (moving average if downscaling, else cubic)\n"
+			"  nearest neighbor\n"
+			"  moving average\n"
+			"  linear\n"
+			"  grid\n"
+			"  cubic\n"
+			"  lanczos\n"
+			"To specify mode, type as many letters as needed to unambiguously identify mode",
+			"Rescale",
+			"factor interpolation_mode=auto gamma=2")
 	}
 
 	struct compair {
 	private:
 		char const* _key;
+		CommandInfo _info;
 		CommandMaker* _maker;
 	public:
-		PMINLINE constexpr compair():_key(0),_maker(0)
-		{
-			//static_assert(false,"I'm a stupid dumdum that didn't intialize my key pair");
-		}
-		PMINLINE constexpr compair(char const* key,CommandMaker* m):_key(key),_maker(m)
+		PMINLINE constexpr compair():_key(0),_info("bad","bad","bad"),_maker(0)
+		{}
+		PMINLINE constexpr compair(char const* key,CommandInfo info,CommandMaker* m):_key(key),_info(info),_maker(m)
 		{}
 		PMINLINE constexpr char const* key() const
 		{
@@ -1497,18 +1568,22 @@ namespace ScoreProcessor {
 		{
 			return _maker;
 		}
+		PMINLINE constexpr CommandInfo info() const
+		{
+			return _info;
+		}
 	};
 
 	namespace {
-		constexpr auto scl=exlib::make_array<compair>(compair("-cg",&CGMaker::maker),
-			compair("-str",&StrMaker::maker),
-			compair("-rot",&RotMaker::maker),
-			compair("-fr",&FRMaker::maker));
+		constexpr auto scl=exlib::make_array<compair>(compair("-cg",CGMaker::info(),&CGMaker::maker),
+			compair("-str",StrMaker::info(),&StrMaker::maker),
+			compair("-rot",RotMaker::info(),&RotMaker::maker),
+			compair("-fr",FRMaker::info(),&FRMaker::maker));
 		constexpr auto mcl=exlib::make_array<compair>();
-		constexpr auto ol=exlib::make_array<compair>(compair("-o",&Output::maker));
-		constexpr auto aliases=exlib::make_array<compair>(compair("-rotate",&RotMaker::maker));
+		constexpr auto ol=exlib::make_array<compair>(compair("-o",Output::info(),&Output::maker));
+		constexpr auto aliases=exlib::make_array<compair>(compair("-rotate",RotMaker::info(),&RotMaker::maker));
 		struct comp {
-			constexpr bool operator()(compair a,compair b) const
+			constexpr bool operator()(compair const& a,compair const& b) const
 			{
 				return exlib::strcmp(a.key(),b.key())<0;
 			}
@@ -1531,7 +1606,7 @@ namespace ScoreProcessor {
 		return ol;
 	}
 
-	PMINLINE CommandMaker* find_command(char const* lbl) noexcept
+	PMINLINE compair const& find_command(char const* lbl) noexcept
 	{
 		struct find {
 			int operator()(char const* target,compair cp)
@@ -1542,12 +1617,15 @@ namespace ScoreProcessor {
 		auto const r=exlib::binary_find(com_map.begin(),com_map.end(),lbl,find());
 		if(r==com_map.end())
 		{
-			return nullptr;
+			std::string err_msg("Unknown command ");
+			err_msg.append(lbl);
+			throw std::invalid_argument(err_msg);
 		}
-		return r->maker();
+		return *r;
 	}
 #undef cnnm
 #undef cndf
 #undef ncdf
+#undef INFO
 }
 #endif // !PROCESS_MAKERS_H
