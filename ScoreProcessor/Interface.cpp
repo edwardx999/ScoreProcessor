@@ -13,9 +13,9 @@ namespace ScoreProcessor {
 				" %x extension\n"
 				" %% literal percent\n"
 				"pattern tags: o, out, p, pat\n"
-				"move tags: mv, move\n",
+				"move tags: mv, move",
 				"Output",
-				"pattern move=false\n");
+				"pattern move=false");
 	}
 
 	namespace NumThreads {

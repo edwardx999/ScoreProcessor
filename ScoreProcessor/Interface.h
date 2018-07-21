@@ -138,6 +138,10 @@ namespace ScoreProcessor {
 			f=std::strtof(sv,&end);
 			auto find_bad=[=]()
 			{
+				if(sv==end)
+				{
+					return true;
+				}
 				for(auto it=end;;++it)
 				{
 					if(*it=='\0')
@@ -173,6 +177,7 @@ namespace ScoreProcessor {
 			f=std::strtod(sv,&end);
 			auto find_bad=[=]()
 			{
+				if(sv==end) return true;
 				for(auto it=end;;++it)
 				{
 					if(*it=='\0')
@@ -478,13 +483,14 @@ namespace ScoreProcessor {
 
 	public:
 
+		//returns the length of the prefix not including the colon, or -1 if there is no prefix
 		constexpr static size_t find_prefix(InputType str)
 		{
 			for(size_t i=0;;++i)
 			{
 				if(str[i]=='\0')
 				{
-					return 0;
+					return -1;
 				}
 				if(str[i]==':')
 				{
@@ -498,18 +504,35 @@ namespace ScoreProcessor {
 		struct has_labels {
 		private:
 			template<typename U>
-			constexpr static auto val(int) -> decltype(size_t(std::declval<U>().id(InputType())),bool())
+			constexpr static auto val(int) -> decltype(size_t(std::declval<U>().id(InputType(),size_t())),int())
 			{
-				return true;
+				return 2;
+			}
+			template<typename U>
+			constexpr static auto val(int) -> decltype(size_t(std::declval<U>().id(std::string_view())),int())
+			{
+				return 1;
 			}
 			template<typename>
-			constexpr static bool val(...)
+			constexpr static int val(...)
 			{
-				return false;
+				return 0;
 			}
 		public:
 			constexpr static bool const value=val<LabelId>(0);
 		};
+
+		size_t find_label(InputType data,size_t len)
+		{
+			if constexpr(has_labels::value==1)
+			{
+				return LabelId::id(data,len);
+			}
+			else
+			{
+				return LabelId::id(data);
+			}
+		}
 
 		template<size_t N>
 		void ordered_args(iter begin,size_t n,MyArgs& mt)
@@ -537,7 +560,7 @@ namespace ScoreProcessor {
 
 		void eval_tagged(InputType data,size_t prefix_len,MyArgs& mt,bool fulfilled[])
 		{
-			auto const index=LabelId::id(data);
+			auto const index=find_label(data,prefix_len);
 			throw_if_repeat(index,fulfilled);
 			find_arg<0>(index,mt,data,prefix_len);
 		}
@@ -551,9 +574,9 @@ namespace ScoreProcessor {
 				{
 					InputType const sv=begin[N];
 					auto const prefix=find_prefix(sv);
-					if(prefix==0)
+					if(prefix==-1)
 					{
-						find_arg_h<N>(mt,sv,0);
+						find_arg_h<N>(mt,sv,-1);
 						fulfilled[N]=true;
 						unordered_args<N+1>(begin,n,mt,fulfilled);
 					}
@@ -572,7 +595,7 @@ namespace ScoreProcessor {
 			for(size_t i=0;i<n;++i)
 			{
 				auto const pf=find_prefix(begin[i]);
-				if(pf==0)
+				if(pf==-1)
 				{
 					throw std::invalid_argument("Unlabeled arguments used after labeled arguments");
 				}
@@ -681,10 +704,10 @@ namespace ScoreProcessor {
 	using SingMaker=MakerTFull<UseTuple,SingleCheck,LabelId,ArgParsers...>;
 
 	[[noreturn]]
-	PMINLINE void bad_pf(std::string_view sv)
+	PMINLINE void bad_pf(InputType sv,size_t len)
 	{
 		std::string err_msg("Unknown prefix ");
-		err_msg.append(sv.data(),sv.length());
+		err_msg.append(sv,len);
 		throw std::invalid_argument(err_msg);
 	}
 
@@ -773,7 +796,7 @@ namespace ScoreProcessor {
 			{
 				if(s[0]=='-'&&s[1]=='-')
 				{
-					s+1;
+					return s+1;
 				}
 				return s;
 			}
@@ -814,7 +837,7 @@ namespace ScoreProcessor {
 		};
 
 		struct LabelId {
-			static PMINLINE size_t id(InputType sv)
+			static PMINLINE size_t id(InputType sv,size_t len)
 			{
 				static constexpr auto table=make_ltable(
 					ltable<6>(
@@ -826,7 +849,7 @@ namespace ScoreProcessor {
 				{
 					return index->index();
 				}
-				bad_pf(sv);
+				bad_pf(sv,len);
 			}
 		};
 
@@ -946,7 +969,7 @@ namespace ScoreProcessor {
 		};
 
 		struct LabelId {
-			PMINLINE static size_t id(InputType sv)
+			PMINLINE static size_t id(InputType sv,size_t len)
 			{
 				using le=lookup_entry;
 				static constexpr auto table=make_ltable(ltable<13>
@@ -963,7 +986,7 @@ namespace ScoreProcessor {
 				{
 					return idx->index();
 				}
-				bad_pf(sv);
+				bad_pf(sv,len);
 			}
 		};
 
@@ -1023,7 +1046,7 @@ namespace ScoreProcessor {
 					cnnm("width")
 				};
 				char const* to_parse=sv+prefix+1;
-				if(prefix>0&&sv[0]=='w')
+				if(prefix!=-1&&sv[0]=='w')
 				{
 					return {true,IntegerParser<int,Coord,no_check>().parse(to_parse)};
 				}
@@ -1042,7 +1065,7 @@ namespace ScoreProcessor {
 					cnnm("height")
 				};
 				char const* to_parse=sv+prefix+1;
-				if(prefix>0&&sv[0]=='h')
+				if(prefix!=-1&&sv[0]=='h')
 				{
 					return {true,IntegerParser<int,Coord,no_check>().parse(to_parse)};
 				}
@@ -1218,7 +1241,7 @@ namespace ScoreProcessor {
 		};
 
 		struct LabelId {
-			PMINLINE static size_t id(InputType sv)
+			PMINLINE static size_t id(InputType sv,size_t len)
 			{
 				using le=lookup_entry;
 				static constexpr auto table=make_ltable(std::array<le,16>(
@@ -1235,7 +1258,7 @@ namespace ScoreProcessor {
 				{
 					return idx->index();
 				}
-				bad_pf(sv);
+				bad_pf(sv,len);
 			}
 		};
 
@@ -1302,7 +1325,7 @@ namespace ScoreProcessor {
 				cndf(float(2))
 		};
 		struct LabelId {
-			PMINLINE static size_t id(InputType sv)
+			PMINLINE static size_t id(InputType sv,size_t len)
 			{
 				static constexpr auto table=make_ltable(
 					le("deg",0),le("rad",0),le("r",0),le("d",0),le("g",2),le("gam",2),le("im",1),le("i",1)
@@ -1312,7 +1335,7 @@ namespace ScoreProcessor {
 				{
 					return 0;
 				}
-				bad_pf(sv);
+				bad_pf(sv,len);
 			}
 		};
 
@@ -1420,7 +1443,7 @@ namespace ScoreProcessor {
 		};
 
 		struct LabelId {
-			PMINLINE static size_t id(InputType in)
+			PMINLINE static size_t id(InputType in,size_t len)
 			{
 				static constexpr auto table=make_ltable(le("f",0),le("fact",0),le("i",1),le("im",1),le("g",2),le("gam",2));
 				auto idx=lfind(table,in);
@@ -1428,7 +1451,7 @@ namespace ScoreProcessor {
 				{
 					return idx->index();
 				}
-				bad_pf(in);
+				bad_pf(in,len);
 			}
 		};
 
