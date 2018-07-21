@@ -275,7 +275,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);cimg_use_jpeg;cimg_use_png;_WINDOWS;NOMINMAX;STOP_CONSOLE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);cimg_use_jpeg;cimg_use_png;_WINDOWS;NOMINMAX;STOP_CONSOLE;TESTING</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <StringPooling>true</StringPooling>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -286,7 +286,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);lib/jpeg-9b/jpeg_x64.lib;lib/libpng/libpng16_x64.lib;lib/libpng/zlib_x64.lib;lib/threadpool/ThreadPool_x64.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);lib/jpeg-9b/jpeg_x64.lib;lib/libpng/libpng16_x64.lib;lib/libpng/zlib_x64.lib;l</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WeakDebug|x64'">
@@ -318,6 +318,7 @@
     <ClInclude Include="allAlgorithms.h" />
     <ClInclude Include="CImg.h" />
     <ClInclude Include="Cluster.h" />
+    <ClInclude Include="Interface.h" />
     <ClInclude Include="imagefind.h" />
     <ClInclude Include="ImageMath.h" />
     <ClInclude Include="ImageProcess.h" />
@@ -327,9 +328,6 @@
     <ClInclude Include="neuralnet.h" />
     <ClInclude Include="old.txt" />
     <ClInclude Include="parse.h" />
-    <ClInclude Include="Interface.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="Processes.h" />
     <ClInclude Include="ScoreProcesses.h" />
     <ClInclude Include="shorthand.h" />
@@ -345,9 +343,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debugger|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='WeakDebug|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Interface.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="Interface.cpp" />
     <ClCompile Include="Logs.cpp" />
     <ClCompile Include="Processes.cpp" />
     <ClCompile Include="ScoreProcesses.cpp" />
