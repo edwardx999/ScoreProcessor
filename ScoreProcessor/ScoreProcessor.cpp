@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include <iostream>
 #include "Interface.h"
+<<<<<<< HEAD
 #include <vector>
 #include <string>
 #include "lib/exstring/exfiles.h"
@@ -9,6 +10,8 @@ using namespace ScoreProcessor;
 
 using Input=char*;
 using InputIter=Input*;
+=======
+>>>>>>> parent of 9de01a2... function bases
 
 bool could_be_command(char const* str)
 {
@@ -44,8 +47,9 @@ void info_output()
 {
 	char date[]=__DATE__;
 	if(date[4]==' ') date[4]=='0';
+	char const* time=__TIME__;
 	std::cout<<"Version: ";
-	std::cout<<date<<" " __TIME__ " Copyright 2017-";
+	std::cout<<date<<' '<<time<<"Copyright 2017-";
 	std::cout.write(date+7,4);
 	std::cout<<" Edward Xie\n";
 	std::cout<<
@@ -86,6 +90,7 @@ void info_output()
 		"A Multi Page Operation can not be done with other operations.\n";
 }
 
+<<<<<<< HEAD
 void help_output(CommandInfo const& cm)
 {
 	std::cout<<cm.name()<<'\n';
@@ -143,6 +148,9 @@ CommandMaker::delivery parse_commands(InputIter iter)
 {}
 
 int main(int argc,InputIter argv)
+=======
+int main(int argc,char** argv)
+>>>>>>> parent of 9de01a2... function bases
 {
 	try
 	{
