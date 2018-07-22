@@ -4,16 +4,18 @@
 namespace ScoreProcessor {
 	namespace Output {
 		MakerTFull<UseTuple,Precheck,LabelId,PatternParser,MoveParser>
-			maker("Specifies the output format:\n"
-				" %w filename and extension\n"
-				" %c entire filename\n"
-				" %p path without trailing slash\n"
-				" %0 numbers 0-9 indicate index with number of padding\n"
-				" %f filename\n"
-				" %x extension\n"
-				" %% literal percent\n"
-				"pattern tags: o, out, p, pat\n"
-				"move tags: m, mv, move",
+			maker("Specifies the output format\n"
+				"pattern: the output template, see below; tags: o, out, p, pat\n"
+				"move: whether to copy or move files (ignored by multi); tags: m, mv, move\n"
+				"template specifiers:\n"
+				"  %w filename and extension\n"
+				"  %c entire filename\n"
+				"  %p path without trailing slash\n"
+				"  %0 numbers 0-9 indicate index with number of padding\n"
+				"  %f filename\n"
+				"  %x extension\n"
+				"  %% literal percent\n"
+				"Double the starting dash if you want the file to start with a dash.",
 				"Output",
 				"pattern=%w move=false");
 	}
@@ -109,5 +111,9 @@ namespace ScoreProcessor {
 				"replacer: color to replacer with; tags: r, rep\n",
 				"Filter Gray",
 				"min max=255 replacer=255");
+	}
+
+	namespace BSel {
+		BoundSelMaker maker;
 	}
 }

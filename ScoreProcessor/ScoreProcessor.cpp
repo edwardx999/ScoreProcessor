@@ -5,6 +5,7 @@
 #include <string>
 #include "lib/exstring/exfiles.h"
 #include "Logs.h"
+#include <assert.h>
 
 using namespace ScoreProcessor;
 
@@ -49,27 +50,28 @@ void info_output()
 	constexpr char const* space_buffer=":                                                                              ";
 	constexpr auto const& scl=ScoreProcessor::single_command_list();
 	constexpr size_t const padding=22;
-	auto write=[=](auto it)
+	auto write_command=[=](auto it)
 	{
 		std::cout<<"    ";
 		std::cout<<it.maker()->name();
+		assert(padding>=it.maker()->name().length());
 		std::cout.write(space_buffer,padding-it.maker()->name().length());
 		std::cout<<'-'<<it.key()<<' ';
 		std::cout<<it.maker()->argument_list()<<'\n';
 	};
 	for(auto it:ScoreProcessor::single_command_list())
 	{
-		write(it);
+		write_command(it);
 	}
 	std::cout<<"  Multi Page Operations:\n";
 	for(auto it:ScoreProcessor::multi_command_list())
 	{
-		write(it);
+		write_command(it);
 	}
 	std::cout<<"  Options:\n";
 	for(auto it:ScoreProcessor::option_list())
 	{
-		write(it);
+		write_command(it);
 	}
 	std::cout<<"Multiple Single Page Operations can be done at once. They are performed in the order they are given.\n"
 		"A Multi Page Operation can not be done with other operations.\n";
@@ -99,10 +101,6 @@ void list_files(std::vector<std::string> const& files)
 	}
 	std::cout<<'\n';
 }
-
-//returns files and sets iter to the end of file list
-std::vector<std::string> find_files(InputIter& iter)
-{}
 
 void parse_commands(CommandMaker::delivery& del,InputIter arg_start,InputIter end)
 {

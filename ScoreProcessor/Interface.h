@@ -1539,6 +1539,43 @@ namespace ScoreProcessor {
 			IntegerParser<unsigned char,Replacer>> maker;
 	}
 
+	namespace BSel {
+
+		class BoundSelMaker:public CommandMaker {
+		public:
+			BoundSelMaker():CommandMaker("Files between the begin and end are included in the list of files to process","Boundary Select","first_file1 last_file1 ... first_filen last_filen")
+			{}
+			void make_command(iter begin,iter end,delivery& del) override
+			{
+				size_t n=end-begin;
+				if(n==0)
+				{
+					throw std::invalid_argument("No arguments given");
+				}
+				if(n&1)
+				{
+					throw std::invalid_argument("Odd number of arguments");
+				}
+				for(size_t i=0;i<n;i+=2)
+				{
+					delivery::sel_boundary b={begin[i],begin[i+1]};
+					auto remove_start_dash=[](std::string_view& sv)
+					{
+						if(sv[0]=='-'&&sv[1]=='-')
+						{
+							sv.remove_prefix(1);
+						}
+					};
+					remove_start_dash(b.begin);
+					remove_start_dash(b.end);
+					del.selections.push_back(b);
+				}
+			}
+		};
+
+		extern BoundSelMaker maker;
+
+	}
 	struct compair {
 	private:
 		char const* _key;
@@ -1573,7 +1610,8 @@ namespace ScoreProcessor {
 		constexpr auto ol=exlib::make_array<compair>(
 			compair("o",&Output::maker),
 			compair("vb",&Verbosity::maker),
-			compair("nt",&NumThreads::maker));
+			compair("nt",&NumThreads::maker),
+			compair("bsel",&BSel::maker));
 
 		constexpr auto aliases=exlib::make_array<compair>(compair("rotate",&RotMaker::maker));
 
