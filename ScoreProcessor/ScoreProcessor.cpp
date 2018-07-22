@@ -102,7 +102,7 @@ void info_output()
 
 void help_output(CommandMaker const& cm)
 {
-	std::cout<<cm.name()<<'\n';
+	std::cout<<cm.name()<<":\n";
 	if(cm.argument_list().length()!=0)
 	{
 		std::cout<<"Args: "<<cm.argument_list()<<'\n';
