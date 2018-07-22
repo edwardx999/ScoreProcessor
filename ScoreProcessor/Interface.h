@@ -1411,7 +1411,7 @@ namespace ScoreProcessor {
 			{
 				return Rescale::automatic;
 			}
-			static Rescale::rescale_mode parse(char const* mode_string)
+			PMINLINE static Rescale::rescale_mode parse(char const* mode_string)
 			{
 				switch(mode_string[0]) //thank you null-termination
 				{
@@ -1543,9 +1543,9 @@ namespace ScoreProcessor {
 
 		class BoundSelMaker:public CommandMaker {
 		public:
-			BoundSelMaker():CommandMaker("Files between the begin and end are included in the list of files to process","Boundary Select","first_file1 last_file1 ... first_filen last_filen")
+			PMINLINE BoundSelMaker():CommandMaker("Files between the begin and end are included in the list of files to process","Boundary Select","first_file1 last_file1 ... first_filen last_filen")
 			{}
-			void make_command(iter begin,iter end,delivery& del) override
+			PMINLINE void make_command(iter begin,iter end,delivery& del) override
 			{
 				size_t n=end-begin;
 				if(n==0)
@@ -1575,6 +1575,26 @@ namespace ScoreProcessor {
 
 		extern BoundSelMaker maker;
 
+	}
+
+	namespace List {
+		struct Precheck {
+			PMINLINE void check(CommandMaker::delivery const& del)
+			{
+				if(del.list_files)
+				{
+					throw std::invalid_argument("List command already given");
+				}
+			}
+		};
+		struct UseTuple {
+			PMINLINE void use_tuple(CommandMaker::delivery& del)
+			{
+				del.list_files=true;
+			}
+		};
+
+		extern MakerTFull<UseTuple,Precheck,empty> maker;
 	}
 	struct compair {
 	private:
@@ -1611,7 +1631,8 @@ namespace ScoreProcessor {
 			compair("o",&Output::maker),
 			compair("vb",&Verbosity::maker),
 			compair("nt",&NumThreads::maker),
-			compair("bsel",&BSel::maker));
+			compair("bsel",&BSel::maker),
+			compair("list",&List::maker));
 
 		constexpr auto aliases=exlib::make_array<compair>(compair("rotate",&RotMaker::maker));
 

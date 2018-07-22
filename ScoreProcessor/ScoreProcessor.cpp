@@ -38,7 +38,7 @@ constexpr bool could_be_command_no_rec(char const* str)
 
 constexpr bool is_rec(char const* str)
 {
-	return str[0]=='-'&&str[1]=='r'&&str[0]=='\0';
+	return str[0]=='-'&&str[1]=='r'&&str[2]=='\0';
 }
 
 constexpr auto date()
@@ -71,9 +71,8 @@ void info_output()
 		"Type command alone to get readme\n"
 		"Available commands:\n"
 		"  Single Page Operations:\n";
-	constexpr char const* space_buffer=":                                                                              ";
-	constexpr auto const& scl=ScoreProcessor::single_command_list();
-	constexpr size_t const padding=22;
+	constexpr char const* space_buffer=":                                      ";
+	constexpr size_t padding=22;
 	auto write_command=[=](auto it)
 	{
 		std::cout<<"    ";
@@ -104,7 +103,10 @@ void info_output()
 void help_output(CommandMaker const& cm)
 {
 	std::cout<<cm.name()<<'\n';
-	std::cout<<"Args: "<<cm.argument_list()<<'\n';
+	if(cm.argument_list().length()!=0)
+	{
+		std::cout<<"Args: "<<cm.argument_list()<<'\n';
+	}
 	std::cout<<cm.help_message()<<'\n';
 }
 

@@ -116,4 +116,8 @@ namespace ScoreProcessor {
 	namespace BSel {
 		BoundSelMaker maker;
 	}
+
+	namespace List {
+		MakerTFull<UseTuple,Precheck,empty> maker("Makes program list out files","List Files","");
+	}
 }
