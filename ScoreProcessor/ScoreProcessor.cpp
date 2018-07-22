@@ -12,9 +12,33 @@ using namespace ScoreProcessor;
 using Input=char*;
 using InputIter=Input*;
 
-bool could_be_command(char const* str)
+constexpr bool could_be_command(char const* str)
 {
 	return str[0]=='-'&&str[1]>='a'&&str[1]<='z';
+}
+
+constexpr bool could_be_command_no_rec(char const* str)
+{
+	if(str[0]=='-')
+	{
+		if(str[1]>='a'&&str[1]<='z')
+		{
+			if(str[1]=='r')
+			{
+				if(str[2]=='\0')
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+constexpr bool is_rec(char const* str)
+{
+	return str[0]=='-'&&str[1]=='r'&&str[0]=='\0';
 }
 
 constexpr auto date()
@@ -201,7 +225,7 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 	std::vector<std::string> files;
 	for(auto pos=begin;pos!=end;++pos)
 	{
-		if(strcmp(*pos,"-r")==0)
+		if(is_rec(*pos))
 		{
 			if(do_recursive)
 			{
@@ -258,13 +282,7 @@ InputIter find_file_list(InputIter begin,InputIter end)
 {
 	for(auto pos=begin;pos!=end;++pos)
 	{
-		if(pos[0][0]=='-')
-		{
-			char const c=pos[0][1];
-			if(c=='r'&&pos[0][2]=='\0') continue;
-			if(c>='a'&&c<='z') return pos;
-			if(c=='-') *pos+=1;
-		}
+		if(could_be_command_no_rec(*pos)) return pos;
 	}
 	return end;
 }
@@ -404,7 +422,7 @@ int main(int argc,InputIter argv)
 		return 0;
 	}
 	cil::cimg::exception_mode(0);
-	if(could_be_command(argv[1]))
+	if(could_be_command_no_rec(argv[1]))
 	{
 		auto cmd=find_command(argv[1]+1);
 		if(cmd!=nullptr)
