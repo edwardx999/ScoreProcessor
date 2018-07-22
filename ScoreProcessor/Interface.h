@@ -768,7 +768,7 @@ namespace ScoreProcessor {
 			}
 			PMINLINE constexpr bool operator()(lookup_entry a,lookup_entry b) const
 			{
-				return exlib::compare<char const*>()(a.key(),b.key());
+				return exlib::less<char const*>()(a.key(),b.key());
 			}
 		};
 
@@ -783,7 +783,7 @@ namespace ScoreProcessor {
 		{
 			return make_ltable(ltable<sizeof...(args)>{
 				{
-					std::forward<Args>(args)...
+					args...
 				}});
 		}
 
@@ -1485,7 +1485,7 @@ namespace ScoreProcessor {
 			maker;
 	}
 
-	namespace FGMaker{ 
+	namespace FGMaker {
 		struct Min {
 			cnnm("min brightness")
 		};
@@ -1504,6 +1504,7 @@ namespace ScoreProcessor {
 					le("mn",0),le("min",0),le("mnv",0),
 					le("mx",1),le("max",1),le("mxv",1),
 					le("r",2),le("rep",2));
+				
 				auto idx=lfind(table,data);
 				if(idx!=table.end())
 				{
@@ -1520,11 +1521,15 @@ namespace ScoreProcessor {
 				{
 					throw std::invalid_argument("Min value cannot be greater than max value");
 				}
+				if(min==max&&max==rep)
+				{
+					return;
+				}
 				del.pl.add_process<FilterGray>(min,max,rep);
 			}
 		};
 		extern
-		SingMaker<UseTuple,LabelId,
+			SingMaker<UseTuple,LabelId,
 			IntegerParser<unsigned char,Min>,
 			IntegerParser<unsigned char,Max>,
 			IntegerParser<unsigned char,Replacer>> maker;

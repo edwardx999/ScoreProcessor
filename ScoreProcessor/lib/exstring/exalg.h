@@ -121,7 +121,8 @@ namespace exlib {
 	constexpr std::array<T,N> sorted(std::array<T,N> const& arr,Comp c)
 	{
 		auto sorted=arr;
-		detail::sort(sorted,c,0,N);
+		if constexpr(N<10) isort(sorted.begin(),sorted.end(),c);
+		else qsort(sorted.begin(),sorted.end(),c);
 		return sorted;
 	}
 
@@ -178,7 +179,7 @@ namespace exlib {
 				{
 					return -1;
 				}
-				if(b[i]<a[i])
+				if(a[i]>b[i])
 				{
 					return 1;
 				}

@@ -16,16 +16,28 @@ bool could_be_command(char const* str)
 	return str[0]=='-'&&str[1]>='a'&&str[1]<='z';
 }
 
+constexpr auto date()
+{
+	constexpr char const* dt=__DATE__;
+	constexpr size_t len=exlib::strlen(dt);
+	std::array<char,len> ret{{}};
+	for(size_t i=0;i<len;++i)
+	{
+		ret[i]=dt[i];
+	}
+	if(ret[4]==' ') ret[4]='0';
+	return ret;
+}
+
 void info_output()
 {
-	char date[]=__DATE__;
-	if(date[4]==' ') date[4]='0';
-	char const* time=__TIME__;
+	constexpr auto dt=date();
 	std::cout<<"Version: ";
-	std::cout<<date<<' '<<time<<"Copyright 2017-";
-	std::cout.write(date+7,4);
-	std::cout<<" Edward Xie\n";
+	std::cout.write(dt.data(),dt.size());
+	std::cout<<" " __TIME__ " Copyright 2017-";
+	std::cout.write(dt.data()+7,4);
 	std::cout<<
+		" Edward Xie\n"
 		"Syntax: filename_or_folder... command params... ...\n"
 		"If you want to recursively search a folder,type -r before it\n"
 		"If a file starts with a dash,double the starting dash:\"-my-file.jpg\" -> \"--my-file.jpg\"\n"
@@ -34,7 +46,7 @@ void info_output()
 		"Type command alone to get readme\n"
 		"Available commands:\n"
 		"  Single Page Operations:\n";
-	char const* space_buffer=":                                                                              ";
+	constexpr char const* space_buffer=":                                                                              ";
 	constexpr auto const& scl=ScoreProcessor::single_command_list();
 	constexpr size_t const padding=22;
 	auto write=[=](auto it)
@@ -42,7 +54,7 @@ void info_output()
 		std::cout<<"    ";
 		std::cout<<it.maker()->name();
 		std::cout.write(space_buffer,padding-it.maker()->name().length());
-		std::cout<<it.key()<<' ';
+		std::cout<<'-'<<it.key()<<' ';
 		std::cout<<it.maker()->argument_list()<<'\n';
 	};
 	for(auto it:ScoreProcessor::single_command_list())
@@ -396,7 +408,7 @@ int main(int argc,InputIter argv)
 	cil::cimg::exception_mode(0);
 	if(could_be_command(argv[1]))
 	{
-		auto cmd=find_command(argv[1]);
+		auto cmd=find_command(argv[1]+1);
 		if(cmd!=nullptr)
 		{
 			help_output(*cmd);
