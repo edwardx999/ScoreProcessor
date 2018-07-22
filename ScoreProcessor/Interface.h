@@ -869,7 +869,7 @@ namespace ScoreProcessor {
 				}
 				if(num_args==0)
 				{
-					throw std::invalid_argument("No args given");
+					throw std::invalid_argument("No arguments given");
 				}
 			}
 		};

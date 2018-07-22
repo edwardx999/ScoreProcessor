@@ -39,10 +39,10 @@ void info_output()
 	std::cout<<
 		" Edward Xie\n"
 		"Syntax: filename_or_folder... command params... ...\n"
-		"If you want to recursively search a folder,type -r before it\n"
-		"If a file starts with a dash,double the starting dash:\"-my-file.jpg\" -> \"--my-file.jpg\"\n"
+		"If you want to recursively search a folder, type -r before it\n"
+		"If a file starts with a dash, double the starting dash: \"-my-file.jpg\" -> \"--my-file.jpg\"\n"
 		"parameters that require multiple values are notated with a comma\n"
-		"ex: img0.png --image1.jpg my_folder/-r rec_folder/-fg 180-ccga 20,50,30\n"
+		"ex: img0.png --image1.jpg my_folder/ -r rec_folder/ -fg 180 -ccga 20,50,30\n"
 		"Type command alone to get readme\n"
 		"Available commands:\n"
 		"  Single Page Operations:\n";
