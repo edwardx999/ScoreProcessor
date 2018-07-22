@@ -97,4 +97,17 @@ namespace ScoreProcessor {
 				"Rescale",
 				"factor interpolation_mode=auto gamma=2");
 	}
+
+	namespace FGMaker {
+		SingMaker<UseTuple,LabelId,
+			IntegerParser<unsigned char,Min>,
+			IntegerParser<unsigned char,Max>,
+			IntegerParser<unsigned char,Replacer>> maker(
+				"Replacers pixels with brightness [min,max] with replacer\n"
+				"min: minimum brightness to replace; tags: mn, min, mnv\n"
+				"max: maximum brightness to replace; tags: mx, max, mxv\n"
+				"replacer: color to replacer with; tags: r, rep\n",
+				"Filter Gray",
+				"min max=255 replacer=255");
+	}
 }

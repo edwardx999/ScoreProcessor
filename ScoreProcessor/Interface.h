@@ -24,8 +24,8 @@
 #define PMINLINE inline
 namespace ScoreProcessor {
 
-	using InputType=char*;
-	using iter=InputType*;
+	using InputType=char const*;
+	using iter=InputType const*;
 
 	class CommandMaker {
 	public:
@@ -370,17 +370,23 @@ namespace ScoreProcessor {
 		private:
 			template<typename U>
 			constexpr static auto val(int) ->
-				decltype(std::declval<U>().check(std::declval<CommandMaker::delivery>()),bool())
+				decltype(std::declval<U>().check(std::declval<CommandMaker::delivery>()),int())
 			{
-				return true;
+				return 1;
+			}
+			template<typename U>
+			constexpr static auto val(int) ->
+				decltype(std::declval<U>().check(std::declval<CommandMaker::delivery>(),size_t()),int())
+			{
+				return 2;
 			}
 			template<typename>
 			constexpr static bool val(...)
 			{
-				return false;
+				return 0;
 			}
 		public:
-			constexpr static bool const value=val<Precheck>(0);
+			constexpr static int const value=val<Precheck>(0);
 		};
 
 	public:
@@ -640,11 +646,15 @@ namespace ScoreProcessor {
 	public:
 		void make_command(iter begin,iter end,delivery& del) override
 		{
-			if constexpr(has_precheck::value)
+			if constexpr(has_precheck::value==1)
 			{
 				Precheck::check(del);
 			}
 			size_t n=end-begin;
+			if constexpr(has_precheck::value==2)
+			{
+				Precheck::check(del,n);
+			}
 			check_size(n);
 			auto mt=init_args();
 			if constexpr(MaxArgs>0)
@@ -847,11 +857,15 @@ namespace ScoreProcessor {
 		};
 
 		struct Precheck {
-			static PMINLINE void check(CommandMaker::delivery& del)
+			static PMINLINE void check(CommandMaker::delivery& del,size_t num_args)
 			{
 				if(!del.sr.empty())
 				{
 					throw std::invalid_argument("Output format already given");
+				}
+				if(num_args==0)
+				{
+					throw std::invalid_argument("No args given");
 				}
 			}
 		};
@@ -1471,6 +1485,50 @@ namespace ScoreProcessor {
 			maker;
 	}
 
+	namespace FGMaker{ 
+		struct Min {
+			cnnm("min brightness")
+		};
+		struct Max {
+			cnnm("max brightness")
+				cndf(unsigned char(255))
+		};
+		struct Replacer {
+			cnnm("replacer")
+				cndf(unsigned char(255))
+		};
+		struct LabelId {
+			PMINLINE static size_t id(InputType data,size_t len)
+			{
+				static constexpr auto table=make_ltable(
+					le("mn",0),le("min",0),le("mnv",0),
+					le("mx",1),le("max",1),le("mxv",1),
+					le("r",2),le("rep",2));
+				auto idx=lfind(table,data);
+				if(idx!=table.end())
+				{
+					return idx->index();
+				}
+				bad_pf(data,len);
+			}
+		};
+
+		struct UseTuple {
+			PMINLINE static void use_tuple(CommandMaker::delivery& del,unsigned char min,unsigned char max,unsigned char rep)
+			{
+				if(min>max)
+				{
+					throw std::invalid_argument("Min value cannot be greater than max value");
+				}
+				del.pl.add_process<FilterGray>(min,max,rep);
+			}
+		};
+		extern
+		SingMaker<UseTuple,LabelId,
+			IntegerParser<unsigned char,Min>,
+			IntegerParser<unsigned char,Max>,
+			IntegerParser<unsigned char,Replacer>> maker;
+	}
 	struct compair {
 	private:
 		char const* _key;
@@ -1494,19 +1552,20 @@ namespace ScoreProcessor {
 
 	namespace {
 		constexpr auto scl=exlib::make_array<compair>(
-			compair("-cg",&CGMaker::maker),
-			compair("-str",&StrMaker::maker),
-			compair("-rot",&RotMaker::maker),
-			compair("-fr",&FRMaker::maker));
+			compair("cg",&CGMaker::maker),
+			compair("fg",&FGMaker::maker),
+			compair("str",&StrMaker::maker),
+			compair("rot",&RotMaker::maker),
+			compair("fr",&FRMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>();
 
 		constexpr auto ol=exlib::make_array<compair>(
-			compair("-o",&Output::maker),
-			compair("-vb",&Verbosity::maker),
-			compair("-nt",&NumThreads::maker));
+			compair("o",&Output::maker),
+			compair("vb",&Verbosity::maker),
+			compair("nt",&NumThreads::maker));
 
-		constexpr auto aliases=exlib::make_array<compair>(compair("-rotate",&RotMaker::maker));
+		constexpr auto aliases=exlib::make_array<compair>(compair("rotate",&RotMaker::maker));
 
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const

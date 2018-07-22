@@ -101,7 +101,7 @@ void parse_commands(CommandMaker::delivery& del,InputIter arg_start,InputIter en
 		{
 			if(it==end||could_be_command(*it))
 			{
-				auto cmd=find_command(*arg_start);
+				auto cmd=find_command((*arg_start)+1);
 				if(cmd==nullptr)
 				{
 					std::string err_msg("Unknown command: ");
