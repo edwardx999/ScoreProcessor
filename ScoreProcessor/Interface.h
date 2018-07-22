@@ -253,18 +253,18 @@ namespace ScoreProcessor {
 		}
 	};
 
-	//if LabelId defines a function id(InputType), this function returns a size_t in range [0,MaxArgs)
+	//if LabelId defines a function id(InputType,(optional)size_t prefix_len), this function returns a size_t in range [0,MaxArgs)
 	//indicating the index of the tag, or throws an exception indicating the tag does not exist
 	//otherwise, the parser will just go through arguments in order
-	//Each type of ArgParsers must define a function Type parse(char const*,(optional)size_t real_start);
-	//a function Type def_val(), if it is used;
+	//Each type of ArgParsers must define a function Type parse(char const*,(optional)size_t prefix_len);
+	//optionally a function Type def_val(), if it is used;
 	//and a function CompatibleWithString name().
 	//If parse accepts a second real_start argument, the first string_view is of the whole input and prefix_len
 	//is the length of the prefix not including the colon separator. Otherwise the first string is only a view past
 	//the colon.
 	//UseTuple must define a function use_tuple(CommandMaker::delivery&,Args...), which uses the tuple result
-	//from parsing to change the delivery. The tuple may optionally be expanded into its components
-	//if Precheck defines check(CommandMaker::delivery (const)(&)), this checks the delivery before parsing, 
+	//from parsing to change the delivery. The tuple may optionally be referenced directly.
+	//if Precheck defines check(CommandMaker::delivery (const)(&),(optional)size_t num_args), this checks the delivery before parsing, 
 	//throwing or doing nothing
 	template<typename UseTuple,typename Precheck,typename LabelId,typename... ArgParsers>
 	class MakerTFull:protected LabelId,protected Precheck,protected UseTuple,protected std::tuple<ArgParsers...>,public CommandMaker {
@@ -831,6 +831,10 @@ namespace ScoreProcessor {
 		public:
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* input,bool do_move)
 			{
+				if(*input==0)
+				{
+					throw std::invalid_argument("Output format cannot be empty");
+				}
 				if(del.flag<del.do_nothing)
 				{
 					del.flag=del.do_nothing;
@@ -1534,6 +1538,7 @@ namespace ScoreProcessor {
 			IntegerParser<unsigned char,Max>,
 			IntegerParser<unsigned char,Replacer>> maker;
 	}
+
 	struct compair {
 	private:
 		char const* _key;
