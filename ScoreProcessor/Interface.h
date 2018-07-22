@@ -814,7 +814,7 @@ namespace ScoreProcessor {
 				return false;
 			}
 			cndf(false)
-			cnnm("move")
+				cnnm("move")
 		};
 
 		class UseTuple {
@@ -834,10 +834,9 @@ namespace ScoreProcessor {
 			static PMINLINE size_t id(InputType sv,size_t len)
 			{
 				static constexpr auto table=make_ltable(
-					ltable<6>(
-						{le("mv",1),le("move",1),
-						le("o",0),le("out",0),
-						le("p",0),le("pat",0)}));
+					le("mv",1),le("move",1),le("m",1),
+					le("o",0),le("out",0),
+					le("p",0),le("pat",0));
 				auto const index=lfind(table,sv);
 				if(index!=table.end())
 				{
@@ -932,8 +931,8 @@ namespace ScoreProcessor {
 				del.lt=level;
 			}
 		};
-		extern 
-		MakerTFull<UseTuple,Precheck,empty,Level> maker;
+		extern
+			MakerTFull<UseTuple,Precheck,empty,Level> maker;
 	}
 
 	namespace StrMaker {
@@ -998,8 +997,8 @@ namespace ScoreProcessor {
 				del.pl.add_process<Straighten>(p,mn,mx,a,b,g);
 			}
 		};
-		extern 
-		SingMaker<UseTuple,LabelId,
+		extern
+			SingMaker<UseTuple,LabelId,
 			DoubleParser<MinAngle,no_check>,DoubleParser<MaxAngle,no_check>,
 			DoubleParser<AnglePrec>,DoubleParser<PixelPrec>,
 			IntegerParser<unsigned char,Boundary>,FloatParser<Gamma>>
@@ -1257,7 +1256,7 @@ namespace ScoreProcessor {
 		};
 
 		extern
-		SingMaker<UseTuple,LabelId,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
+			SingMaker<UseTuple,LabelId,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
 			maker;
 	}
 
@@ -1381,7 +1380,7 @@ namespace ScoreProcessor {
 		using GammaParser=FloatParser<GammaP,no_negatives>;
 
 		extern
-		SingMaker<UseTuple,LabelId,Radians,Mode,GammaParser> maker;
+			SingMaker<UseTuple,LabelId,Radians,Mode,GammaParser> maker;
 	}
 
 	namespace RsMaker {
@@ -1468,7 +1467,7 @@ namespace ScoreProcessor {
 			}
 		};
 		extern
-		SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
+			SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
 			maker;
 	}
 
