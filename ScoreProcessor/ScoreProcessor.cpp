@@ -67,6 +67,8 @@ void info_output()
 		"If you want to recursively search a folder, type -r before it\n"
 		"If a file starts with a dash, double the starting dash: \"-my-file.jpg\" -> \"--my-file.jpg\"\n"
 		"parameters that require multiple values are notated with a comma\n"
+		"parameters can be tagged to reference a specific input with prefix:value\n"
+		"prefixes sometimes allow switching between different types of input\n"
 		"ex: img0.png --image1.jpg my_folder/ -r rec_folder/ -fg 180 -ccga 20,50,30\n"
 		"Type command alone to get readme\n"
 		"Available commands:\n"
@@ -211,12 +213,12 @@ void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery con
 		}
 		files=std::move(filtered);
 	}
-	if(del.rgxst)
+	for(auto const& rgx:del.rgxes)
 	{
 		files.erase(std::remove_if(files.begin(),files.end(),
-			[&del,keep=del.rgxst==CommandMaker::delivery::normal](auto const& a)
+			[&rgx](auto const& a)
 		{
-			return std::regex_match(a,del.rgx)!=keep;
+			return std::regex_match(a,rgx.rgx)!=rgx.keep_match;
 		}),files.end());
 	}
 }
@@ -469,6 +471,10 @@ int main(int argc,InputIter argv)
 		{
 			del.num_threads=2;
 		}
+	}
+	if(del.starting_index==-1)
+	{
+		del.starting_index=1;
 	}
 	using ui=decltype(del.num_threads);
 	del.num_threads=std::min(

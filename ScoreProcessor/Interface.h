@@ -62,19 +62,19 @@ namespace ScoreProcessor {
 				ImageUtils::perc_or_val min_height,min_width,min_vert_space;
 				float horiz_weight;
 			} cut_args;
-			std::regex rgx;
-			enum regex_state {
-				unassigned,normal,inverted
+			struct filter {
+				std::regex rgx;
+				bool keep_match;
 			};
+			std::vector<filter> rgxes;
 			struct sel_boundary {
 				std::string_view begin; //will always be present in the parameters list
 				std::string_view end;
 			};
 			std::vector<sel_boundary> selections;
-			regex_state rgxst;
 			unsigned int num_threads;
 			bool list_files;
-			PMINLINE delivery():starting_index(1),flag(do_absolutely_nothing),num_threads(0),rgxst(unassigned),do_move(false),list_files(false),lt(unassigned_log)
+			PMINLINE delivery():starting_index(-1),flag(do_absolutely_nothing),num_threads(0),do_move(false),list_files(false),lt(unassigned_log)
 			{}
 		};
 	private:
@@ -207,16 +207,14 @@ namespace ScoreProcessor {
 		T parse(char const* in) const
 		{
 			T t;
-			std::string_view str(in);
-			auto const last=str.data()+str.size();
-			auto const res=std::from_chars(str.data(),last,t);
-			if(res.ec==std::errc::invalid_argument)
+			exlib::conv_res res=exlib::parse(in,t);
+			if(res.ce==exlib::conv_error::invalid_characters)
 			{
-				std::string err_msg("Invalid argument for");
+				std::string err_msg("Invalid argument for ");
 				err_msg.append(Base::name());
 				throw std::invalid_argument(err_msg);
 			}
-			if(res.ec==std::errc::result_out_of_range)
+			if(res.ce==exlib::conv_error::out_of_range)
 			{
 				std::string err_msg("Argument for ");
 				err_msg.append(Base::name());
@@ -238,13 +236,17 @@ namespace ScoreProcessor {
 				err_msg.append("]");
 				throw std::invalid_argument(err_msg);
 			}
-			for(auto it=res.ptr;it<last;++it)
+			for(auto it=res.last;;++it)
 			{
 				auto const c=*it;
+				if(c=='\0')
+				{
+					break;
+				}
 				if(c!=' ')
 				{
-					std::string err_msg("Invalid trailing characters: ");
-					err_msg.append(it,last-it);
+					std::string err_msg("Invalid trailing characters for ");
+					err_msg.append(Base::name());
 					throw std::invalid_argument(err_msg);
 				}
 			}
@@ -792,11 +794,22 @@ namespace ScoreProcessor {
 		{
 			return exlib::binary_find(arr.begin(),arr.end(),target,lcomp());
 		}
+
+		template<size_t N>
+		PMINLINE size_t find_prefix(ltable<N> const& arr,InputType pf,size_t pflen)
+		{
+			auto idx=lfind(arr,pf);
+			if(idx!=arr.end())
+			{
+				return idx->index();
+			}
+			bad_pf(pf,pflen);
+		}
 	}
 
-#define cnnm(n) static PMINLINE constexpr std::string_view name() { return n; }
-#define cndf(n) static PMINLINE constexpr auto def_val() { return n; }
-#define ncdf(n) static PMINLINE auto def_val() { return n; }
+#define cnnm(n) static PMINLINE constexpr std::string_view name() { return (n); }
+#define cndf(n) static PMINLINE constexpr auto def_val() { return (n); }
+#define ncdf(n) static PMINLINE auto def_val() { return (n); }
 
 	namespace Output {
 
@@ -879,6 +892,15 @@ namespace ScoreProcessor {
 	}
 
 	namespace NumThreads {
+		struct Precheck {
+			PMINLINE static void check(CommandMaker::delivery& del)
+			{
+				if(del.num_threads!=0)
+				{
+					throw std::invalid_argument("Thread count already given");
+				}
+			}
+		};
 		struct positive {
 			template<typename Name>
 			PMINLINE static void check(unsigned int n,Name const&)
@@ -898,7 +920,7 @@ namespace ScoreProcessor {
 				del.num_threads=nt;
 			}
 		};
-		extern MakerTFull<UseTuple,empty,empty2,IntegerParser<unsigned int,Name,positive>> maker;
+		extern MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,positive>> maker;
 	}
 
 	namespace Verbosity {
@@ -1315,15 +1337,15 @@ namespace ScoreProcessor {
 		struct RadName {
 			cnnm("angle")
 		};
-		struct Radians:public RadName {
+		struct Degrees:public RadName {
 			PMINLINE static float parse(char const* sv,size_t len)
 			{
-				if(len==0)
+				if(len==-1)
 				{
 					return FloatParser<RadName,no_check>().parse(sv);
 				}
 				auto const c=sv[0];
-				sv+=1;
+				sv+=len+1;
 				if(c=='d')
 				{
 					return FloatParser<RadName,no_check>().parse(sv);
@@ -1339,7 +1361,7 @@ namespace ScoreProcessor {
 			PMINLINE static size_t id(InputType sv,size_t len)
 			{
 				static constexpr auto table=make_ltable(
-					le("deg",0),le("rad",0),le("r",0),le("d",0),le("g",2),le("gam",2),le("im",1),le("i",1)
+					le("deg",0),le("rad",0),le("r",0),le("d",0),le("g",2),le("gam",2),le("im",1),le("i",1),le("m",1)
 				);
 				auto idx=lfind(table,sv);
 				if(idx!=table.end())
@@ -1398,7 +1420,7 @@ namespace ScoreProcessor {
 		using GammaParser=FloatParser<GammaP,no_negatives>;
 
 		extern
-			SingMaker<UseTuple,LabelId,Radians,Mode,GammaParser> maker;
+			SingMaker<UseTuple,LabelId,Degrees,Mode,GammaParser> maker;
 	}
 
 	namespace RsMaker {
@@ -1508,7 +1530,7 @@ namespace ScoreProcessor {
 					le("mn",0),le("min",0),le("mnv",0),
 					le("mx",1),le("max",1),le("mxv",1),
 					le("r",2),le("rep",2));
-				
+
 				auto idx=lfind(table,data);
 				if(idx!=table.end())
 				{
@@ -1596,6 +1618,224 @@ namespace ScoreProcessor {
 
 		extern MakerTFull<UseTuple,Precheck,empty> maker;
 	}
+
+	namespace SIMaker {
+		struct Precheck {
+			PMINLINE static void check(CommandMaker::delivery const& del)
+			{
+				if(del.starting_index!=-1)
+				{
+					throw std::invalid_argument("Starting index already given");
+				}
+			}
+		};
+
+		struct Number {
+			cnnm("starting index")
+		};
+
+		struct UseTuple {
+			PMINLINE static void use_tuple(CommandMaker::delivery& del,unsigned int si)
+			{
+				del.starting_index=si;
+			}
+		};
+
+		extern MakerTFull<UseTuple,Precheck,empty,IntegerParser<unsigned int,Number>> maker;
+	}
+
+	namespace RgxFilter {
+		struct Regex {
+			static PMINLINE char const* parse(InputType in)
+			{
+				if(in[0]=='-'&&in[1]=='-')
+				{
+					return in+1;
+				}
+				return in;
+			}
+			cnnm("regex pattern")
+		};
+		struct KeepMatch {
+			static PMINLINE bool parse(InputType in)
+			{
+				char c=*in;
+				if(c=='t'||c=='1'||c=='T')
+				{
+					return true;
+				}
+			}
+			cndf(true)
+				cnnm("keep match")
+		};
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* pattern,bool keep)
+			{
+				try
+				{
+					CommandMaker::delivery::filter flt{std::regex(pattern),keep};
+					del.rgxes.emplace_back(std::move(flt));
+				}
+				catch(std::exception const& err)
+				{
+					std::string err_msg("Invalid regex pattern: ");
+					err_msg.append(err.what());
+					throw std::invalid_argument(err_msg);
+				}
+			}
+		};
+
+		extern MakerTFull<UseTuple,empty,empty2,Regex,KeepMatch> maker;
+	}
+
+	namespace CCGMaker {
+
+		PMINLINE InputType find_comma(InputType in)
+		{
+			while(true)
+			{
+				if(*in=='\0'||*in==',') return in;
+				++in;
+			}
+		}
+		PMINLINE InputType disregard_spaces(InputType in)
+		{
+			while(true)
+			{
+				if(*in!=' ') return in;
+			}
+		}
+
+		PMINLINE std::pair<InputType,InputType> find_first(InputType in,char const* error)
+		{
+			auto start=disregard_spaces(in);
+			auto end=find_comma(start);
+			if(*end!=',') throw std::invalid_argument(error);
+		}
+
+		template<typename T>
+		void parse_to(InputType start,char end_char,T& out,char const* invalid_msg,char const* range_msg)
+		{
+			auto res=exlib::parse(start,out);
+			if(res.ce==exlib::conv_error::invalid_characters||*disregard_spaces(res.last)!=end_char)
+			{
+				throw std::invalid_argument(invalid_msg);
+			}
+			if(res.ce==exlib::conv_error::out_of_range)
+			{
+				throw std::invalid_argument(range_msg);
+			}
+		}
+
+		struct RCR {
+			static PMINLINE std::array<unsigned char,2> parse(InputType in)
+			{
+				std::array<unsigned char,2> ret;
+				auto ff=find_first(in,"Missing required color range max value");
+				constexpr char const* range_error="Inputs for required color range must be in range [0,255]";
+				if(ff.first==ff.second)
+				{
+					ret[0]=0;
+				}
+				else
+				{
+					parse_to(ff.first,',',ret[0],"Invalid input for required color range min value",range_error);
+				}
+				parse_to(ff.second+1,'\0',ret[1],"Invalid input for required color range max value",range_error);
+				if(ret[0]>ret[1]) throw std::invalid_argument("Required color min value cannot be greater than max value");
+				return ret;
+			}
+			cnnm("required color range")
+				cndf((std::array<unsigned char,2>{0,255}))
+		};
+
+		struct BSR {
+			static PMINLINE std::array<unsigned int,2> parse(InputType in)
+			{
+				std::array<unsigned int,2> ret;
+				auto start=disregard_spaces(in);
+				auto end=find_comma(start);
+				if(*end!=',') throw std::invalid_argument("Missing cluster size range max value");
+				constexpr char const* range_error="Cluster size input out of range";
+				if(start==end)
+				{
+					ret[0]=0;
+				}
+				else
+				{
+					parse_to(start,',',ret[0],"Invalid input for cluster size min value",range_error);
+				}
+				parse_to(start,'\0',ret[1],"Invalid input for cluster size max value",range_error);
+				if(ret[0]>ret[1]) throw std::invalid_argument("Cluster size min value cannot be greater than max value");
+				return ret;
+			}
+			cnnm("cluster size range")
+				cndf((std::array<unsigned int,2>{
+					{
+						0,0
+					}}))
+		};
+
+		struct SelRange {
+			static PMINLINE std::array<unsigned char,2> parse(InputType in)
+			{
+				constexpr char const* inv_min="Invalid selection range min input";
+				constexpr char const* inv_max="Invalid selection range max input";
+				constexpr char const* range_error="Inputs for selection range must be in range [0,255]";
+				std::array<unsigned char,2> ret;
+				auto start=disregard_spaces(in);
+				auto end=find_comma(start);
+				if(*end!=',')
+				{
+					ret[1]=254;
+					parse_to(start,'\0',ret[0],inv_min,range_error);
+					return ret;
+				}
+				if(start==end)
+				{
+					ret[0]=0;
+					parse_to(start,'\0',ret[1],inv_max,range_error);
+					return ret;
+				}
+				parse_to(start,',',ret[0],inv_min,range_error);
+				parse_to(start,'\0',ret[1],inv_max,range_error);
+				if(ret[0]>ret[1]) throw std::invalid_argument("Selection min value cannot be greater than max value");
+				return ret;
+			}
+			cnnm("selection range")
+				cndf((std::array<unsigned char,2>{
+					{
+						0,254
+					}}))
+		};
+
+		struct Replacer {
+			cndf(unsigned char(255))
+				cnnm("replacer")
+		};
+
+		struct LabelId {
+			static PMINLINE size_t id(InputType pf,size_t len)
+			{
+				static constexpr auto table=make_ltable(le("rcr",0),le("bsr",1),le("sr",2),le("bc",3),le("rc",3));
+				return find_prefix(table,pf,len);
+			}
+		};
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,std::array<unsigned char,2> rsr,std::array<unsigned int,2> bsr,std::array<unsigned char,2> sr,unsigned char rc)
+			{
+				if(rsr[0]==0&&rsr[1]==255&&bsr[0]==0&&bsr[1]==0)
+				{
+					return;
+				}
+				del.pl.add_process<ClusterClearGrayAlt>(rsr[0],rsr[1],bsr[0],bsr[1],sr[0],sr[1],rc);
+			}
+		};
+
+		extern SingMaker<UseTuple,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -1623,7 +1863,8 @@ namespace ScoreProcessor {
 			compair("fg",&FGMaker::maker),
 			compair("str",&StrMaker::maker),
 			compair("rot",&RotMaker::maker),
-			compair("fr",&FRMaker::maker));
+			compair("fr",&FRMaker::maker),
+			compair("ccg",&CCGMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>();
 
@@ -1632,6 +1873,8 @@ namespace ScoreProcessor {
 			compair("vb",&Verbosity::maker),
 			compair("nt",&NumThreads::maker),
 			compair("bsel",&BSel::maker),
+			compair("si",&SIMaker::maker),
+			compair("flt",&RgxFilter::maker),
 			compair("list",&List::maker));
 
 		constexpr auto aliases=exlib::make_array<compair>(compair("rotate",&RotMaker::maker));

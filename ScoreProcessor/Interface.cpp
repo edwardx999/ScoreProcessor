@@ -21,7 +21,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace NumThreads {
-		MakerTFull<UseTuple,empty,empty2,IntegerParser<unsigned int,Name,positive>> maker("Controls number of threads, will not exceed number of files","Number of Threads","num");
+		MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,positive>> maker("Controls number of threads, will not exceed number of files","Number of Threads","num");
 	}
 
 	namespace Verbosity {
@@ -67,10 +67,10 @@ namespace ScoreProcessor {
 	}
 
 	namespace RotMaker {
-		SingMaker<UseTuple,LabelId,Radians,Mode,GammaParser> maker(
+		SingMaker<UseTuple,LabelId,Degrees,Mode,GammaParser> maker(
 			"Rotates the image\n"
 			"angle: angle to rotate the image, ccw is positive, defaults to degrees; tags: d, deg, r, rad\n"
-			"interpolation_mode: see below; tags: i, im\n"
+			"interpolation_mode: see below; tags: i, im, m\n"
 			"gamma: gamma correction for rotation; tags: g, gam\n"
 			"Modes are:\n"
 			"  nearest neighbor\n"
@@ -119,5 +119,30 @@ namespace ScoreProcessor {
 
 	namespace List {
 		MakerTFull<UseTuple,Precheck,empty> maker("Makes program list out files","List Files","");
+	}
+
+	namespace SIMaker {
+		MakerTFull<UseTuple,Precheck,empty,IntegerParser<unsigned int,Number>> maker("Indicates the starting index to number files","Starting index","index");
+	}
+
+	namespace RgxFilter {
+		MakerTFull<UseTuple,empty,empty2,Regex,KeepMatch> maker(
+			"Filters the input files by a regex pattern\n"
+			"regex: pattern\n"
+			"keep_match: whether matches are kept or removed",
+			"Filter",
+			"pattern keep_match");
+	}
+
+	namespace CCGMaker {
+		SingMaker<UseTuple,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker(
+			"Clears clusters of specific constraints\n"
+			"required_color_range: clusters that do not contains a color in this range are replaced;\n"
+			"  tags: rcr\n"
+			"bad_size_range: clusters within this size range are replaced; tags: bsr\n"
+			"selection_range: pixels in this color range will be clustered; tags: sr\n"
+			"replacement_color: chosen colors are replaced by this color; tags: rc, bc\n",
+			"Cluster Clear Gray",
+			"required_color_range=0,255 bad_size_range=0,0 sel_range=0,200 bg_color=255");
 	}
 }

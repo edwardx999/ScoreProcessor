@@ -71,19 +71,31 @@ namespace exlib {
 		qsort(begin,end,less<T>());
 	}
 
-	//comp is two-way "less-than" operator
-	template<typename iter,typename Comp>
-	constexpr void isort(iter begin,iter end,Comp comp)
+	//inserts the element AT elem into the range [begin,elem] according to comp assuming the range is sorted
+	template<typename RanIter,typename Comp>
+	constexpr void insert_back(RanIter const begin,RanIter elem,Comp comp)
 	{
-		for(auto it=begin;it!=end;++it)
+		for(auto j=elem;j--!=begin;)
 		{
-			for(auto j=begin;j!=it;++j)
+			if(comp(*elem,*j))
 			{
-				if(comp(*it,*j))
-				{
-					swap(*it,*j);
-				}
+				swap(*elem,*j);
+				--elem;
 			}
+			else
+			{
+				return;
+			}
+		}
+	}
+
+	//comp is two-way "less-than" operator
+	template<typename RanIter,typename Comp>
+	constexpr void isort(RanIter const begin,RanIter end,Comp comp)
+	{
+		for(auto i=begin;i!=end;++i)
+		{
+			insert_back(begin,i,comp);
 		}
 	}
 
@@ -93,27 +105,6 @@ namespace exlib {
 	{
 		using T=typename std::decay<decltype(*begin)>::type;
 		isort(begin,end,less<T>());
-	}
-
-	namespace detail {
-		template<typename T,size_t N,typename Comp>
-		constexpr void sort(std::array<T,N>& a,Comp c,size_t left,size_t right)
-		{
-			if(left<right)
-			{
-				size_t pivot=left;
-				for(size_t i=left+1;i<right;++i)
-				{
-					if(c(a[i],a[left]))
-					{
-						swap(a[i],a[++pivot]);
-					}
-				}
-				swap(a[left],a[pivot]);
-				sort(a,c,left,pivot);
-				sort(a,c,pivot+1,right);
-			}
-		}
 	}
 
 	//comp is two-way "less-than" operator

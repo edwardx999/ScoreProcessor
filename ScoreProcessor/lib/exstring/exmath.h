@@ -23,8 +23,124 @@
 #endif
 namespace exlib {
 
+	enum class conv_error {
+		none,out_of_range,invalid_characters
+	};
+
+	struct conv_res {
+		conv_error ce;
+		char const* last;
+		operator bool() const
+		{
+			return ce!=conv_error::none;
+		}
+	};
+
+	//the following parse algorithms take in null-terminated strings
+	inline conv_res parse(char const* str,double& out)
+	{
+		int& err=errno;
+		err=0;
+		char* end;
+		double res=std::strtod(str,&end);
+		if(err==ERANGE)
+		{
+			return {conv_error::out_of_range,end};
+		}
+		if(end==str)
+		{
+			return {conv_error::invalid_characters,end};
+		}
+		out=res;
+		return {conv_error::none,end};
+	}
+
+	inline conv_res parse(char const* str,float& out)
+	{
+		int& err=errno;
+		err=0;
+		char* end;
+		float res=std::strtof(str,&end);
+		if(err==ERANGE)
+		{
+			return {conv_error::out_of_range,end};
+		}
+		if(end==str)
+		{
+			return {conv_error::invalid_characters,end};
+		}
+		out=res;
+		return {conv_error::none,end};
+	}
+
 	template<typename T>
-	EX_CONSTEXPR unsigned int num_digits(T num,T base=10)
+	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_unsigned<T>::value,conv_res>::type{})
+	{
+		int& err=errno;
+		err=0;
+		char* end;
+		unsigned long long res=std::strtoull(str,&end,base);
+		if(err==ERANGE)
+		{
+			return {conv_error::out_of_range,end};
+		}
+		if(end==str)
+		{
+			return {conv_error::invalid_characters,end};
+		}
+		constexpr unsigned long long max=std::numeric_limits<T>::max();
+		constexpr unsigned long long ullmax=std::numeric_limits<unsigned long long>::max();
+		if EX_CONSTIF(max<ullmax)
+		{
+			if(res>max)
+			{
+				return {conv_error::out_of_range,end};
+			}
+		}
+		out=res;
+		return {conv_error::none,end};
+	}
+
+	template<typename T>
+	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_signed<T>::value,conv_res>::type{})
+	{
+		int& err=errno;
+		err=0;
+		char* end;
+		long long res=std::strtoll(str,&end,base);
+		if(err==ERANGE)
+		{
+			return {conv_error::out_of_range,end};
+		}
+		if(end==str)
+		{
+			return {conv_error::invalid_characters,end};
+		}
+
+		constexpr long long max=std::numeric_limits<T>::max();
+		constexpr long long llmax=std::numeric_limits<unsigned long long>::max();
+		if EX_CONSTIF(max<llmax)
+		{
+			if(res>max)
+			{
+				return {conv_error::out_of_range,end};
+			}
+		}
+		constexpr long long min=std::numeric_limits<T>::max();
+		constexpr long long llmin=std::numeric_limits<unsigned long long>::max();
+		if EX_CONSTIF(min>llmin)
+		{
+			if(res<min)
+			{
+				return {conv_error::out_of_range,end};
+			}
+		}
+		out=res;
+		return {conv_error::none,end};
+	}
+
+	template<typename T>
+	EX_CONSTEXPR unsigned int num_digits(T num,unsigned int base=10)
 	{
 		static_assert(std::is_integral<typename T>::value,"Requires integral type");
 		unsigned int num_digits=1;
