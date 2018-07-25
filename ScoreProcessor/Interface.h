@@ -126,6 +126,20 @@ namespace ScoreProcessor {
 		}
 	};
 
+	struct force_positive {
+		template<typename T,typename Name>
+		static void check(T n,Name const& nm)
+		{
+			if(n<=0)
+			{
+				std::string err_msg("Value for ");
+				err_msg.append(nm.name());
+				err_msg.append(" must be positive");
+				throw std::invalid_argument(err_msg);
+			}
+		}
+	};
+
 	template<typename Base,typename Check=no_negatives>
 	struct FloatParser:public Base,private Check {
 		using Base::name;
@@ -663,8 +677,7 @@ namespace ScoreProcessor {
 			{
 				if constexpr(has_labels::value)
 				{
-					bool fulfilled[MaxArgs];
-					std::memset(fulfilled,0,MaxArgs);
+					bool fulfilled[MaxArgs]{false};
 					unordered_args<0>(begin,n,mt,fulfilled);
 					check_required<0>(fulfilled);
 				}
@@ -864,12 +877,7 @@ namespace ScoreProcessor {
 					le("mv",1),le("move",1),le("m",1),
 					le("o",0),le("out",0),
 					le("p",0),le("pat",0));
-				auto const index=lfind(table,sv);
-				if(index!=table.end())
-				{
-					return index->index();
-				}
-				bad_pf(sv,len);
+				return find_prefix(table,sv,len);
 			}
 		};
 
@@ -901,16 +909,7 @@ namespace ScoreProcessor {
 				}
 			}
 		};
-		struct positive {
-			template<typename Name>
-			PMINLINE static void check(unsigned int n,Name const&)
-			{
-				if(n==0)
-				{
-					throw std::invalid_argument("Thread count must be positive");
-				}
-			}
-		};
+
 		struct Name {
 			cnnm("number of threads")
 		};
@@ -920,7 +919,7 @@ namespace ScoreProcessor {
 				del.num_threads=nt;
 			}
 		};
-		extern MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,positive>> maker;
+		extern MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,force_positive>> maker;
 	}
 
 	namespace Verbosity {
@@ -1004,7 +1003,6 @@ namespace ScoreProcessor {
 		struct LabelId {
 			PMINLINE static size_t id(InputType sv,size_t len)
 			{
-				using le=lookup_entry;
 				static constexpr auto table=make_ltable(ltable<13>
 					(
 						{le("a",2),le("ap",2),
@@ -1014,12 +1012,7 @@ namespace ScoreProcessor {
 						le("min",0),le("mn",0),le("mna",0),
 						le("mx",1),le("mxa",1),
 						le("p",3),le("pp",3)}));
-				auto idx=lfind(table,sv);
-				if(idx!=table.end())
-				{
-					return idx->index();
-				}
-				bad_pf(sv,len);
+				return find_prefix(table,sv,len);
 			}
 		};
 
@@ -1286,12 +1279,7 @@ namespace ScoreProcessor {
 					le("r",2),le("right",2),
 					le("t",1),le("top",1),
 					le("w",2),le("width",2)}));
-				auto idx=lfind(table,sv);
-				if(idx!=table.end())
-				{
-					return idx->index();
-				}
-				bad_pf(sv,len);
+				return find_prefix(table,sv,len);
 			}
 		};
 
@@ -1363,12 +1351,7 @@ namespace ScoreProcessor {
 				static constexpr auto table=make_ltable(
 					le("deg",0),le("rad",0),le("r",0),le("d",0),le("g",2),le("gam",2),le("im",1),le("i",1),le("m",1)
 				);
-				auto idx=lfind(table,sv);
-				if(idx!=table.end())
-				{
-					return 0;
-				}
-				bad_pf(sv,len);
+				return find_prefix(table,sv,len);
 			}
 		};
 
@@ -1479,12 +1462,7 @@ namespace ScoreProcessor {
 			PMINLINE static size_t id(InputType in,size_t len)
 			{
 				static constexpr auto table=make_ltable(le("f",0),le("fact",0),le("i",1),le("im",1),le("g",2),le("gam",2));
-				auto idx=lfind(table,in);
-				if(idx!=table.end())
-				{
-					return idx->index();
-				}
-				bad_pf(in,len);
+				return find_prefix(table,in,len);
 			}
 		};
 
@@ -1530,13 +1508,7 @@ namespace ScoreProcessor {
 					le("mn",0),le("min",0),le("mnv",0),
 					le("mx",1),le("max",1),le("mxv",1),
 					le("r",2),le("rep",2));
-
-				auto idx=lfind(table,data);
-				if(idx!=table.end())
-				{
-					return idx->index();
-				}
-				bad_pf(data,len);
+				return find_prefix(table,data,len);
 			}
 		};
 
@@ -1822,6 +1794,17 @@ namespace ScoreProcessor {
 			}
 		};
 
+		struct Precheck {
+			static PMINLINE void check(CommandMaker::delivery& del,size_t n)
+			{
+				SingleCheck::check(del);
+				if(n==0)
+				{
+					throw std::invalid_argument("No arguments given");
+				}
+			}
+		};
+
 		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,std::array<unsigned char,2> rsr,std::array<unsigned int,2> bsr,std::array<unsigned char,2> sr,unsigned char rc)
 			{
@@ -1833,9 +1816,158 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker;
+		extern MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker;
 	}
 
+	namespace BlurMaker {
+		struct StDev {
+			cnnm("radius")
+		};
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,float stdev,float gamma)
+			{
+				if(gamma!=1)
+				{
+					del.pl.add_process<Gamma>(gamma);
+					del.pl.add_process<Blur>(stdev);
+					del.pl.add_process<Gamma>(1/gamma);
+				}
+				else
+				{
+					del.pl.add_process<Blur>(stdev);
+				}
+			}
+		};
+
+		extern SingMaker<UseTuple,empty,FloatParser<StDev,force_positive>,RotMaker::GammaParser> maker;
+	}
+
+	namespace EXLMaker {
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del)
+			{
+				del.pl.add_process<ExtractLayer0NoRealloc>();
+			}
+		};
+
+		extern SingMaker<UseTuple,empty> maker;
+	}
+
+	namespace CTMaker {
+		enum flags {
+			red=~0,
+			green=~1,
+			blue=~2,
+			searching=~3
+		};
+		struct RedName {
+			cnnm("red")
+		};
+		struct GreenName {
+			cnnm("green")
+		};
+		struct BlueName {
+			cnnm("blue")
+		};
+		struct Red:public RedName {
+			static PMINLINE int parse(char const* in)
+			{
+				switch(in[0])
+				{
+					case 'g':
+						return green;
+					case 'b':
+						return blue;
+					default:
+						return IntegerParser<unsigned char,RedName>().parse(in);
+				}
+			}
+			cndf(255)
+		};
+		struct Green:public GreenName {
+			static PMINLINE int parse(char const* in)
+			{
+				switch(in[0])
+				{
+					case 'r':
+						return red;
+					case 'g':
+						return green;
+					default:
+						return IntegerParser<unsigned char,GreenName>().parse(in);
+				}
+			}
+			cndf(int(red))
+		};
+		struct Blue:public BlueName {
+			static PMINLINE int parse(char const* in)
+			{
+				switch(in[0])
+				{
+					case 'r':
+						return red;
+					case 'g':
+						return green;
+					default:
+						return IntegerParser<unsigned char,BlueName>().parse(in);
+				}
+			}
+			cndf(int(red))
+		};
+		struct UseTuple {
+			static PMINLINE int trace_value(std::array<int,3>& vals,size_t dest)
+			{
+				if(vals[dest]>=0)
+				{
+					return vals[dest];
+				}
+				int next=~vals[dest];
+				vals[dest]=searching;
+				if(vals[next]==searching) throw std::invalid_argument("Circular dependency");
+				vals[dest]=trace_value(vals,next);
+				return vals[dest];
+			}
+		public:
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,int r,int g,int b)
+			{
+				std::array<int,3> vals{
+					{
+						r,g,b
+					}};
+				for(int i=0;i<3;++i)
+				{
+					trace_value(vals,i);
+				}
+				del.pl.add_process<FillTransparency>(r,g,b);
+			}
+		};
+
+		struct LabelId {
+			static PMINLINE size_t id(InputType sv,size_t pflen)
+			{
+				static constexpr auto table=make_ltable(le("r",0),le("red",0),le("g",1),le("green",1),le("b",2),le("blue",2));
+				return find_prefix(table,sv,pflen);
+			}
+		};
+		extern SingMaker<UseTuple,LabelId,Red,Green,Blue> maker;
+	}
+
+	namespace RBMaker {
+		struct Tol {
+			cndf(0.5f)
+				cnnm("tolerance")
+		};
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,float tol)
+			{
+				del.pl.add_process<RemoveBorderGray>(tol);
+			}
+		};
+		extern SingMaker<UseTuple,empty,FloatParser<Tol,force_positive>> maker;
+	}
 	struct compair {
 	private:
 		char const* _key;
@@ -1864,7 +1996,12 @@ namespace ScoreProcessor {
 			compair("str",&StrMaker::maker),
 			compair("rot",&RotMaker::maker),
 			compair("fr",&FRMaker::maker),
-			compair("ccg",&CCGMaker::maker));
+			compair("ccg",&CCGMaker::maker),
+			compair("bl",&BlurMaker::maker),
+			compair("exl",&EXLMaker::maker),
+			compair("ct",&CTMaker::maker),
+			compair("rb",&RBMaker::maker),
+			compair("rs",&RsMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>();
 
@@ -1877,7 +2014,9 @@ namespace ScoreProcessor {
 			compair("flt",&RgxFilter::maker),
 			compair("list",&List::maker));
 
-		constexpr auto aliases=exlib::make_array<compair>(compair("rotate",&RotMaker::maker));
+		constexpr auto aliases=exlib::make_array<compair>(
+			compair("rotate",&RotMaker::maker),
+			compair("ccga",&CCGMaker::maker));
 
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const
@@ -1911,6 +2050,7 @@ namespace ScoreProcessor {
 				return exlib::strcmp(target,cp.key());
 			}
 		};
+		//when com_map gets bigger, might change this to a hash map, doesn't really matter though; playing with constexpr and the limits of MSVC was fun
 		auto const r=exlib::binary_find(com_map.begin(),com_map.end(),lbl,find());
 		if(r==com_map.end())
 		{

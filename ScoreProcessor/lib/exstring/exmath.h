@@ -74,7 +74,7 @@ namespace exlib {
 	}
 
 	template<typename T>
-	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_unsigned<T>::value,conv_res>::type{})
+	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_unsigned<T>::value,conv_res>::type())
 	{
 		int& err=errno;
 		err=0;
@@ -102,7 +102,7 @@ namespace exlib {
 	}
 
 	template<typename T>
-	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_signed<T>::value,conv_res>::type{})
+	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_signed<T>::value,conv_res>::type())
 	{
 		int& err=errno;
 		err=0;

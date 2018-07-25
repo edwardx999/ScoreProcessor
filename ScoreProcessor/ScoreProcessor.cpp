@@ -6,7 +6,9 @@
 #include "lib/exstring/exfiles.h"
 #include "Logs.h"
 #include <assert.h>
-
+#ifdef MAKE_README
+#include <fstream>
+#endif
 using namespace ScoreProcessor;
 
 using Input=char*;
@@ -102,6 +104,79 @@ void info_output()
 		"A Multi Page Operation can not be done with other operations.\n";
 }
 
+#ifdef MAKE_README
+void make_readme(char const* out)
+{
+	std::ofstream readme(out);
+	if(!readme)
+	{
+		return;
+	}
+	constexpr auto dt=date();
+	readme<<"An application useful in editing musical scores.  \n\n";
+	readme<<"Version: ";
+	readme.write(dt.data(),dt.size());
+	readme<<" " __TIME__ " Copyright 2017-";
+	readme.write(dt.data()+7,4);
+	readme<<
+		" Edward Xie\n"
+		"Syntax: filename_or_folder... command params... ...  \n"
+		"If you want to recursively search a folder, type -r before it  \n"
+		"If a file starts with a dash, double the starting dash: \"-my-file.jpg\" -> \"--my-file.jpg\"  \n"
+		"parameters that require multiple values are notated with a comma  \n"
+		"parameters can be tagged to reference a specific input with prefix:value  \n"
+		"prefixes sometimes allow switching between different types of input  \n"
+		"ex: img0.png --image1.jpg my_folder/ -r rec_folder/ -fg 180 -ccga 20,50,30  \n"
+		"Type command alone to get readme  \n"
+		"Available commands:  \n"
+		"&nbsp;&nbsp;Single Page Operations:  \n";
+	constexpr size_t padding=22;
+	auto write_command=[&](auto it)
+	{
+		readme<<"&nbsp;&nbsp;&nbsp;&nbsp;";
+		readme<<it.maker()->name();
+		assert(padding>=it.maker()->name().length());
+		auto padding_needed=padding-it.maker()->name().length();
+		for(size_t i=0;i<padding_needed;++i)
+		{
+			readme<<"&nbsp;";
+		}
+		readme<<'-'<<it.key()<<' ';
+		readme<<it.maker()->argument_list()<<"  \n";
+	};
+	for(auto it:ScoreProcessor::single_command_list())
+	{
+		write_command(it);
+	}
+	readme<<"&nbsp;&nbsp;Multi Page Operations:  \n";
+	for(auto it:ScoreProcessor::multi_command_list())
+	{
+		write_command(it);
+	}
+	readme<<"&nbsp;&nbsp;Options:  \n";
+	for(auto it:ScoreProcessor::option_list())
+	{
+		write_command(it);
+	}
+	readme<<"Multiple Single Page Operations can be done at once. They are performed in the order they are given.  \n"
+		"A Multi Page Operation can not be done with other operations.  \n\n";
+
+	readme<<
+		"This program is free software: you can redistribute it and/or modify "
+		"it under the terms of the GNU General Public License as published by "
+		"the Free Software Foundation,either version 3 of the License, or "
+		"(at your option) any later version.  \n"
+		""
+		"This program is distributed in the hope that it will be useful, "
+		"but WITHOUT ANY WARRANTY; without even the implied warranty of "
+		"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the "
+		"GNU General Public License for more details.  \n"
+		""
+		"You should have received a copy of the GNU General Public License "
+		"along with this program. If not, see <https://www.gnu.org/licenses/>.";
+}
+#endif
+
 void help_output(CommandMaker const& cm)
 {
 	std::cout<<"Command: "<<cm.name()<<"\n";
@@ -175,8 +250,7 @@ void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery con
 {
 	if(!del.selections.empty())
 	{
-		std::vector<char> what_to_keep(files.size()); //not gonna take much space anyway, so I'm not using vector<bool>
-		std::memset(what_to_keep.data(),0,what_to_keep.size());
+		std::vector<char> what_to_keep(files.size(),0); //not gonna take much space anyway, so I'm not using vector<bool>
 		for(auto sr:del.selections)
 		{
 			auto const beg=files.begin(),ed=files.end();
@@ -420,6 +494,10 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 
 int main(int argc,InputIter argv)
 {
+#ifdef MAKE_README
+	if(argc>1)
+		make_readme(argv[1]);
+#endif
 	if(argc==1)
 	{
 		info_output();

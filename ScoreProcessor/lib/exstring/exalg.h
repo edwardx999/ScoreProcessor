@@ -75,8 +75,10 @@ namespace exlib {
 	template<typename RanIter,typename Comp>
 	constexpr void insert_back(RanIter const begin,RanIter elem,Comp comp)
 	{
-		for(auto j=elem;j--!=begin;)
+		auto j=elem;
+		while(j!=begin)
 		{
+			--j;
 			if(comp(*elem,*j))
 			{
 				swap(*elem,*j);
@@ -93,7 +95,9 @@ namespace exlib {
 	template<typename RanIter,typename Comp>
 	constexpr void isort(RanIter const begin,RanIter end,Comp comp)
 	{
-		for(auto i=begin;i!=end;++i)
+		if(begin==end) return;
+		auto i=begin;++i;
+		for(;i!=end;++i)
 		{
 			insert_back(begin,i,comp);
 		}

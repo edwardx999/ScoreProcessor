@@ -454,11 +454,11 @@ namespace ScoreProcessor {
 		}
 		return 0;
 	}
-	vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	std::vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,ColorRGB const background)
 	{
 		assert(image._spectrum==3);
 		unsigned int limit=image._width/2;
-		vector<unsigned int> container(image._height);
+		std::vector<unsigned int> container(image._height);
 		for(unsigned int y=0;y<image._height;++y)
 		{
 			container[y]=limit;
@@ -476,11 +476,11 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,Grayscale const background)
+	std::vector<unsigned int> build_left_profile(CImg<unsigned char> const& image,Grayscale const background)
 	{
 		assert(image._spectrum==1);
 		unsigned int limit=image._width/2;
-		vector<unsigned int> container(image._height);
+		std::vector<unsigned int> container(image._height);
 		for(unsigned int y=0;y<image._height;++y)
 		{
 			container[y]=limit;
@@ -495,11 +495,11 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	std::vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,ColorRGB const background)
 	{
 		assert(image._spectrum==3);
 		unsigned int limit=image._width/2;
-		vector<unsigned int> container(image._height);
+		std::vector<unsigned int> container(image._height);
 		container.resize(image._height);
 		for(unsigned int y=0;y<image._height;++y)
 		{
@@ -518,11 +518,11 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,Grayscale const background)
+	std::vector<unsigned int> build_right_profile(CImg<unsigned char> const& image,Grayscale const background)
 	{
 		assert(image._spectrum==1);
 		unsigned int limit=image._width/2;
-		vector<unsigned int> container(image._height);
+		std::vector<unsigned int> container(image._height);
 		container.resize(image._height);
 		for(unsigned int y=0;y<image._height;++y)
 		{
@@ -538,10 +538,10 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	std::vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,ColorRGB const background)
 	{
 		assert(image._spectrum==3||image._spectrum==4);
-		vector<unsigned int> container(image._width);
+		std::vector<unsigned int> container(image._width);
 		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -560,10 +560,10 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,Grayscale const background)
+	std::vector<unsigned int> build_top_profile(CImg<unsigned char> const& image,Grayscale const background)
 	{
 		assert(image._spectrum==1);
-		vector<unsigned int> container(image._width);
+		std::vector<unsigned int> container(image._width);
 		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -579,10 +579,10 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,ColorRGB const background)
+	std::vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,ColorRGB const background)
 	{
 		assert(image._spectrum==3||image._spectrum==4);
-		vector<unsigned int> container(image._width);
+		std::vector<unsigned int> container(image._width);
 		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -601,10 +601,10 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,Grayscale const background)
+	std::vector<unsigned int> build_bottom_profile(CImg<unsigned char> const& image,Grayscale const background)
 	{
 		assert(image._spectrum==1);
-		vector<unsigned int> container(image._width);
+		std::vector<unsigned int> container(image._width);
 		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -620,14 +620,14 @@ namespace ScoreProcessor {
 		}
 		return container;
 	}
-	vector<unsigned int> fattened_profile_high(vector<unsigned int> const& profile,unsigned int horiz_padding)
+	std::vector<unsigned int> fattened_profile_high(std::vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
 		return exlib::fattened_profile(profile,horiz_padding,[](unsigned int a,unsigned int b)
 		{
 			return a<b;
 		});
 	}
-	vector<unsigned int> fattened_profile_low(vector<unsigned int> const& profile,unsigned int horiz_padding)
+	std::vector<unsigned int> fattened_profile_low(std::vector<unsigned int> const& profile,unsigned int horiz_padding)
 	{
 		return exlib::fattened_profile(profile,horiz_padding,[](unsigned int a,unsigned int b)
 		{
@@ -646,10 +646,10 @@ namespace ScoreProcessor {
 	}
 
 	//basically a flood fill that can't go left, assumes top row is completely clear
-	vector<unique_ptr<RectangleUINT>> select_outside(CImg<unsigned char> const& image)
+	std::vector<unique_ptr<RectangleUINT>> select_outside(CImg<unsigned char> const& image)
 	{
 		assert(image._spectrum==1);
-		vector<unique_ptr<RectangleUINT>> resultContainer;
+		std::vector<unique_ptr<RectangleUINT>> resultContainer;
 		CImg<bool> safePoints(image._width,image._height,1,1);
 		safePoints.fill(false);
 		for(unsigned int x=0;x<image._width;++x)
@@ -849,7 +849,7 @@ namespace ScoreProcessor {
 		//		return 0;
 		//}
 
-		vector<vector<unsigned int>> paths;
+		std::vector<std::vector<unsigned int>> paths;
 		{
 			struct line {
 				unsigned int top,bottom,right;
@@ -866,7 +866,7 @@ namespace ScoreProcessor {
 			{
 				return color[0]==INFINITY;
 			};
-			vector<line> boxes;
+			std::vector<line> boxes;
 			{
 				auto const selections=global_select<1U>(map,selector);
 				auto const clusters=Cluster::cluster_ranges(selections);
@@ -1077,7 +1077,7 @@ namespace ScoreProcessor {
 	}
 	line<unsigned int> find_right_line(CImg<unsigned char> const& image)
 	{
-		vector<unsigned int> rightProfile;
+		std::vector<unsigned int> rightProfile;
 		switch(image._spectrum)
 		{
 			case 1:
@@ -1096,7 +1096,7 @@ namespace ScoreProcessor {
 			int error;//dx/dy
 			float derror_dy;
 		};
-		vector<LineCandidate> candidates;
+		std::vector<LineCandidate> candidates;
 		unsigned int const limit=image._width/2+1;
 		unsigned int lastIndex=0;
 		for(unsigned int pi=0;pi<rightProfile.size();++pi)
@@ -1149,10 +1149,10 @@ namespace ScoreProcessor {
 	bool undistort(CImg<unsigned char>& image)
 	{}
 
-	vector<ImageUtils::Rectangle<unsigned int>> flood_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const color,Point<unsigned int> start)
+	std::vector<ImageUtils::Rectangle<unsigned int>> flood_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const color,Point<unsigned int> start)
 	{
 		assert(image._spectrum==1);
-		vector<ImageUtils::Rectangle<unsigned int>> result_container;
+		std::vector<ImageUtils::Rectangle<unsigned int>> result_container;
 		if(gray_diff(image(start.x,start.y),color)>tolerance)
 		{
 			return result_container;
@@ -1536,7 +1536,7 @@ namespace ScoreProcessor {
 		uint bottom_sg;
 		uint top_sg;
 	};
-	spacing find_spacing(vector<uint> const& bottom,uint size_top,vector<uint> const& top);
+	spacing find_spacing(std::vector<uint> const& bottom,uint size_top,std::vector<uint> const& top);
 	CImg<uchar> splice_images(page const* imgs,size_t num,unsigned int padding)
 	{
 		uint height=0;
@@ -1572,7 +1572,7 @@ namespace ScoreProcessor {
 		}
 		return tog;
 	}
-	vector<uint> get_top_profile(CImg<uchar> const& img)
+	std::vector<uint> get_top_profile(CImg<uchar> const& img)
 	{
 #define base_prof(side)\
 		switch(img.spectrum())\
@@ -1587,13 +1587,13 @@ namespace ScoreProcessor {
 		}
 		base_prof(top);
 	}
-	vector<uint> get_bottom_profile(CImg<uchar> const& img)
+	std::vector<uint> get_bottom_profile(CImg<uchar> const& img)
 	{
 		base_prof(bottom);
 #undef base_prof
 	}
 	unsigned int splice_pages(
-		vector<::std::string> const& filenames,
+		std::vector<::std::string> const& filenames,
 		unsigned int horiz_padding,
 		unsigned int optimal_padding,
 		unsigned int min_padding,
@@ -1609,7 +1609,7 @@ namespace ScoreProcessor {
 			float cost;
 			uint padding;
 		};
-		class Splice: public vector<page> {
+		class Splice: public std::vector<page> {
 		public:
 			cost_pad pad_info;
 		};
@@ -1669,7 +1669,7 @@ namespace ScoreProcessor {
 		};
 		unsigned int num_pages=0;
 		//Creating Vertical profiles of each image
-		vector<uint> above_bottom_profile,below_top_profile,below_bottom_profile;
+		std::vector<uint> above_bottom_profile,below_top_profile,below_bottom_profile;
 		above_bottom_profile=get_bottom_profile(items[0]);
 		items[0].bottom=*max_element(above_bottom_profile.begin(),above_bottom_profile.end());
 		items.pad_info=cost_splice(items.data(),1);
@@ -1714,7 +1714,7 @@ namespace ScoreProcessor {
 		return num_pages+1;
 	}
 
-	spacing find_spacing(vector<uint> const& bottom_of_top,uint size_top,vector<uint> const& top_of_bottom)
+	spacing find_spacing(std::vector<uint> const& bottom_of_top,uint size_top,std::vector<uint> const& top_of_bottom)
 	{
 		auto b=bottom_of_top.rbegin();
 		auto t=top_of_bottom.rbegin();
@@ -1759,7 +1759,7 @@ namespace ScoreProcessor {
 		{
 			throw std::invalid_argument("Need multiple pages to splice");
 		}
-		vector<item> pages(c);
+		std::vector<item> pages(c);
 		{
 			auto conv=[](CImg<unsigned char>& img)
 			{
@@ -1863,7 +1863,7 @@ namespace ScoreProcessor {
 			page_layout layout;
 			size_t previous;
 		};
-		vector<node> nodes(c+1);
+		std::vector<node> nodes(c+1);
 		nodes[0].cost=0;
 		for(size_t i=1;i<=c;++i)
 		{
@@ -1890,7 +1890,7 @@ namespace ScoreProcessor {
 				--j;
 			}
 		}
-		vector<size_t> breakpoints;
+		std::vector<size_t> breakpoints;
 		breakpoints.reserve(c);
 		size_t index=c;
 		do
@@ -1907,7 +1907,7 @@ namespace ScoreProcessor {
 			auto const start=breakpoints[i];
 			auto const end=breakpoints[i-1];
 			auto const s=end-start;
-			vector<page> imgs(s);
+			std::vector<page> imgs(s);
 			assert(s>0);
 			imgs[0].assign(filenames[start].c_str());
 			imgs[0].top=pages[start].top_raw;
@@ -1987,8 +1987,8 @@ namespace ScoreProcessor {
 				}
 			}
 		};
-		vector<item> pages(c);
-		vector<manager> images(c);
+		std::vector<item> pages(c);
+		std::vector<manager> images(c);
 		for(size_t i=0;i<c;++i)
 		{
 			images[i].filename=filenames[i].c_str();
@@ -2150,7 +2150,7 @@ namespace ScoreProcessor {
 			page_layout layout;
 			size_t previous;
 		};
-		vector<node> nodes(c+1);
+		std::vector<node> nodes(c+1);
 		nodes[0].cost=0;
 		for(size_t i=1;i<=c;++i)
 		{
@@ -2177,7 +2177,7 @@ namespace ScoreProcessor {
 				--j;
 			}
 		}
-		vector<size_t> breakpoints;
+		std::vector<size_t> breakpoints;
 		breakpoints.reserve(c);
 		size_t index=c;
 		do
@@ -2212,7 +2212,7 @@ namespace ScoreProcessor {
 			{
 				try
 				{
-					vector<page> imgs(num_pages);
+					std::vector<page> imgs(num_pages);
 					for(size_t i=0;i<num_pages;++i)
 					{
 						imgs[i].load(fbegin[i].c_str());

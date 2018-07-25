@@ -410,12 +410,12 @@ namespace ScoreProcessor {
 				std::ifstream src(fname,std::ios::binary);
 				if(!src)
 				{
-					throw std::runtime_error((std::string("Failed to open ").append(fname,in.native().size()).c_str()));
+					throw std::runtime_error(std::string("Failed to open ").append(fname,in.native().size()));
 				}
 				std::ofstream dst(output,std::ios::binary);
 				if(!dst)
 				{
-					throw std::runtime_error((std::string("Failed to copy to ").append(output,out.native().size()).c_str()));
+					throw std::runtime_error(std::string("Failed to copy to ").append(output,out.native().size()));
 				}
 				dst<<src.rdbuf();
 			}

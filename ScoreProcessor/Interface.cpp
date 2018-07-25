@@ -21,7 +21,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace NumThreads {
-		MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,positive>> maker("Controls number of threads, will not exceed number of files","Number of Threads","num");
+		MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,force_positive>> maker("Controls number of threads, will not exceed number of files","Number of Threads","num");
 	}
 
 	namespace Verbosity {
@@ -76,7 +76,7 @@ namespace ScoreProcessor {
 			"  nearest neighbor\n"
 			"  linear\n"
 			"  cubic\n"
-			"To specify mode, type as many letters as needed to unambiguously identify mode",
+			"To specify mode, type the first letter of the mode; other characters are ignored",
 			"Rotate",
 			"angle mode=cubic gamma=2");
 	}
@@ -135,7 +135,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace CCGMaker {
-		SingMaker<UseTuple,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker(
+		MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker(
 			"Clears clusters of specific constraints\n"
 			"required_color_range: clusters that do not contains a color in this range are replaced;\n"
 			"  tags: rcr\n"
@@ -143,6 +143,38 @@ namespace ScoreProcessor {
 			"selection_range: pixels in this color range will be clustered; tags: sr\n"
 			"replacement_color: chosen colors are replaced by this color; tags: rc, bc\n",
 			"Cluster Clear Gray",
-			"required_color_range=0,255 bad_size_range=0,0 sel_range=0,200 bg_color=255");
+			"required_color_range=0,255 bad_size_range=0,0 sel_range=0,200 repl_color=255");
+	}
+
+	namespace BlurMaker {
+		SingMaker<UseTuple,empty,FloatParser<StDev,force_positive>,RotMaker::GammaParser> maker(
+			"Does a gaussian blur of given standard deviation\n"
+			"st_dev: standard deviation of blur\n"
+			"gamma: gamma correction applied\n",
+			"Blur",
+			"st_dev gamma=2");
+	}
+
+	namespace EXLMaker {
+		SingMaker<UseTuple,empty> maker("Extracts the first layer with no reallocation (cheap convert to grayscale)","Extract first layer","");
+	}
+
+	namespace CTMaker {
+		SingMaker<UseTuple,LabelId,Red,Green,Blue> maker(
+			"Mixes transparent pixels with the given rgb color"
+			"red tags: r, red\n"
+			"green tags: g, green\n"
+			"blue tags: b, blue\n"
+			"A value may be given or you can specify that one channel should be equal to another",
+			"Cover Transparency",
+			"red=255 green=r blue=r");
+	}
+
+	namespace RBMaker {
+		SingMaker<UseTuple,empty,FloatParser<Tol,force_positive>> maker(
+			"Flood fills pixels from edge with tolerance of black with white\n"
+			"Neither reliable nor safe and you should probably not use it",
+			"Remove Border (DANGER)",
+			"tolerance=0.9");
 	}
 }
