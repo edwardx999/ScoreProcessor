@@ -51,8 +51,16 @@ namespace ScoreProcessor {
 	class Log {
 	public:
 		virtual ~Log()=default;
-		virtual void log(std::string_view message,size_t id)=0;
-		virtual void log_error(std::string_view message,size_t id)=0;
+		virtual void log(char const* msg,size_t msg_len,size_t id)=0;
+		virtual void log_error(char const* msg,size_t msg_len,size_t id)=0;
+		inline void log(std::string_view sv,size_t id)
+		{
+			log(sv.data(),sv.length(),id);
+		}
+		inline void log_error(std::string_view sv,size_t id)
+		{
+			log_error(sv.data(),sv.length(),id);
+		}
 	};
 
 	/*

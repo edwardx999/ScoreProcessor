@@ -2,16 +2,16 @@
 #include "Logs.h"
 #include <iostream>
 namespace Loggers {
-	void CoutLog::log(std::string_view err,size_t)
+	void CoutLog::log(char const* msg,size_t len,size_t)
 	{
-		std::cout<<err;
+		std::cout.write(msg,len);
 	}
-	void CoutLog::log_error(std::string_view err,size_t)
+	void CoutLog::log_error(char const* msg,size_t len,size_t)
 	{
-		std::cout<<err;
+		std::cout.write(msg,len);
 	}
 
-	void AmountLog::log(std::string_view msg,size_t)
+	void AmountLog::log(char const* msg,size_t len,size_t)
 	{
 		if(msg[0]=='S')
 		{
@@ -44,27 +44,27 @@ namespace Loggers {
 		}
 	}
 
-	void AmountLog::log_error(std::string_view msg,size_t)
+	void AmountLog::log_error(char const* msg,size_t len,size_t)
 	{
-		std::unique_ptr<char[]> buffer(new char[msg.length()+buffer_length]);
-		memcpy(buffer.get(),msg.data(),msg.length());
+		std::unique_ptr<char[]> buffer(new char[len+buffer_length]);
+		memcpy(buffer.get(),msg,len);
 		size_t const c=count;
-		insert_message(buffer.get()+msg.length(),c);
+		insert_message(buffer.get()+len,c);
 		if(c==count)
 		{
 			std::lock_guard lock(mtx);
 			if(c==count)
 			{
-				std::cout.write(buffer.get(),msg.length()+buffer_length);
+				std::cout.write(buffer.get(),len+buffer_length);
 			}
 			else
 			{
-				std::cout.write(buffer.get(),msg.length());
+				std::cout.write(buffer.get(),len);
 			}
 		}
 		else
 		{
-			std::cout.write(buffer.get(),msg.length());
+			std::cout.write(buffer.get(),len);
 		}
 	}
 }

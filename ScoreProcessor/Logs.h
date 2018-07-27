@@ -6,8 +6,8 @@
 namespace Loggers {
 	class CoutLog:public ScoreProcessor::Log {
 	public:
-		void log(std::string_view msg,size_t) override;
-		void log_error(std::string_view msg,size_t) override;
+		void log(char const*,size_t,size_t) override;
+		void log_error(char const*,size_t,size_t) override;
 	};
 
 	class AmountLog:public ScoreProcessor::Log {
@@ -52,18 +52,15 @@ namespace Loggers {
 			begun(false)
 		{
 			memcpy(message_template.get(),START_MSG,START_STRLEN);
-			size_t const end=START_STRLEN+num_digs-1;
-			for(size_t i=START_STRLEN;i<end;++i)
-			{
-				message_template[i]=' ';
-			}
-			message_template[end]='0';
+			size_t const len=num_digs-1;
+			memset(message_template.get()+START_STRLEN,' ',len);
+			message_template[START_STRLEN+len]='0';
 			message_template[START_STRLEN+num_digs]='/';
 			insert_numbers(message_template.get()+buffer_length-2,amount);
 			message_template[START_STRLEN+1+2*num_digs]='\r';
 		}
-		void log(std::string_view msg,size_t) override;
-		void log_error(std::string_view msg,size_t) override;
+		void log(char const*,size_t,size_t) override;
+		void log_error(char const*,size_t,size_t) override;
 	};
 }
 #endif
