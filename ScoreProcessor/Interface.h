@@ -458,20 +458,33 @@ namespace ScoreProcessor {
 			}
 		}
 
-		template<size_t N>
-		void find_arg(size_t i,MyArgs& mt,InputType str,size_t prefix_len)
-		{
-			if constexpr(N<MaxArgs)
+		template<size_t I>
+		struct parse_n {
+			void operator()(MyArgs& ma,MyParsers& mp,InputType str,size_t prefix_len) const
 			{
-				if(i==N)
+				using Parser=std::remove_reference_t<decltype(std::get<I>(mp))>;
+				if constexpr(accepts_prefix<Parser>::value)
 				{
-					find_arg_h<N>(mt,str,prefix_len);
+					std::get<I>(ma)=std::get<I>(mp).parse(str,prefix_len);
 				}
 				else
 				{
-					find_arg<N+1>(i,mt,str,prefix_len);
+					std::get<I>(ma)=std::get<I>(mp).parse(str+prefix_len+1);
 				}
 			}
+		};
+
+		template<size_t... Is>
+		static constexpr auto make_parse_table(std::index_sequence<Is...>)
+		{
+			return std::make_tuple(parse_n<Is>()...);
+		}
+
+		template<size_t N>
+		void find_arg(size_t i,MyArgs& mt,InputType str,size_t prefix_len)
+		{
+			constexpr static auto parse_table=make_parse_table(std::make_index_sequence<MaxArgs>());
+			exlib::apply_ind(i,parse_table,mt,as_parsers(),str,prefix_len);
 		}
 
 		template<size_t... I>
@@ -1636,6 +1649,7 @@ namespace ScoreProcessor {
 				{
 					return true;
 				}
+				return false;
 			}
 			cndf(true)
 				cnnm("keep match")

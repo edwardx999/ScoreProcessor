@@ -42,7 +42,7 @@ namespace ScoreProcessor {
 		typedef cimg_library::CImg<T> Img;
 		virtual ~ImageProcess()
 		{};
-		//returns true if the image been modified
+		//returns true if the image has been modified
 		virtual bool process(Img&) const=0;
 	};
 	/*

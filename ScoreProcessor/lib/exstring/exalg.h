@@ -3,6 +3,10 @@
 #include <utility>
 #include <array>
 #include <functional>
+#if __cplusplus>201700L
+#include <variant>
+#endif
+#include <exception>
 namespace exlib {
 
 	template<typename A>
@@ -42,8 +46,8 @@ namespace exlib {
 	struct less<char*>:public less<char const*> {};
 
 	//comp is two-way "less-than" operator
-	template<typename iter,typename Comp>
-	constexpr void qsort(iter begin,iter end,Comp comp)
+	template<typename TwoWayIter,typename Comp>
+	constexpr void qsort(TwoWayIter begin,TwoWayIter end,Comp comp)
 	{
 		if(begin!=end)
 		{
@@ -72,8 +76,8 @@ namespace exlib {
 	}
 
 	//inserts the element AT elem into the range [begin,elem] according to comp assuming the range is sorted
-	template<typename RanIter,typename Comp>
-	constexpr void insert_back(RanIter const begin,RanIter elem,Comp comp)
+	template<typename TwoWayIter,typename Comp>
+	constexpr void insert_back(TwoWayIter const begin,TwoWayIter elem,Comp comp)
 	{
 		auto j=elem;
 		while(j!=begin)
@@ -84,19 +88,23 @@ namespace exlib {
 				swap(*elem,*j);
 				--elem;
 			}
-			else
-			{
-				return;
-			}
 		}
 	}
 
+	template<typename TwoWayIter>
+	constexpr void insert_back(TwoWayIter const begin,TwoWayIter elem)
+	{
+		using T=typename std::decay<decltype(*begin)>::type;
+		insert_back(begin,elem,less<T>());
+	}
+
 	//comp is two-way "less-than" operator
-	template<typename RanIter,typename Comp>
-	constexpr void isort(RanIter const begin,RanIter end,Comp comp)
+	template<typename TwoWayIter,typename Comp>
+	constexpr void isort(TwoWayIter const begin,TwoWayIter end,Comp comp)
 	{
 		if(begin==end) return;
-		auto i=begin;++i;
+		auto i=begin;
+		++i;
 		for(;i!=end;++i)
 		{
 			insert_back(begin,i,comp);
@@ -104,8 +112,8 @@ namespace exlib {
 	}
 
 	//sort by exlib::less
-	template<typename iter>
-	constexpr void isort(iter begin,iter end)
+	template<typename TwoWayIter>
+	constexpr void isort(TwoWayIter begin,TwoWayIter end)
 	{
 		using T=typename std::decay<decltype(*begin)>::type;
 		isort(begin,end,less<T>());
@@ -174,7 +182,7 @@ namespace exlib {
 				{
 					return -1;
 				}
-				if(a[i]>b[i])
+				if(b[i]<a[i])
 				{
 					return 1;
 				}
@@ -189,6 +197,8 @@ namespace exlib {
 	template<>
 	struct compare<char*>:public compare<char const*> {};
 
+	//returns the iterator it for which c(target,*it)==0
+	//if this is not found, end is returned
 	template<typename it,typename T,typename ThreeWayComp>
 	constexpr it binary_find(it begin,it end,T const& target,ThreeWayComp c)
 	{
@@ -198,7 +208,7 @@ namespace exlib {
 			it i=(end-begin)/2+begin;
 			if(i>=end)
 			{
-				break;
+				return old_end;
 			}
 			auto const res=c(target,*i);
 			if(res==0)
@@ -214,13 +224,12 @@ namespace exlib {
 				begin=i+1;
 			}
 		}
-		return old_end;
 	}
 
 	template<typename it,typename T>
 	constexpr it binary_find(it begin,it end,T const& target)
 	{
-		return binary_find(begin,end,target,compare<std::decay<decltype(*begin)>::type>());
+		return binary_find(begin,end,target,compare<typename std::decay_t<decltype(*begin)>>());
 	}
 
 	//converts three way comparison into a less than comparison
@@ -312,7 +321,8 @@ namespace exlib {
 	namespace detail {
 		template<typename Comp,typename Key,typename Value>
 		struct map_compare:protected Comp {
-			constexpr int operator()(Key const& target,map_pair<Key,Value> const& b) const
+			template<typename Conv>
+			constexpr int operator()(Conv const& target,map_pair<Key,Value> const& b) const
 			{
 				return Comp::operator()(target,b.key());
 			}
@@ -378,11 +388,13 @@ namespace exlib {
 	public:
 		constexpr ct_map(std::array<value_type,entries> const& in):ct_map(in,std::make_index_sequence<entries>())
 		{}
-		constexpr iterator find(Key const& k)
+		template<typename T>
+		constexpr iterator find(T const& k)
 		{
 			return binary_find(begin(),end(),k,static_cast<key_compare>(*this));
 		}
-		constexpr const_iterator find(Key const& k) const
+		template<typename T>
+		constexpr const_iterator find(T const& k) const
 		{
 			return binary_find(begin(),end(),k,static_cast<key_compare>(*this));
 		}
@@ -432,6 +444,176 @@ namespace exlib {
 			}};
 	}
 
+	//the number of element accessible by std::get
+	template<typename T>
+	struct get_max {
+	private:
+		template<typename U>
+		struct gm {
+			constexpr static size_t const value=0;
+		};
+
+		template<typename... U>
+		struct gm<std::tuple<U...>> {
+			constexpr static size_t value=sizeof...(U);
+		};
+
+		template<typename U,size_t N>
+		struct gm<std::array<U,N>> {
+			constexpr static size_t value=N;
+		};
+
+#if __cplusplus>201700LL
+		template<typename... U>
+		struct gm<std::variant<U...>> {
+			constexpr static size_t value=sizeof...(U);
+		};
+#endif
+
+	public:
+		constexpr static size_t const value=gm<std::remove_cv_t<std::remove_reference_t<T>>>::value;
+	};
+
+#if __cplusplus>201700L
+	template<typename T>
+	constexpr size_t get_max_v=get_max<T>::value;
+
+	namespace detail {
+
+		template<typename Ret,size_t I,typename Funcs,typename...Args>
+		constexpr Ret apply_single(Funcs&& funcs,Args&&... args)
+		{
+			if constexpr(std::is_void_v<Ret>)
+			{
+				std::get<I>(std::forward<Funcs>(funcs))(std::forward<Args>(args)...);
+			}
+			else
+			{
+				return std::get<I>(std::forward<Funcs>(funcs))(std::forward<Args>(args)...);
+			}
+		}
+
+		template<typename Ret,size_t... Is,typename Funcs,typename... Args>
+		constexpr Ret apply_ind_jump_h(size_t i,std::index_sequence<Is...>,Funcs&& funcs,Args&&... args)
+		{
+			using Func=Ret(Funcs&&,Args&&...);
+			static constexpr Func* jtable[]={&apply_single<Ret,Is,Funcs,Args...>...};
+			return jtable[i](std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+		}
+
+		template<typename Ret,size_t N,typename Funcs,typename... Args>
+		constexpr Ret apply_ind_jump(size_t i,Funcs&& funcs,Args&&... args)
+		{
+			return apply_ind_jump_h<Ret>(i,std::make_index_sequence<N>(),std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+		}
+
+		template<typename Ret,size_t I,size_t Max,typename Tuple,typename... Args>
+		constexpr Ret apply_ind_linear_h(size_t i,Tuple&& funcs,Args&&... args)
+		{
+			if constexpr(I<Max)
+			{
+				if(i==I)
+				{
+					return apply_single<Ret,I>(std::forward<Tuple>(funcs))(std::forward<Args>(args)...);
+				}
+				return apply_ind_linear_h<Ret,I+1,Max>(i,std::forward<Tuple>(funcs),std::forward<Args>(args)...);
+			}
+			else
+			{
+				throw std::invalid_argument("Index too high");
+			}
+		}
+
+		template<typename Ret,size_t NumFuncs,typename Tuple,typename... Args>
+		constexpr Ret apply_ind_linear(size_t i,Tuple&& funcs,Args&&... args)
+		{
+			return apply_ind_linear_h<Ret,0,NumFuncs>(i,std::forward<Tuple>(funcs),std::forward<Args>(args)...);
+		}
+
+		template<typename Ret,size_t Lower,size_t Upper,typename Funcs,typename... Args>
+		constexpr Ret apply_ind_bh(size_t i,Funcs&& funcs,Args&&... args)
+		{
+			if constexpr(Lower<Upper)
+			{
+				constexpr size_t I=(Upper-Lower)/2+Lower;
+				if(i==I)
+				{
+					return apply_single<Ret,I>(std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+				}
+				else if(i<I)
+				{
+					return apply_ind_bh<Ret,Lower,I>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+				}
+				else
+				{
+					return apply_ind_bh<Ret,I+1,Upper>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+				}
+			}
+			else
+			{
+				throw std::invalid_argument("Index too high");
+			}
+		}
+
+		template<typename Ret,size_t NumFuncs,typename Funcs,typename... Args>
+		constexpr Ret apply_ind_bsearch(size_t i,Funcs&& funcs,Args&&... args)
+		{
+			return apply_ind_bh<Ret,0,NumFuncs>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+		}
+	}
+
+	//Returns Ret(std::get<i>(std::forward<Funcs>(funcs))(std::forward<Args>(args)...)), Ret can be void
+	//assuming i is less than NumFuncs, otherwise behavior is undefined (subject to change)
+	//other overloads automatically determine Ret and NumFuncs if they are not supplied
+	template<typename Ret,size_t NumFuncs,typename Funcs,typename... Args>
+	constexpr auto apply_ind(size_t i,Funcs&& funcs,Args&&... args)
+	{
+		//MSVC currently can't inline the function pointers used by jump so I have a somewhat arbitrary
+		//heuristic for choosing which apply to use
+		if constexpr(NumFuncs<4)
+		{
+			return detail::apply_ind_bsearch<Ret,NumFuncs>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+		}
+		else
+		{
+			return detail::apply_ind_jump<Ret,NumFuncs>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+		}
+	}
+
+	template<size_t NumFuncs,typename Ret,typename Funcs,typename... Args>
+	constexpr auto apply_ind(size_t i,Funcs&& funcs,Args&&... args)
+	{
+		return apply_ind<Ret,NumFuncs>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+	}
+
+	template<size_t NumFuncs,typename Funcs,typename... Args>
+	constexpr auto apply_ind(size_t i,Funcs&& funcs,Args&&... args)
+	{
+		if constexpr(NumFuncs==0)
+		{
+			return;
+		}
+		else
+		{
+			using Ret=decltype(std::get<0>(std::forward<Funcs>(funcs))(std::forward<Args>(args)...));
+			return apply_ind<Ret,NumFuncs>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+		}
+	}
+
+	template<typename Ret,typename Funcs,typename... Args>
+	constexpr auto apply_ind(size_t i,Funcs&& funcs,Args&&... args)
+	{
+		constexpr size_t N=get_max<std::remove_cv_t<std::remove_reference_t<Funcs>>>::value;
+		return apply_ind<Ret,N>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+	}
+
+	template<typename Funcs,typename... Args>
+	constexpr auto apply_ind(size_t i,Funcs&& funcs,Args&&... args)
+	{
+		constexpr size_t N=get_max<std::remove_cv_t<std::remove_reference_t<Funcs>>>::value;
+		return apply_ind<N>(i,std::forward<Funcs>(funcs),std::forward<Args>(args)...);
+	}
+#endif
 	template<typename FindNext,typename... IndParser>
 	class CSVParserBase:protected FindNext,protected std::tuple<IndParser...> {
 
@@ -440,6 +622,8 @@ namespace exlib {
 		{
 
 		}
+		size_t parse(char const*)
+		{}
 	};
 }
 #endif

@@ -46,7 +46,8 @@ namespace Loggers {
 
 	void AmountLog::log_error(char const* msg,size_t len,size_t)
 	{
-		std::unique_ptr<char[]> buffer(new char[len+buffer_length]);
+		size_t const msg_buf_len=len+buffer_length;
+		std::unique_ptr<char[]> buffer(new char[msg_buf_len]);
 		memcpy(buffer.get(),msg,len);
 		size_t const c=count;
 		insert_message(buffer.get()+len,c);
@@ -55,7 +56,7 @@ namespace Loggers {
 			std::lock_guard lock(mtx);
 			if(c==count)
 			{
-				std::cout.write(buffer.get(),len+buffer_length);
+				std::cout.write(buffer.get(),msg_buf_len);
 			}
 			else
 			{
