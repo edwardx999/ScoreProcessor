@@ -274,7 +274,6 @@ namespace exlib {
 		{
 			return {conv_error::invalid_characters,end};
 		}
-
 		constexpr long long max=std::numeric_limits<T>::max();
 		constexpr long long llmax=std::numeric_limits<unsigned long long>::max();
 		if EX_CONSTIF(max<llmax)
@@ -284,8 +283,8 @@ namespace exlib {
 				return {conv_error::out_of_range,end};
 			}
 		}
-		constexpr long long min=std::numeric_limits<T>::max();
-		constexpr long long llmin=std::numeric_limits<unsigned long long>::max();
+		constexpr long long min=std::numeric_limits<T>::min();
+		constexpr long long llmin=std::numeric_limits<unsigned long long>::min();
 		if EX_CONSTIF(min>llmin)
 		{
 			if(res<min)
@@ -376,7 +375,7 @@ namespace exlib {
 		for(auto it=prof.begin();it<prof.end();++it,++rit)
 		{
 			decltype(it) begin,end;
-			if((it-prof.begin())<=hp)
+			if(size_t(it-prof.begin())<=hp)
 			{
 				begin=prof.begin();
 			}

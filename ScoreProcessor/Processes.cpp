@@ -316,15 +316,15 @@ namespace ScoreProcessor {
 						return std::array<unsigned char,3>({color[0],color[0],color[0]});
 					});
 					else if(num_layers==4)
-						img=cil::get_map<1,4>(img,[a=color[3]](auto color)
+						img=cil::get_map<1,4>(img,[](auto color)
 					{
-						return std::array<unsigned char,4>({color[0],color[0],color[0],a});
+						return std::array<unsigned char,4>({color[0],color[0],color[0],255});
 					});
 					break;
 				case 3:
 					if(num_layers==4&&color[3]!=255)
-						img=cil::get_map<3,4>(img,[a=color[3]](auto color){
-						return std::array<unsigned char,4>({color[0],color[1],color[2],a});});
+						img=cil::get_map<3,4>(img,[](auto color){
+						return std::array<unsigned char,4>({color[0],color[1],color[2],255});});
 			}
 		}
 #define ucast static_cast<unsigned int>

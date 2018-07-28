@@ -298,7 +298,7 @@ namespace ScoreProcessor {
 			if(*res.last!=' ') throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
 			++res.last;
 		}
-		if(res<0||res>1)
+		if(v<0||v>1)
 		{
 			throw std::invalid_argument(std::string("Argument for ").append(n.name()).append(" must be in range [0,1]"));
 		}
@@ -1209,6 +1209,7 @@ namespace ScoreProcessor {
 				if(comma==decltype(sv)::npos)
 				{
 					find_invalids(res.ptr,last);
+					clr.data[1]=clr.data[2]=clr.data[0];
 					clr.num_layers=1;
 					return clr;
 				}
@@ -1217,7 +1218,7 @@ namespace ScoreProcessor {
 				res=std::from_chars(sv.data()+comma+1,last,clr.data[1]);
 				error(res,"g value");
 				comma=sv.find(',',comma+1);
-				if(comma=decltype(sv)::npos)
+				if(comma==decltype(sv)::npos)
 				{
 					throw std::invalid_argument("Invalid 2 spectrum color");
 				}
