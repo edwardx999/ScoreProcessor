@@ -1281,6 +1281,7 @@ namespace ScoreProcessor {
 					case '\0':
 						if(ret==3)
 						{
+							ret+=1;
 							break;
 						}
 					default:
