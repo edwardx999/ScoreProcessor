@@ -108,7 +108,7 @@ namespace ScoreProcessor {
 				"Replacers pixels with brightness [min,max] with replacer\n"
 				"min: minimum brightness to replace; tags: mn, min, mnv\n"
 				"max: maximum brightness to replace; tags: mx, max, mxv\n"
-				"replacer: color to replacer with; tags: r, rep\n",
+				"replacer: color to replacer with; tags: r, rep",
 				"Filter Gray",
 				"min max=255 replacer=255");
 	}
@@ -141,7 +141,7 @@ namespace ScoreProcessor {
 			"  tags: rcr\n"
 			"bad_size_range: clusters within this size range are replaced; tags: bsr\n"
 			"selection_range: pixels in this color range will be clustered; tags: sr\n"
-			"replacement_color: chosen colors are replaced by this color; tags: rc, bc\n",
+			"replacement_color: chosen colors are replaced by this color; tags: rc, bc",
 			"Cluster Clear Gray",
 			"required_color_range=0,255 bad_size_range=0,0 sel_range=0,200 repl_color=255");
 	}
@@ -150,13 +150,13 @@ namespace ScoreProcessor {
 		SingMaker<UseTuple,empty,FloatParser<StDev,force_positive>,RotMaker::GammaParser> maker(
 			"Does a gaussian blur of given standard deviation\n"
 			"st_dev: standard deviation of blur\n"
-			"gamma: gamma correction applied\n",
+			"gamma: gamma correction applied",
 			"Blur",
 			"st_dev gamma=2");
 	}
 
 	namespace EXLMaker {
-		SingMaker<UseTuple,empty> maker("Extracts the first layer with no reallocation (cheap convert to grayscale)","Extract first layer","");
+		SingMaker<UseTuple,empty> maker("Extracts the first layer with no reallocation (cheap convert to grayscale)","Extract First Layer","");
 	}
 
 	namespace CTMaker {
@@ -209,7 +209,7 @@ namespace ScoreProcessor {
 			"  use tpw or tph to calculate it as a proportion of width or height respectively;\n"
 			"  tags: tol, tph, tpw\n"
 			"background_threshold: see tolerance; tags: bg",
-			"Horizontal Padding",
+			"Vertical Padding",
 			"top bottom=l tolerance=0.005 background_threshold=128"
 		);
 	}
@@ -221,7 +221,7 @@ namespace ScoreProcessor {
 			"They are scaled based on their distance from mid.\n"
 			"min tags: mn, min\n"
 			"mid tags: md, mid\n"
-			"max tags: mx, max\n",
+			"max tags: mx, max",
 			"Rescale Brightness",
 			"min mid max=255"
 		);
