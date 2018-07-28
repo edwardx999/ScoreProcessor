@@ -2038,8 +2038,8 @@ namespace ScoreProcessor {
 				static constexpr auto table=make_ltable(
 					le("l",0),le("left",0),le("lpw",0),le("lph",0),
 					le("r",1),le("right",1),le("rpw",1),le("rph",1),
-					le("t",2),le("tol",2),le("tpw",2),le("tph",2),
-					le("b",3),le("bt",3));
+					le("tol",2),le("tpw",2),le("tph",2),
+					le("bg",3));
 				return find_prefix(table,it,prefix_len);
 			}
 		};
@@ -2162,6 +2162,135 @@ namespace ScoreProcessor {
 		};
 		extern SingMaker<UseTuple,LabelId,Left,Right,Tol,BGParser> maker;
 	}
+
+	namespace VPMaker {
+		using pv=exlib::maybe_fixed<unsigned int>;
+
+		struct LabelId {
+			size_t id(InputType it,size_t prefix_len)
+			{
+				static constexpr auto table=make_ltable(
+					le("t",0),le("top",0),le("tpw",0),le("tph",0),
+					le("b",1),le("bottom",1),le("bpw",1),le("bph",1),
+					le("tol",2),le("tpw",2),le("tph",2),
+					le("bg",3));
+				return find_prefix(table,it,prefix_len);
+			}
+		};
+		struct TName {
+			cnnm("top padding")
+		};
+		struct Top:public TName {
+			static pv parse(InputType it,size_t prefix_len)
+			{
+				auto actual=it+prefix_len+1;
+				if(prefix_len==-1||prefix_len==1||it[2]=='p')
+				{
+					if(*actual=='k')
+					{
+						return pv(unsigned int(-1));
+					}
+					else if(*actual=='r')
+					{
+						return pv(1,2);
+					}
+					else
+					{
+
+						auto amount=IntegerParser<unsigned int,TName>().parse(actual);
+						return pv(amount);
+					}
+				}
+				auto amount=HPMaker::parse01(actual,TName());
+				if(it[2]=='h')
+				{
+					return pv(amount,PadBase::height);
+				}
+				else
+				{
+					return pv(amount,PadBase::width);
+				}
+			}
+		};
+		struct BName {
+			cnnm("bottom padding")
+		};
+		struct Bottom:public BName {
+			static pv parse(InputType it,size_t prefix_len)
+			{
+				auto actual=it+prefix_len+1;
+				if(prefix_len==-1||prefix_len==1||prefix_len==6)
+				{
+					if(*actual=='k')
+					{
+						return pv(unsigned int(-1));
+					}
+					else if(*actual=='l')
+					{
+						return pv(1,2);
+					}
+					else
+					{
+						auto amount=IntegerParser<unsigned int,BName>().parse(actual);
+						return pv(amount);
+					}
+				}
+				auto amount=HPMaker::parse01(actual,BName());
+				if(it[2]=='h')
+				{
+					return pv(amount,PadBase::height);
+				}
+				else
+				{
+					return pv(amount,PadBase::width);
+				}
+			}
+			cndf(pv(1,2))
+		};
+		struct TolName {
+			cnnm("tolerance")
+		};
+		struct Tol:public TolName {
+			static pv parse(InputType it,size_t prefix_len)
+			{
+				auto actual=it+prefix_len+1;
+				if(prefix_len==-1||prefix_len==1||it[2]=='l')
+				{
+					auto amount=IntegerParser<unsigned int,TolName>().parse(actual);
+					return pv(amount);
+				}
+				auto amount=HPMaker::parse01(actual,TolName());
+				if(it[2]=='h')
+				{
+					return pv(amount,PadBase::height);
+				}
+				else
+				{
+					return pv(amount,PadBase::width);
+				}
+			}
+			cndf(pv(0.005,PadBase::height))
+		};
+		struct UseTuple {
+			void use_tuple(CommandMaker::delivery& del,pv top,pv bottom,pv tol,unsigned char bg)
+			{
+				if(top.index()==2)
+				{
+					if(bottom.index()==2)
+					{
+						throw std::invalid_argument("Circular dependency");
+					}
+					top=bottom;
+				}
+				if(bottom.index()==2)
+				{
+					bottom=top;
+				}
+				del.pl.add_process<PadVert>(top,bottom,tol,bg);
+			}
+		};
+		extern SingMaker<UseTuple,LabelId,Top,Bottom,Tol,HPMaker::BGParser> maker;
+	}
 	struct compair {
 	private:
 		char const* _key;
@@ -2188,6 +2317,7 @@ namespace ScoreProcessor {
 			compair("cg",&CGMaker::maker),
 			compair("fg",&FGMaker::maker),
 			compair("hp",&HPMaker::maker),
+			compair("vp",&VPMaker::maker),
 			compair("str",&StrMaker::maker),
 			compair("rot",&RotMaker::maker),
 			compair("fr",&FRMaker::maker),

@@ -189,10 +189,28 @@ namespace ScoreProcessor {
 			"  tags: r, right, rph, rpw\n"
 			"tolerance: this many pixels below background threshold is considered the side,\n"
 			"  use tpw or tph to calculate it as a proportion of width or height respectively;\n"
-			"  tags: t, tol, tph, tpw\n"
-			"background_threshold: see tolerance; tags: b, bg",
+			"  tags: tol, tph, tpw\n"
+			"background_threshold: see tolerance; tags: bg",
 			"Horizontal Padding",
 			"left right=l tolerance=0.005 background_threshold=128"
+		);
+	}
+
+	namespace VPMaker {
+		extern SingMaker<UseTuple,LabelId,Top,Bottom,Tol,HPMaker::BGParser> maker(
+			"Pads the top and bottom sides of image.\n"
+			"top: top padding, use k to keep padding, or b to assign equal to bottom,\n"
+			"  use lpw or lph to calculate it as a proportion of width or height respectively;\n"
+			"  tags: t, top, tph, tpw\n"
+			"bottom: bottom padding, use k to keep padding, or t to assign equal to top,\n"
+			"  use rpw or rph to calculate it as a proportion of width or height respectively;\n"
+			"  tags: b, bottom, bph, bpw\n"
+			"tolerance: this many pixels below background threshold is considered the side,\n"
+			"  use tpw or tph to calculate it as a proportion of width or height respectively;\n"
+			"  tags: tol, tph, tpw\n"
+			"background_threshold: see tolerance; tags: bg",
+			"Horizontal Padding",
+			"top bottom=l tolerance=0.005 background_threshold=128"
 		);
 	}
 }
