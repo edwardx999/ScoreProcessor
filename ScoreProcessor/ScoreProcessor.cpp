@@ -71,7 +71,7 @@ void info_output()
 		"parameters that require multiple values are notated with a comma\n"
 		"parameters can be tagged to reference a specific input with prefix:value\n"
 		"prefixes sometimes allow switching between different types of input\n"
-		"ex: img0.png --image1.jpg my_folder/ -r rec_folder/ -fg 180 -ccga 20,50,30\n"
+		"ex: img0.png --image1.jpg my_folder -r rec_folder -fg 180 -ccga 20,50,30\n"
 		"Type command alone to get readme\n"
 		"Available commands:\n"
 		"  Single Page Operations:\n";
@@ -126,7 +126,7 @@ void make_readme(char const* out)
 		"parameters that require multiple values are notated with a comma  \n"
 		"parameters can be tagged to reference a specific input with prefix:value  \n"
 		"prefixes sometimes allow switching between different types of input  \n"
-		"ex: img0.png --image1.jpg my_folder/ -r rec_folder/ -fg 180 -ccga 20,50,30  \n"
+		"ex: img0.png --image1.jpg my_folder -r rec_folder -fg 180 -ccga 20,50,30  \n"
 		"Type command alone to get readme  \n"
 		"Available commands:  \n"
 		"&nbsp;&nbsp;Single Page Operations:  \n";
@@ -313,15 +313,23 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 		}
 		else
 		{
-			size_t const s=strlen(*pos);
-			if(s==0) throw std::logic_error("Empty argument found");
-			char const last=(*pos)[s-1];
-			if(last=='\\'||last=='/')
+			auto file_attr=GetFileAttributesA(*pos);
+			if(file_attr==INVALID_FILE_ATTRIBUTES)
 			{
-				std::string path(*pos,s);
+				std::string err_msg("File not found: ");
+				err_msg.append(*pos);
+				throw std::invalid_argument(err_msg);
+			}
+			if(file_attr&FILE_ATTRIBUTE_DIRECTORY)
+			{
+				std::string path(*pos);
+				if(path.back()!='/'&&path.back()!='\\')
+				{
+					path+='\\';
+				}
 				auto fid=do_recursive?exlib::files_in_dir_rec(path):exlib::files_in_dir(path);
 				files.reserve(files.size()+fid.size());
-				if(s==2&&pos[0][0]=='.')
+				if(path=="./"||path==".\\")
 				{
 					for(auto& str:fid)
 					{
@@ -332,9 +340,9 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 				{
 					for(auto const& str:fid)
 					{
-						std::string name(*pos,s);
+						std::string name(path);
 						name.append(str);
-						files.emplace_back(std::move(str));
+						files.emplace_back(std::move(name));
 					}
 				}
 				do_recursive=false;
