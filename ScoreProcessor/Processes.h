@@ -57,22 +57,32 @@ namespace ScoreProcessor {
 		bool process(Img& img) const override;
 	};
 
-	class PadHoriz:public ImageProcess<> {
-		unsigned int left,right;
-		ImageUtils::perc_or_val tol;
-		unsigned char background;
+	class PadBase:public ImageProcess<> {
 	public:
-		inline PadHoriz(unsigned int const left,unsigned int const right,ImageUtils::perc_or_val tol,unsigned char bg):left(left),right(right),tol(tol),background(bg)
+		//fixed amount or proportion of width or height
+		using pv=exlib::maybe_fixed<unsigned int>;
+		enum bases:unsigned int {
+			width,height
+		};
+	protected:
+		exlib::maybe_fixed<unsigned int> side1,side2,tolerance;
+		unsigned char background;
+		inline PadBase(pv side1,pv side2,pv tol,unsigned char bg):side1(side1),side2(side2),tolerance(tol),background(bg)
+		{}
+	};
+
+	class PadHoriz:public PadBase {
+	public:
+		using PadBase::pv;
+		PadHoriz(pv left,pv right,pv tol,unsigned char bg):PadBase(left,right,tol,bg)
 		{}
 		bool process(Img& img) const override;
 	};
 
-	class PadVert:public ImageProcess<> {
-		unsigned int top,bottom;
-		ImageUtils::perc_or_val tol;
-		unsigned char background;
+	class PadVert:public PadBase {
 	public:
-		inline PadVert(unsigned int const top,unsigned int const bottom,ImageUtils::perc_or_val tol,unsigned char bg):top(top),bottom(bottom),tol(tol),background(bg)
+		using PadBase::pv;
+		PadVert(pv top,pv bottom,pv tol,unsigned char bg):PadBase(top,bottom,tol,bg)
 		{}
 		bool process(Img& img) const override;
 	};

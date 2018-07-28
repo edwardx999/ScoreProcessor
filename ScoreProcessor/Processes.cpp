@@ -71,12 +71,14 @@ namespace ScoreProcessor {
 
 	bool PadHoriz::process(Img& img) const
 	{
-		return horiz_padding(img,left,right,tol(img._height),background);
+		std::array<unsigned int,2> dims{{img._width,img._height}};
+		return horiz_padding(img,side1(dims),side2(dims),tolerance(dims),background);
 	}
 
 	bool PadVert::process(Img& img) const
 	{
-		return vert_padding(img,top,bottom,tol(img._width),background);
+		std::array<unsigned int,2> dims{{img._width,img._height}};
+		return vert_padding(img,side1(dims),side2(dims),tolerance(dims),background);
 	}
 
 	bool PadAuto::process(Img& img) const

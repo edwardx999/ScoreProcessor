@@ -177,4 +177,22 @@ namespace ScoreProcessor {
 			"Remove Border (DANGER)",
 			"tolerance=0.9");
 	}
+
+	namespace HPMaker {
+		SingMaker<UseTuple,LabelId,Left,Right,Tol,BGParser> maker(
+			"Pads the left and right sides of image.\n"
+			"left: left padding, use k to keep padding, or r to assign equal to right,\n"
+			"  use lpw or lph to calculate it as a proportion of width or height respectively;\n"
+			"  tags: l, left, lph, lpw\n"
+			"right: right padding, use k to keep padding, or l to assign equal to left,\n"
+			"  use rpw or rph to calculate it as a proportion of width or height respectively;\n"
+			"  tags: r, right, rph, rpw\n"
+			"tolerance: this many pixels below background threshold is considered the side,\n"
+			"  use tpw or tph to calculate it as a proportion of width or height respectively;\n"
+			"  tags: t, tol, tph, tpw\n"
+			"background_threshold: see tolerance; tags: b, bg",
+			"Horizontal Padding",
+			"left right=l tolerance=0.005 background_threshold=128"
+		);
+	}
 }

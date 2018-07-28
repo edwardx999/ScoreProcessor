@@ -1996,6 +1996,172 @@ namespace ScoreProcessor {
 		};
 		extern SingMaker<UseTuple,empty,FloatParser<Tol,force_positive>> maker;
 	}
+
+	namespace HPMaker {
+		using pv=exlib::maybe_fixed<unsigned int>;
+
+		template<typename Name>
+		float parse01(char const* cp,Name const& n)
+		{
+			float v;
+			auto res=exlib::parse(cp,v);
+			if(res.ce==exlib::conv_error::invalid_characters)
+			{
+				throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
+			}
+			if(res.ce==exlib::conv_error::out_of_range)
+			{
+				throw std::invalid_argument(std::string("Argument out of range for ").append(n.name()));
+			}
+			if(*res.last=='%')
+			{
+				v/=100;
+				++res.last;
+			}
+			while(true)
+			{
+				if(*res.last=='\0') break;
+				if(*res.last!=' ') throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
+				++res.last;
+			}
+			if(res<0||res>1)
+			{
+				throw std::invalid_argument(std::string("Argument for ").append(n.name()).append(" must be in range [0,1]"));
+			}
+			return v;
+		}
+
+		struct LabelId {
+			size_t id(InputType it,size_t prefix_len)
+			{
+				static constexpr auto table=make_ltable(
+					le("l",0),le("left",0),le("lpw",0),le("lph",0),
+					le("r",1),le("right",1),le("rpw",1),le("rph",1),
+					le("t",2),le("tol",2),le("tpw",2),le("tph",2),
+					le("b",3),le("bt",3));
+				return find_prefix(table,it,prefix_len);
+			}
+		};
+		struct LName {
+			cnnm("left padding")
+		};
+		struct Left:public LName {
+			static pv parse(InputType it,size_t prefix_len)
+			{
+				auto actual=it+prefix_len+1;
+				if(prefix_len==-1||prefix_len==1||prefix_len==4)
+				{
+					if(*actual=='k')
+					{
+						return pv(unsigned int(-1));
+					}
+					else if(*actual=='r')
+					{
+						return pv(1,2);
+					}
+					else
+					{
+
+						auto amount=IntegerParser<unsigned int,LName,no_negatives>().parse(actual);
+						return pv(amount);
+					}
+				}
+				auto amount=parse01(actual,LName());
+				if(it[2]=='h')
+				{
+					return pv(amount,PadBase::height);
+				}
+				else
+				{
+					return pv(amount,PadBase::width);
+				}
+			}
+		};
+		struct RName {
+			cnnm("right padding")
+		};
+		struct Right:public RName {
+			static pv parse(InputType it,size_t prefix_len)
+			{
+				auto actual=it+prefix_len+1;
+				if(prefix_len==-1||prefix_len==1||prefix_len==5)
+				{
+					if(*actual=='k')
+					{
+						return pv(unsigned int(-1));
+					}
+					else if(*actual=='l')
+					{
+						return pv(1,2);
+					}
+					else
+					{
+
+						auto amount=IntegerParser<unsigned int,RName,no_negatives>().parse(actual);
+						return pv(amount);
+					}
+				}
+				auto amount=parse01(actual,RName());
+				if(it[2]=='h')
+				{	
+					return pv(amount,PadBase::height);
+				}
+				else
+				{
+					return pv(amount,PadBase::width);
+				}
+			}
+			cndf(pv(1,2))
+		};
+		struct TolName {
+			cnnm("tolerance")
+		};
+		struct Tol:public TolName {
+			static pv parse(InputType it,size_t prefix_len)
+			{
+				auto actual=it+prefix_len+1;
+				if(prefix_len==-1||prefix_len==1||it[2]=='l')
+				{
+					auto amount=IntegerParser<unsigned int,TolName,no_negatives>().parse(actual);
+					return pv(amount);
+				}
+				auto amount=parse01(actual,TolName());
+				if(it[2]=='h')
+				{	
+					return pv(amount,PadBase::height);
+				}
+				else
+				{
+					return pv(amount,PadBase::width);
+				}
+			}
+			cndf(pv(0.005,PadBase::height))
+		};
+		struct BGround {
+			cnnm("background threshold")
+				cndf(unsigned char(128))
+		};
+		using BGParser=IntegerParser<unsigned char,BGround>;
+		struct UseTuple {
+			void use_tuple(CommandMaker::delivery& del,pv left,pv right,pv tol,unsigned char bg)
+			{
+				if(left.index()==2)
+				{
+					if(right.index()==2)
+					{
+						throw std::invalid_argument("Circular dependency");
+					}
+					left=right;
+				}
+				if(right.index()==2)
+				{
+					right=left;
+				}
+				del.pl.add_process<PadHoriz>(left,right,tol,bg);
+			}
+		};
+		extern SingMaker<UseTuple,LabelId,Left,Right,Tol,BGParser> maker;
+	}
 	struct compair {
 	private:
 		char const* _key;
@@ -2021,6 +2187,7 @@ namespace ScoreProcessor {
 		constexpr auto scl=exlib::make_array<compair>(
 			compair("cg",&CGMaker::maker),
 			compair("fg",&FGMaker::maker),
+			compair("hp",&HPMaker::maker),
 			compair("str",&StrMaker::maker),
 			compair("rot",&RotMaker::maker),
 			compair("fr",&FRMaker::maker),

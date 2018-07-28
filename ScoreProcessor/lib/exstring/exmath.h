@@ -1,3 +1,19 @@
+/*
+Copyright(C) 2017 Edward Xie
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+*/
 #ifndef EXMATH_H
 #define EXMATH_H
 #include <type_traits>
@@ -5,6 +21,7 @@
 #include <functional>
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #if defined(_CONSTEXPR17)
 #define EX_CONSTEXPR _CONSTEXPR17
 #elif defined(_HAS_CXX17) || __cplusplus>201100L
@@ -23,6 +40,140 @@
 #endif
 namespace exlib {
 
+	//coerce forces VarType into FixedType by rounding
+	template<typename FixedType,typename VarType>
+	struct coerce_value {
+		static constexpr FixedType coerce(VarType vt)
+		{
+			return FixedType(std::round(vt));
+		}
+	};
+
+	//A value that has a fixed or variant value. If the value is not fixed (index!=fixed_index), its value is determined by multiplying
+	//variant() by bases[index]
+	//constexpr currently not allowed for unions so some of them do not work; just ignore for it as it doesn't cause a compiler error
+	template<typename FixedType=int,typename VarType=float,typename IndexType=unsigned int,typename CoerceValue=coerce_value<FixedType,VarType>>
+	struct maybe_fixed:protected CoerceValue {
+	public:
+		static constexpr IndexType const fixed_index=-1;
+	private:
+		struct ft_const {};
+		struct vt_const {};
+		IndexType _index;
+		union {
+			FixedType ft;
+			VarType vt;
+		};
+	public:
+		//fixed value at 0
+		constexpr maybe_fixed():_index(fixed_index),ft(0)
+		{}
+		//creates a fixed value
+		constexpr maybe_fixed(FixedType ft):_index(fixed_index),ft(ft)
+		{}
+		//creates a variable value with index
+		constexpr maybe_fixed(VarType vt,IndexType index):_index(index),vt(vt)
+		{}
+		//whether the value is fixed
+		constexpr bool fixed() const
+		{
+			return _index==fixed_index;
+		}
+		//the variable index
+		constexpr IndexType index() const
+		{
+			return _index;
+		}
+		//sets the variable index
+		constexpr void index(IndexType idx)
+		{
+			_index=idx;
+		}
+		//if the value is fixed, returns that fixed value. Otherwises returns bases[index()]*variant().
+		//index value checked
+		template<size_t N>
+		constexpr FixedType value(std::array<FixedType,N> const& bases) const
+		{
+			if(_index==fixed_index)
+			{
+				return ft;
+			}
+			if(_index<N)
+			{
+				return CoerceValue::coerce(bases[_index]*vt);
+			}
+			throw std::out_of_range("Index too high");
+		}
+		//automatic conversion to array for convenience
+		template<typename... Bases>
+		constexpr FixedType value(Bases... bases) const
+		{
+			return value(std::array<FixedType,sizeof...(Bases)>{
+				{
+					bases...
+				}});
+		}
+
+		//if the value is fixed, returns that fixed value. Otherwises returns bases[index()]*variant().
+		//index value unchecked
+		template<size_t N>
+		constexpr FixedType operator()(std::array<FixedType,N> const& bases) const
+		{
+			if(_index==fixed_index)
+			{
+				return ft;
+			}
+			return CoerceValue::coerce(bases[_index]*vt);
+		}
+		//automatic conversion to array for convenience
+		template<typename... Bases>
+		constexpr FixedType operator()(Bases... bases) const
+		{
+			return operator()(std::array<FixedType,sizeof...(Bases)>{
+				{
+					bases...
+				}});
+		}
+
+		//fixes the value to be ft
+		constexpr void fix(FixedType ft)
+		{
+			_index=fixed_index;
+			this->ft=ft;
+		}
+
+		//does nothing if value is already fixed, otherwises fixes the value to bases[index]*variant()
+		template<size_t N>
+		constexpr void fix_from(std::array<FixedType,N> const& bases)
+		{
+			if(_index==fixed_index) return;
+			ft=operator()(bases);
+			_index=fixed_index;
+		}
+
+		//automatic conversion to array for convenience
+		template<typename... Bases>
+		constexpr void fix_from(Bases... bases)
+		{
+			fix_from(std::array<FixedType,sizeof...(Bases)>{
+				{
+					bases...
+				}});
+		}
+
+		//the variable amount, undefined if value is fixed
+		constexpr VarType variant() const
+		{
+			return vt;
+		}
+
+		//sets the variable amount and basis to use
+		constexpr void variant(VarType vt,IndexType index=1)
+		{
+			_index=index;
+			this->vt=vt;
+		}
+	};
 	enum class conv_error {
 		none,out_of_range,invalid_characters
 	};
@@ -74,7 +225,7 @@ namespace exlib {
 	}
 
 	template<typename T>
-	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_unsigned<T>::value,conv_res>::type())
+	auto parse(char const* str,T& out,int base=10) -> typename std::enable_if<std::is_unsigned<T>::value,conv_res>::type
 	{
 		int& err=errno;
 		err=0;
@@ -102,7 +253,7 @@ namespace exlib {
 	}
 
 	template<typename T>
-	auto parse(char const* str,T& out,int base=10) -> decltype(std::enable_if<std::is_signed<T>::value,conv_res>::type())
+	auto parse(char const* str,T& out,int base=10) -> typename std::enable_if<std::is_signed<T>::value,conv_res>::type
 	{
 		int& err=errno;
 		err=0;
@@ -142,7 +293,7 @@ namespace exlib {
 	template<typename T>
 	EX_CONSTEXPR unsigned int num_digits(T num,unsigned int base=10)
 	{
-		static_assert(std::is_integral<typename T>::value,"Requires integral type");
+		static_assert(std::is_integral<T>::value,"Requires integral type");
 		unsigned int num_digits=1;
 		while((num/=base)!=0)
 		{
@@ -158,12 +309,16 @@ namespace exlib {
 		auto v=val;
 		number.back()='\0';
 		auto it=number.end()-2;
-		do
+		while(true)
 		{
 			*it=v%10+'0';
-			--it;
 			v/=10;
-		} while(v);
+			if(v==0)
+			{
+				break;
+			}
+			--it;
+		};
 		return number;
 	}
 
@@ -177,7 +332,7 @@ namespace exlib {
 			number.back()='\0';
 			number.front()='-';
 			auto it=number.end()-2;
-			do
+			while(true)
 			{
 				if constexpr(-1%10==-1)
 				{
@@ -187,9 +342,13 @@ namespace exlib {
 				{
 					*it=10-(v%10)+'0';
 				}
-				--it;
 				v/=10;
-			} while(v);
+				if(v==0)
+				{
+					break;
+				}
+				--it;
+			}
 			return number;
 		}
 		else
@@ -247,7 +406,7 @@ namespace exlib {
 #if __cplusplus > 201700L
 			constexpr
 #endif
-			(std::is_trivially_copyable<T>::value&&sizeof(T)<=2*sizeof(size_t))
+			(std::is_trivially_copyable<T>::value&&sizeof(T)<=sizeof(size_t))
 		{
 			return fattened_profile(prof,hp,[](auto a,auto b)
 			{
