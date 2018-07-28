@@ -213,4 +213,17 @@ namespace ScoreProcessor {
 			"top bottom=l tolerance=0.005 background_threshold=128"
 		);
 	}
+
+	namespace RCGMaker {
+		SingMaker<UseTuple,LabelId,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker(
+			"Colors are scaled such that values less than or equal to min become 0,\n"
+			"and values greater than or equal to max becomes 255.\n"
+			"They are scaled based on their distance from mid.\n"
+			"min tags: mn, min\n"
+			"mid tags: md, mid\n"
+			"max tags: mx, max\n",
+			"Rescale Brightness",
+			"min mid max=255"
+		);
+	}
 }

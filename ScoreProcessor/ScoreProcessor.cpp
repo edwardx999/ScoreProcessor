@@ -76,7 +76,7 @@ void info_output()
 		"Available commands:\n"
 		"  Single Page Operations:\n";
 	constexpr char const* space_buffer=":                                      ";
-	constexpr size_t padding=23;
+	constexpr size_t padding=24;
 	auto write_command=[=](auto const& it)
 	{
 		std::cout<<"    ";
@@ -130,7 +130,7 @@ void make_readme(char const* out)
 		"Type command alone to get readme  \n"
 		"Available commands:  \n"
 		"&nbsp;&nbsp;Single Page Operations:  \n";
-	constexpr size_t padding=22;
+	constexpr size_t padding=24;
 	auto write_command=[&](auto it)
 	{
 		readme<<"&nbsp;&nbsp;&nbsp;&nbsp;";

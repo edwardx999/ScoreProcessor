@@ -269,6 +269,15 @@ namespace ScoreProcessor {
 		}
 	};
 
+	template<typename Base,typename Check=no_check>
+	using IntParser=IntegerParser<int,Base,Check>;
+
+	template<typename Base,typename Check=no_check>
+	using UIntParser=IntegerParser<unsigned int,Base,Check>;
+
+	template<typename Base,typename Check=no_check>
+	using UCharParser=IntegerParser<unsigned char,Base,Check>;
+
 	//if LabelId defines a function id(InputType,(optional)size_t prefix_len), this function returns a size_t in range [0,MaxArgs)
 	//indicating the index of the tag, or throws an exception indicating the tag does not exist
 	//otherwise, the parser will just go through arguments in order
@@ -2033,7 +2042,7 @@ namespace ScoreProcessor {
 		}
 
 		struct LabelId {
-			size_t id(InputType it,size_t prefix_len)
+			static PMINLINE size_t id(InputType it,size_t prefix_len)
 			{
 				static constexpr auto table=make_ltable(
 					le("l",0),le("left",0),le("lpw",0),le("lph",0),
@@ -2047,7 +2056,7 @@ namespace ScoreProcessor {
 			cnnm("left padding")
 		};
 		struct Left:public LName {
-			static pv parse(InputType it,size_t prefix_len)
+			static PMINLINE pv parse(InputType it,size_t prefix_len)
 			{
 				auto actual=it+prefix_len+1;
 				if(prefix_len==-1||prefix_len==1||prefix_len==4)
@@ -2082,7 +2091,7 @@ namespace ScoreProcessor {
 			cnnm("right padding")
 		};
 		struct Right:public RName {
-			static pv parse(InputType it,size_t prefix_len)
+			static PMINLINE pv parse(InputType it,size_t prefix_len)
 			{
 				auto actual=it+prefix_len+1;
 				if(prefix_len==-1||prefix_len==1||prefix_len==5)
@@ -2103,7 +2112,7 @@ namespace ScoreProcessor {
 				}
 				auto amount=parse01(actual,RName());
 				if(it[2]=='h')
-				{	
+				{
 					return pv(amount,PadBase::height);
 				}
 				else
@@ -2117,7 +2126,7 @@ namespace ScoreProcessor {
 			cnnm("tolerance")
 		};
 		struct Tol:public TolName {
-			static pv parse(InputType it,size_t prefix_len)
+			static PMINLINE pv parse(InputType it,size_t prefix_len)
 			{
 				auto actual=it+prefix_len+1;
 				if(prefix_len==-1||prefix_len==1||it[2]=='l')
@@ -2127,7 +2136,7 @@ namespace ScoreProcessor {
 				}
 				auto amount=parse01(actual,TolName());
 				if(it[2]=='h')
-				{	
+				{
 					return pv(amount,PadBase::height);
 				}
 				else
@@ -2143,7 +2152,7 @@ namespace ScoreProcessor {
 		};
 		using BGParser=IntegerParser<unsigned char,BGround>;
 		struct UseTuple {
-			void use_tuple(CommandMaker::delivery& del,pv left,pv right,pv tol,unsigned char bg)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv left,pv right,pv tol,unsigned char bg)
 			{
 				if(left.index()==2)
 				{
@@ -2167,7 +2176,7 @@ namespace ScoreProcessor {
 		using pv=exlib::maybe_fixed<unsigned int>;
 
 		struct LabelId {
-			size_t id(InputType it,size_t prefix_len)
+			static PMINLINE size_t id(InputType it,size_t prefix_len)
 			{
 				static constexpr auto table=make_ltable(
 					le("t",0),le("top",0),le("tpw",0),le("tph",0),
@@ -2181,7 +2190,7 @@ namespace ScoreProcessor {
 			cnnm("top padding")
 		};
 		struct Top:public TName {
-			static pv parse(InputType it,size_t prefix_len)
+			static PMINLINE pv parse(InputType it,size_t prefix_len)
 			{
 				auto actual=it+prefix_len+1;
 				if(prefix_len==-1||prefix_len==1||it[2]=='p')
@@ -2216,7 +2225,7 @@ namespace ScoreProcessor {
 			cnnm("bottom padding")
 		};
 		struct Bottom:public BName {
-			static pv parse(InputType it,size_t prefix_len)
+			static PMINLINE pv parse(InputType it,size_t prefix_len)
 			{
 				auto actual=it+prefix_len+1;
 				if(prefix_len==-1||prefix_len==1||prefix_len==6)
@@ -2251,7 +2260,7 @@ namespace ScoreProcessor {
 			cnnm("tolerance")
 		};
 		struct Tol:public TolName {
-			static pv parse(InputType it,size_t prefix_len)
+			static PMINLINE  pv parse(InputType it,size_t prefix_len)
 			{
 				auto actual=it+prefix_len+1;
 				if(prefix_len==-1||prefix_len==1||it[2]=='l')
@@ -2272,7 +2281,7 @@ namespace ScoreProcessor {
 			cndf(pv(0.005,PadBase::height))
 		};
 		struct UseTuple {
-			void use_tuple(CommandMaker::delivery& del,pv top,pv bottom,pv tol,unsigned char bg)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv top,pv bottom,pv tol,unsigned char bg)
 			{
 				if(top.index()==2)
 				{
@@ -2291,6 +2300,46 @@ namespace ScoreProcessor {
 		};
 		extern SingMaker<UseTuple,LabelId,Top,Bottom,Tol,HPMaker::BGParser> maker;
 	}
+
+	namespace RCGMaker {
+		struct Min {
+			cnnm("min")
+		};
+		struct Mid {
+			cnnm("mid")
+		};
+		struct Max {
+			cnnm("max")
+				cndf(unsigned char(255))
+		};
+		struct LabelId {
+			static PMINLINE size_t id(InputType it,size_t prefix_len)
+			{
+				constexpr static auto table=make_ltable(
+					le("mn",0),le("min",0),
+					le("md",1),le("mid",1),
+					le("mx",2),le("max",2));
+				return find_prefix(table,it,prefix_len);
+			}
+		};
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,unsigned char min,unsigned char mid,unsigned char max)
+			{
+				if(min>mid)
+				{
+					throw std::invalid_argument("Min cannot be greater than mid value");
+				}
+				if(mid>max)
+				{
+					throw std::invalid_argument("Mid cannot be reater than max value");
+				}
+				del.pl.add_process<RescaleGray>(min,mid,max);
+			}
+		};
+		
+		extern SingMaker<UseTuple,LabelId,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -2321,6 +2370,7 @@ namespace ScoreProcessor {
 			compair("str",&StrMaker::maker),
 			compair("rot",&RotMaker::maker),
 			compair("fr",&FRMaker::maker),
+			compair("rcg",&RCGMaker::maker),
 			compair("ccg",&CCGMaker::maker),
 			compair("bl",&BlurMaker::maker),
 			compair("exl",&EXLMaker::maker),
