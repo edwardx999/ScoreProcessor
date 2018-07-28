@@ -1202,6 +1202,35 @@ namespace ScoreProcessor {
 
 				color clr;
 				std::string_view sv(data);
+				if(sv[0]=='#')
+				{
+					clr.num_layers=3;
+					if(sv.length()!=7) throw std::invalid_argument("Invalid color argument");
+					auto conv=[](char c)
+					{
+						if(c>='a'&&c<='z')
+						{
+							return unsigned char(c-'a'+10);
+						}
+						if(c>='A'&&c<='Z')
+						{
+							return unsigned char(c-'A'+10);
+						}
+						if(c>='0'&&c<='9')
+						{
+							return unsigned char(c-'0');
+						}
+						throw std::invalid_argument("Invalid color argument");
+					};
+					auto calc=[=](unsigned char& val,size_t idx)
+					{
+						val=conv(sv[idx])*16U+conv(sv[idx+1]);
+					};
+					calc(clr.data[0],1);
+					calc(clr.data[1],3);
+					calc(clr.data[2],5);
+					return clr;
+				}
 				auto last=sv.data()+sv.length();
 				auto res=std::from_chars(sv.data(),last,clr.data[0]);
 				error(res,"r/gray value");
