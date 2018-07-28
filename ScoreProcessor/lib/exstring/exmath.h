@@ -40,6 +40,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #endif
 namespace exlib {
 
+	template<typename T1,typename T2> 
+	constexpr auto abs_dif(T1 x,T2 y) ->
+		decltype(x-y)
+	{
+		return (x>y?x-y:y-x);
+	}
+
 	//coerce forces VarType into FixedType by rounding
 	template<typename FixedType,typename VarType>
 	struct coerce_value {

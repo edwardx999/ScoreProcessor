@@ -507,43 +507,7 @@ namespace ScoreProcessor {
 	*/
 	bool vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
 	bool vert_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const top,unsigned int const bottom,unsigned int tolerance=5,unsigned char background=200);
-	/*
-		Combines pages together to achieve optimal size for each page
-		Aligns right side of each image
-		@param filenames, vector of filenames of pages to be combined
-		@param horiz_padding, the padding size in pixels between content on the page
-		@param optimal_padding, half the optimal padding between pages
-		@param optimal_height, the optimal height for spliced pages, if -1, is 4/7 the width of the first page
-	*/
-	unsigned int splice_pages(
-		::std::vector<::std::string> const& filenames,
-		unsigned int horiz_padding,
-		unsigned int optimal_padding,
-		unsigned int min_padding,
-		unsigned int optimal_height,
-		char const* output,
-		unsigned int const starting_index=1);
-	unsigned int splice_pages_nongreedy(
-		::std::vector<::std::string> const& filenames,
-		ImageUtils::perc_or_val horiz_padding,
-		ImageUtils::perc_or_val optimal_height,
-		ImageUtils::perc_or_val optimal_padding,
-		ImageUtils::perc_or_val min_padding,
-		char const* output,
-		float excess_weight=10,
-		float padding_weight=1,
-		unsigned int starting_index=1);
-	unsigned int splice_pages_nongreedy_parallel(
-		::std::vector<::std::string> const& filenames,
-		ImageUtils::perc_or_val horiz_padding,
-		ImageUtils::perc_or_val optimal_height,
-		ImageUtils::perc_or_val optimal_padding,
-		ImageUtils::perc_or_val min_padding,
-		char const* output,
-		float excess_weight=10,
-		float padding_weight=1,
-		unsigned int starting_index=1,
-		unsigned int num_threads=8);
+	
 	void compress(
 		::cimg_library::CImg<unsigned char>& image,
 		unsigned int const min_padding,

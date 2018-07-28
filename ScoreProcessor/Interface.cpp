@@ -55,7 +55,7 @@ namespace ScoreProcessor {
 				"top: top coord of rectangle; tags: t, top\n"
 				"horiz: right coord or width, defaults to right coord; tags: r, right, w, width\n"
 				"vert: bottom coord or height, defaults to bottom coord; tags: b, bottom, h, height\n"
-				"color: color to fill with, can be grayscale, rgb, or rgba with comma-separated values,\n"
+				"color: color to fill with, can be grayscale, rgb, or rgba with comma-separated values;\n"
 				"  tags: clr, color\n"
 				"origin: origin from which coords are taken, +y is always down, +x is always right; tags: o, or",
 				"Fill Rectangle",

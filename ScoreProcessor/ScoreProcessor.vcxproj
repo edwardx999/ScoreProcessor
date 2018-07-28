@@ -410,6 +410,9 @@
     <ClInclude Include="Processes.h" />
     <ClInclude Include="ScoreProcesses.h" />
     <ClInclude Include="shorthand.h" />
+    <ClInclude Include="Splice.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="support.h" />
     <ClInclude Include="targetver.h" />
@@ -428,6 +431,7 @@
     <ClCompile Include="Processes.cpp" />
     <ClCompile Include="ScoreProcesses.cpp" />
     <ClCompile Include="ScoreProcessor.cpp" />
+    <ClCompile Include="Splice.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

@@ -21,6 +21,7 @@
 #include "ScoreProcesses.h"
 #include "lib/exstring/exstring.h"
 #include "Processes.h"
+#include "Splice.h"
 #define PMINLINE inline
 namespace ScoreProcessor {
 
@@ -30,6 +31,7 @@ namespace ScoreProcessor {
 	class CommandMaker {
 	public:
 		struct delivery {
+			using pv=exlib::maybe_fixed<unsigned int>;
 			SaveRules sr;
 			unsigned int starting_index;
 			bool do_move;
@@ -50,16 +52,9 @@ namespace ScoreProcessor {
 				full_message
 			};
 			log_type lt;
+			Splice::standard_heuristics splice_args;
 			struct {
-				ImageUtils::perc_or_val horiz_padding;
-				ImageUtils::perc_or_val optimal_padding;
-				ImageUtils::perc_or_val min_padding;
-				ImageUtils::perc_or_val optimal_height;
-				float excess_weight;
-				float padding_weight;
-			} splice_args;
-			struct {
-				ImageUtils::perc_or_val min_height,min_width,min_vert_space;
+				pv min_height,min_width,min_vert_space;
 				float horiz_weight;
 			} cut_args;
 			struct filter {
@@ -277,6 +272,37 @@ namespace ScoreProcessor {
 
 	template<typename Base,typename Check=no_check>
 	using UCharParser=IntegerParser<unsigned char,Base,Check>;
+
+	template<typename Name>
+	float parse01(char const* cp,Name const& n)
+	{
+		float v;
+		auto res=exlib::parse(cp,v);
+		if(res.ce==exlib::conv_error::invalid_characters)
+		{
+			throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
+		}
+		if(res.ce==exlib::conv_error::out_of_range)
+		{
+			throw std::invalid_argument(std::string("Argument out of range for ").append(n.name()));
+		}
+		if(*res.last=='%')
+		{
+			v/=100;
+			++res.last;
+		}
+		while(true)
+		{
+			if(*res.last=='\0') break;
+			if(*res.last!=' ') throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
+			++res.last;
+		}
+		if(res<0||res>1)
+		{
+			throw std::invalid_argument(std::string("Argument for ").append(n.name()).append(" must be in range [0,1]"));
+		}
+		return v;
+	}
 
 	//if LabelId defines a function id(InputType,(optional)size_t prefix_len), this function returns a size_t in range [0,MaxArgs)
 	//indicating the index of the tag, or throws an exception indicating the tag does not exist
@@ -2010,37 +2036,6 @@ namespace ScoreProcessor {
 	namespace HPMaker {
 		using pv=exlib::maybe_fixed<unsigned int>;
 
-		template<typename Name>
-		float parse01(char const* cp,Name const& n)
-		{
-			float v;
-			auto res=exlib::parse(cp,v);
-			if(res.ce==exlib::conv_error::invalid_characters)
-			{
-				throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
-			}
-			if(res.ce==exlib::conv_error::out_of_range)
-			{
-				throw std::invalid_argument(std::string("Argument out of range for ").append(n.name()));
-			}
-			if(*res.last=='%')
-			{
-				v/=100;
-				++res.last;
-			}
-			while(true)
-			{
-				if(*res.last=='\0') break;
-				if(*res.last!=' ') throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
-				++res.last;
-			}
-			if(res<0||res>1)
-			{
-				throw std::invalid_argument(std::string("Argument for ").append(n.name()).append(" must be in range [0,1]"));
-			}
-			return v;
-		}
-
 		struct LabelId {
 			static PMINLINE size_t id(InputType it,size_t prefix_len)
 			{
@@ -2210,7 +2205,7 @@ namespace ScoreProcessor {
 						return pv(amount);
 					}
 				}
-				auto amount=HPMaker::parse01(actual,TName());
+				auto amount=parse01(actual,TName());
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2244,7 +2239,7 @@ namespace ScoreProcessor {
 						return pv(amount);
 					}
 				}
-				auto amount=HPMaker::parse01(actual,BName());
+				auto amount=parse01(actual,BName());
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2268,7 +2263,7 @@ namespace ScoreProcessor {
 					auto amount=IntegerParser<unsigned int,TolName>().parse(actual);
 					return pv(amount);
 				}
-				auto amount=HPMaker::parse01(actual,TolName());
+				auto amount=parse01(actual,TolName());
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2338,6 +2333,14 @@ namespace ScoreProcessor {
 		};
 		
 		extern SingMaker<UseTuple,LabelId,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker;
+	}
+
+	namespace CutMaker {
+		
+		struct MinWidth {
+			cnnm("min width")
+			
+		};
 	}
 
 	struct compair {
