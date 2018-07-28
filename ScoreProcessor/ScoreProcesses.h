@@ -625,6 +625,62 @@ void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtil
 }
 namespace ScoreProcessor {
 
+	struct padding_pack {
+		unsigned int left,right,top,bottom;
+	};
+
+	template<typename T,typename FindLeft,typename FindRight,typename FindTop,typename FindBottom>
+	bool padding(::cil::CImg<T>& img,padding_pack pp,FindLeft fl,FindRight fr,FindTop ft,FindBottom fb)
+	{
+		signed int left,right,top,bottom;
+		if(pp.left==-1)
+		{
+			left=0;
+		}
+		else
+		{
+			left=fl(img)-pp.left;
+		}
+		if(pp.right=-1)
+		{
+			right=img.width()-1;
+		}
+		else
+		{
+			right=fr(img)+pp.right;
+		}
+		if(pp.top==-1)
+		{
+			top=0;
+		}
+		else
+		{
+			top=ft(img)-pp.top;
+		}
+		if(pp.bottom=-1)
+		{
+			bottom=img.height()-1;
+		}
+		else
+		{
+			bottom=fr(img)+pp.bottom;
+		}
+		if(left>right)
+		{
+			std::swap(left,right);
+		}
+		if(top>bottom)
+		{
+			std::swap(top,bottom);
+		}
+		if(left==0&&top==0&&right==img.width()-1&&bottom==img.height()-1)
+		{
+			return false;
+		}
+		img=cil::get_crop_fill(img,ImageUtils::Rectangle<int>({left,right,top,bottom}));
+		return true;
+	}
+
 	template<typename T>
 	void fill_selection(::cimg_library::CImg<T>& img,ImageUtils::Rectangle<unsigned int> const sel,T const* color)
 	{

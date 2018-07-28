@@ -1899,6 +1899,7 @@ namespace ScoreProcessor {
 		struct BlueName {
 			cnnm("blue")
 		};
+
 		struct Red:public RedName {
 			static PMINLINE int parse(char const* in)
 			{
@@ -1921,8 +1922,8 @@ namespace ScoreProcessor {
 				{
 					case 'r':
 						return red;
-					case 'g':
-						return green;
+					case 'b':
+						return blue;
 					default:
 						return IntegerParser<unsigned char,GreenName>().parse(in);
 				}
@@ -1968,7 +1969,7 @@ namespace ScoreProcessor {
 				{
 					trace_value(vals,i);
 				}
-				del.pl.add_process<FillTransparency>(r,g,b);
+				del.pl.add_process<FillTransparency>(vals[0],vals[1],vals[2]);
 			}
 		};
 
@@ -2062,7 +2063,7 @@ namespace ScoreProcessor {
 					else
 					{
 
-						auto amount=IntegerParser<unsigned int,LName,no_negatives>().parse(actual);
+						auto amount=IntegerParser<unsigned int,LName>().parse(actual);
 						return pv(amount);
 					}
 				}
@@ -2096,8 +2097,7 @@ namespace ScoreProcessor {
 					}
 					else
 					{
-
-						auto amount=IntegerParser<unsigned int,RName,no_negatives>().parse(actual);
+						auto amount=IntegerParser<unsigned int,RName>().parse(actual);
 						return pv(amount);
 					}
 				}
