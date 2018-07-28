@@ -272,16 +272,29 @@ namespace ScoreProcessor {
 	//if LabelId defines a function id(InputType,(optional)size_t prefix_len), this function returns a size_t in range [0,MaxArgs)
 	//indicating the index of the tag, or throws an exception indicating the tag does not exist
 	//otherwise, the parser will just go through arguments in order
-	//Each type of ArgParsers must define a function Type parse(char const*,(optional)size_t prefix_len);
-	//optionally a function Type def_val(), if it is used;
-	//and a function CompatibleWithString name().
-	//If parse accepts a second real_start argument, the first string_view is of the whole input and prefix_len
-	//is the length of the prefix not including the colon separator. Otherwise the first string is only a view past
-	//the colon.
+	//Each type of ArgParsers must define 
+	//  - a function Type parse(char const*,(optional)size_t prefix_len)
+	//  - optionally a function (constexpr) ConvertibleToType def_val() that returns the default value
+	//  - a function constexpr CompatibleWithString name() (if LabelId is used)
+	//If parse accepts a second real_start argument, the first arg is of the whole input and prefix_len
+	//is the length of the prefix not including the colon separator. If there is no prefix, prefix_len is -1. 
+	//Otherwise the first string is only a view past the colon.
 	//UseTuple must define a function use_tuple(CommandMaker::delivery&,Args...), which uses the tuple result
 	//from parsing to change the delivery. The tuple may optionally be referenced directly.
+	//The tuple contains the types return by parse.
 	//if Precheck defines check(CommandMaker::delivery (const)(&),(optional)size_t num_args), this checks the delivery before parsing, 
 	//throwing or doing nothing
+	//How this works:
+	// First, Precheck checks the input delivery and/or number of args.
+	// Then, the number of args is checked to be between MinArgs and MaxArgs.
+	//   MinArgs is found to be the first N ArgParsers which do not define def_val
+	//   MaxArgs is equal to sizeof...(ArgParsers)
+	//  If LabelId does not define id(...), then the arguments are simply evaluated in order
+	//  If LabelId does define id(...), then the arguments are evaluated in order until an argument with a prefix is found
+	//  After this prefixed arguments only are considered (if a prefix is not found now, an exception is thrown).
+	//  If a argument is given repeatedly an exception is thrown, or if an argument with no default value is unfulfilled,
+	//  an exception is thrown.
+	//  The delivery and the parsed arguments are then supplied to UseTuple::use_tuple(...)
 	template<typename UseTuple,typename Precheck,typename LabelId,typename... ArgParsers>
 	class MakerTFull:protected LabelId,protected Precheck,protected UseTuple,protected std::tuple<ArgParsers...>,public CommandMaker {
 	public:
@@ -488,16 +501,17 @@ namespace ScoreProcessor {
 		}
 
 		template<size_t... I>
-		constexpr auto name_table(std::index_sequence<I...>)
+		static constexpr auto name_table(std::index_sequence<I...>)
 		{
-			std::array<std::string_view,MaxArgs> arr{{std::string_view(std::get<I>(as_parsers()).name())...}};
+			constexpr std::array<std::string_view,MaxArgs> arr{{
+					std::string_view(std::remove_reference_t<decltype(std::get<I>(std::declval<MyParsers>()))>().name())...}};
 			return arr;
 		}
 
 		template<size_t N>
 		constexpr std::string_view find_arg_name(size_t i)
 		{
-			static auto table=name_table(std::make_index_sequence<MaxArgs>());
+			constexpr static auto table=name_table(std::make_index_sequence<MaxArgs>());
 			return table[i];
 			/*if constexpr(N<MaxArgs)
 			{
@@ -611,7 +625,7 @@ namespace ScoreProcessor {
 					auto const prefix=find_prefix(sv);
 					if(prefix==-1)
 					{
-						find_arg_h<N>(mt,sv,-1);
+						find_arg_h<N>(mt,sv,prefix);
 						fulfilled[N]=true;
 						unordered_args<N+1>(begin,n,mt,fulfilled);
 					}
@@ -701,15 +715,15 @@ namespace ScoreProcessor {
 			}
 			if constexpr(uses_tuple::value)
 			{
-				UseTuple::use_tuple(del,mt);
+				UseTuple::use_tuple(del,std::move(mt));
 			}
 			else
 			{
 				std::apply(
 					[&del,this](auto&&... args)
 				{
-					UseTuple::use_tuple(del,std::forward<std::decay<decltype(args)>::type>(args)...);
-				},mt);
+					UseTuple::use_tuple(del,std::forward<decltype(args)>(args)...);
+				},std::move(mt));
 			}
 		}
 	};

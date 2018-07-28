@@ -76,8 +76,8 @@ void info_output()
 		"Available commands:\n"
 		"  Single Page Operations:\n";
 	constexpr char const* space_buffer=":                                      ";
-	constexpr size_t padding=22;
-	auto write_command=[=](auto it)
+	constexpr size_t padding=23;
+	auto write_command=[=](auto const& it)
 	{
 		std::cout<<"    ";
 		std::cout<<it.maker()->name();
