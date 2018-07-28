@@ -256,4 +256,27 @@ namespace ScoreProcessor {
 				"Splice",
 				"horiz_pad=3% opt_pad=5% min_pad=1.2% opt_hgt=55% excs_wgt=10 pad_wgt=1 bg=128");
 	}
+
+	namespace CutMaker {
+		MakerTFull<
+			UseTuple,
+			MultiCommand<CommandMaker::delivery::do_state::do_cut>,
+			LabelId,
+			pv_parser<MW>,pv_parser<MH>,pv_parser<MV>,FloatParser<HW>,UCharParser<BG>> maker
+			(
+				"Cuts the image into separate systems\n"
+				"min_width: pixel groups under this width are not considered a system;\n"
+				"  tags: mw, mwpw, mwph\n"
+				"min_height: pixel groups under this height are not considered a system;\n"
+				"  tags: mh, mhpw, mhph\n"
+				"min_vert_space: a vertical under this height is not considered a system divisionl\n"
+				"  tags: mv, mvpw, mvph\n"
+				"horiz_weight: energy rating compared to vertical space to consider spacing;\n"
+				"  tags: hw\n"
+				"bg: colors under this brightness can be considered part of a system; tags: bg"
+				"pw or ph at end of tags indicates value is taken as proportion of width or height,respectively\n"
+				"if untagged, % indicates percentage of width taken, otherwise fixed amount",
+				"Cut",
+				"min_width=66% min_height=8% horiz_weight=20 min_vert_space=0 bg=128");
+	}
 }

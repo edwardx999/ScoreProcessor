@@ -385,6 +385,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 	struct cut_args {
 		SaveRules const* output;
 		int verbosity;
+		unsigned char background;
 		pv min_width;
 		pv min_height;
 		pv min_vert_space;
@@ -459,7 +460,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 	{
 		tp.add_task<CutProcess>(&files[i],i+del.starting_index,del);
 	}
-	cut_args ca{&del.sr,del.pl.get_verbosity(),del.cut_args.min_width,del.cut_args.min_height,del.cut_args.min_vert_space,del.cut_args.horiz_weight,del.pl.get_log()};
+	cut_args ca{&del.sr,del.pl.get_verbosity(),del.cut_args.background,del.cut_args.min_width,del.cut_args.min_height,del.cut_args.min_vert_space,del.cut_args.horiz_weight,del.pl.get_log()};
 	tp.start(&ca);
 }
 

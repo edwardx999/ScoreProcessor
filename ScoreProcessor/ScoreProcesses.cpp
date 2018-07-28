@@ -619,7 +619,7 @@ namespace ScoreProcessor {
 		return container;
 	}
 
-	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage,float const vec,unsigned int min_vertical_space);
+	::cimg_library::CImg<float> create_vertical_energy(::cimg_library::CImg<unsigned char> const& refImage,float const vec,unsigned int min_vertical_space,unsigned char background);
 
 	::cimg_library::CImg<float> create_compress_energy(::cimg_library::CImg<unsigned char> const& refImage,unsigned int const min_padding)
 	{
@@ -764,16 +764,16 @@ namespace ScoreProcessor {
 		return resultContainer;
 	}
 
-	void add_horizontal_energy(CImg<unsigned char> const& ref,CImg<float>& map,float const hec)
+	void add_horizontal_energy(CImg<unsigned char> const& ref,CImg<float>& map,float const hec,unsigned char bg)
 	{
 		for(unsigned int y=0;y<map._height;++y)
 		{
 			unsigned int x=0;
 			unsigned int node_start;
 			bool node_found;
-			auto assign_node_found=[&]()
+			auto assign_node_found=[&,bg]()
 			{
-				return node_found=gray_diff(Grayscale::WHITE,ref(x,y))<.2f;
+				return node_found=ref(x,y)>bg;
 			};
 			auto place_values=[&]()
 			{
@@ -818,7 +818,7 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename,cut_heuristics const ch)
+	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch)
 	{
 		//bool isRGB;
 		//switch(image._spectrum)
@@ -840,9 +840,9 @@ namespace ScoreProcessor {
 				unsigned int top,bottom,right;
 			};
 			float const VEC=100.0f;
-			CImg<float> map=create_vertical_energy(image,VEC,ch.minimum_vertical_space);
+			CImg<float> map=create_vertical_energy(image,VEC,ch.minimum_vertical_space,ch.background);
 			if(ch.horizontal_energy_weight!=0)
-				add_horizontal_energy(image,map,ch.horizontal_energy_weight);
+				add_horizontal_energy(image,map,ch.horizontal_energy_weight,ch.background);
 			min_energy_to_right(map);
 #ifndef NDEBUG
 			map.display();
@@ -1505,7 +1505,7 @@ namespace ScoreProcessor {
 		return true;
 	}
 
-	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map,float const hec);
+	void add_horizontal_energy(cimg_library::CImg<unsigned char> const& ref,cimg_library::CImg<float>& map,float const hec,unsigned char bg);
 
 	void compress(
 		CImg<unsigned char>& image,
@@ -1546,7 +1546,7 @@ namespace ScoreProcessor {
 		}
 		*/
 	}
-	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref,float const vec,unsigned int min_vert_space)
+	CImg<float> create_vertical_energy(CImg<unsigned char> const& ref,float const vec,unsigned int min_vert_space,unsigned char background)
 	{
 		CImg<float> map(ref._width,ref._height);
 		map.fill(INFINITY);
@@ -1555,9 +1555,9 @@ namespace ScoreProcessor {
 			unsigned int y=0U;
 			unsigned int node_start;
 			bool node_found;
-			auto assign_node_found=[&]()
+			auto assign_node_found=[&,background]()
 			{
-				return node_found=ref(x,y)>220;
+				return node_found=ref(x,y)>background;
 			};
 			auto place_values=[&,min_vert_space]()
 			{
@@ -1609,7 +1609,7 @@ namespace ScoreProcessor {
 	float const COMPRESS_HORIZONTAL_ENERGY_CONSTANT=1.0f;
 	CImg<float> create_compress_energy(CImg<unsigned char> const& ref)
 	{
-		auto map=create_vertical_energy(ref,100.0f,0);
+		auto map=create_vertical_energy(ref,100.0f,0,127);
 		for(auto y=0U;y<map._height;++y)
 		{
 			auto x=0U;
