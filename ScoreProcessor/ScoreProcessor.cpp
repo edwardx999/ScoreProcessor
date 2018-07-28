@@ -565,7 +565,7 @@ int main(int argc,InputIter argv)
 	using ui=decltype(del.num_threads);
 	del.num_threads=std::min(
 		del.num_threads,
-		ui((std::min(size_t(std::numeric_limits<ui>::max()),files.size()))));
+		ui(std::min(size_t(std::numeric_limits<ui>::max()),files.size())));
 	std::optional<Loggers::AmountLog> al;
 	Loggers::CoutLog cl;
 	switch(del.lt)
