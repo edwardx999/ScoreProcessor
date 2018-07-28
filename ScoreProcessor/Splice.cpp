@@ -6,94 +6,34 @@ namespace ScoreProcessor {
 	{
 		unsigned int height=0;
 		unsigned int width=0;
-		unsigned int spectrum=0;
 		for(size_t i=0;i<num;++i)
 		{
-			height+=imgs[i].img.height();
+			height+=imgs[i].true_height();
 			if(imgs[i].img._width>width)
 			{
 				width=imgs[i].img._width;
 			}
-			if(imgs[i].img._spectrum>spectrum)
-			{
-				spectrum=imgs[i].img._spectrum;
-			}
 		}
 		height+=padding*(num+1);
-		cil::CImg<unsigned char> tog(width,height,1,spectrum);
+		cil::CImg<unsigned char> tog(width,height,1);
 		tog.fill(255);
 		unsigned int ypos=padding;
-		size_t const tsize=tog._width*tog._height;
 		for(size_t i=0;i<num;++i)
 		{
-			auto const& current=imgs[i].img;
-			size_t const csize=current._width*current._height;
-			for(unsigned int y=0;y<current._height;++y)
+			auto const& current=imgs[i];
+			for(unsigned int y=0;y<current.img._height;++y)
 			{
-				unsigned int yabs=ypos+y-imgs[i].top;
+				unsigned int yabs=ypos+y-current.top;
 				if(yabs<tog._height)
 				{
-					for(unsigned int x=1;x<=current._width;++x)
+					for(unsigned int x=1;x<=current.img._width;++x)
 					{
-						unsigned char* tpixel=&tog(tog._width,y);
-						unsigned char const* cpixel=&current(current._width-x,y);
-						auto eval_brightness=[](unsigned char const* pixel,size_t size,unsigned int spectrum)
-						{
-							switch(spectrum)
-							{
-								case 1:
-									return (*pixel)*3U;
-								case 3:
-									return unsigned int(pixel[0])+pixel[size]+pixel[2*size];
-								case 4:
-									return (unsigned int(pixel[0])+pixel[size]+pixel[2*size])*pixel[3*size]/255U;
-							}
-						};
-						unsigned int const tbrig=eval_brightness(tpixel,tsize,tog._spectrum);
-						unsigned int const cbrig=eval_brightness(cpixel,csize,current._spectrum);
-						if(cbrig<tbrig)
-						{
-							switch(tog._spectrum)
-							{
-								case 1:
-									*tpixel=cbrig;
-									break;
-								case 3:
-									switch(current._spectrum)
-									{
-										case 1:
-											tpixel[0]=tpixel[tsize]=tpixel[2*tsize]=*cpixel;
-											break;
-										case 3:
-											tpixel[0]=cpixel[0];
-											tpixel[tsize]=cpixel[csize];
-											tpixel[2*tsize]=cpixel[2*csize];
-									}
-									break;
-								case 4:
-									switch(current._spectrum)
-									{
-										case 1:
-											tpixel[0]=tpixel[tsize]=tpixel[2*tsize]=*cpixel;
-											break;
-										case 3:
-											tpixel[0]=cpixel[0];
-											tpixel[tsize]=cpixel[csize];
-											tpixel[2*tsize]=cpixel[2*csize];
-											tpixel[3*tsize]=255;
-											break;
-										case 4:
-											tpixel[0]=cpixel[0];
-											tpixel[tsize]=cpixel[csize];
-											tpixel[2*tsize]=cpixel[2*csize];
-											tpixel[3*tsize]=cpixel[3*csize];
-									}
-							}
-						}
+						unsigned char& tpixel=tog(tog._width-x,yabs);
+						tpixel=std::min(current.img(current.img._width-x,y),tpixel);
 					}
 				}
 			}
-			ypos+=padding+current.height();
+			ypos+=padding+current.true_height();
 		}
 		return tog;
 	}
@@ -167,10 +107,38 @@ namespace ScoreProcessor {
 				return build_bottom_profile(img,ImageUtils::ColorRGB({bg,bg,bg}));
 			}
 		};
-		Splice::PageEval pe([=](Img const& img)
+		Splice::PageEval pe([bg=sh.background_color](Img const& img)
 		{
-			auto top=find_top(img);
-			auto min=*std::min_element(top.begin(),top.end());
+			unsigned int min=img._height/2;
+			if(img._spectrum<3)
+			{
+				for(unsigned int x=0;x<img._width;++x)
+				{
+					for(unsigned int y=0;y<min;++y)
+					{
+						if(img(x,y)<=bg)
+						{
+							min=y;
+							break;
+						}
+					}
+				}
+			}
+			else
+			{
+				unsigned int limit=3U*bg;
+				for(unsigned int x=0;x<img._width;++x)
+				{
+					for(unsigned int y=0;y<min;++y)
+					{
+						if(img(x,y)+img(x,y,1)+img(x,y,2)<=limit)
+						{
+							min=y;
+							break;
+						}
+					}
+				}
+			}
 			return Splice::edge{min,min};
 		},[=](Img const& t,Img const& b)
 		{
@@ -183,13 +151,53 @@ namespace ScoreProcessor {
 				return a<b;
 			});
 			auto top_max=*std::max_element(top.begin(),top.end());
-			auto bot_max=*std::min_element(bot.begin(),bot.end());
+			auto bot_min=*std::min_element(bot.begin(),bot.end());
 			auto spacing=find_spacing(top,top_max,bot);
-			return Splice::page_desc{{top_max,spacing.bottom_sg},{bot_max,spacing.top_sg}};
-		},[=](Img const& img)
+			Splice::page_desc ret;
+			ret.top={bot_min,spacing.top_sg};
+			ret.bottom={top_max,spacing.bottom_sg};
+			return ret;
+		},[bg=sh.background_color](Img const& img)
 		{
-			auto bottom=find_bottom(img);
-			auto max=*std::max_element(bottom.begin(),bottom.end());
+			unsigned int max=img._height/2;
+			if(img._spectrum<3)
+			{
+				for(unsigned int x=0;x<img._width;++x)
+				{
+					for(unsigned int y=img._height-1;;)
+					{
+						if(img(x,y)<=bg)
+						{
+							max=y;
+							break;
+						}
+						if(y==max)
+						{
+							break;
+						}
+						--y;
+					}
+				}
+			}
+			else
+			{
+				unsigned int limit=3U*bg;
+				for(unsigned int x=0;x<img._width;++x)
+				{
+					for(unsigned int y=img._height;;)
+					{
+						if(img(x,y)+img(x,y,1)+img(x,y,2)<=limit)
+						{
+							max=y;
+							break;
+						}
+						if(y==max)
+						{
+							--y;
+						}
+					}
+				}
+			}
 			return Splice::edge{max,max};
 		});
 		auto create_layout=[=](Splice::page_desc const* const items,size_t const n)

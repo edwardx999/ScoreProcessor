@@ -226,4 +226,34 @@ namespace ScoreProcessor {
 			"min mid max=255"
 		);
 	}
+
+	namespace SpliceMaker {
+		MakerTFull<
+			UseTuple,
+			MultiCommand<CommandMaker::delivery::do_state::do_splice>,
+			LabelId,
+			pv_parser<HP>,pv_parser<OP>,pv_parser<MP>,pv_parser<OH>,
+			FloatParser<EXC>,FloatParser<PW>,FloatParser<BG>> maker(
+				"Splices the pages together assuming right alignment.\n"
+				"Knuth algorithm that tries to minimize deviation from optimal height and optimal padding.\n"
+				"horiz_pad: horizontal space given between score elements; tags: hp, hppw, hpph\n"
+				"opt_pad: optimal padding between pages, see below; tags: op, oppw, opph\n"
+				"min_pad: minimum padding between pages; tags: mp, mppw, mpph\n"
+				"opt_hgt: optimal height of pages, see below; tags: oh, ohpw, ohph\n"
+				"excs_wgt: penalty weight applied to height deviation above optimal, see below; tags: exw, ew\n"
+				"pad_wgt: weight applied to padding deviation, see below; tags: pw\n"
+				"bg: background threshold to determine kerning; tags: bg\n"
+				"pw or ph at end of tags indicates value is taken as proportion of width or height, respectively\n"
+				"if untagged, % indicates percentage of width taken, otherwise fixed amount\n"
+				"Cost function is\n"
+				"if(height>opt_height)\n"
+				"  (excess_weight*(height-opt_height)/opt_height)^3+\n"
+				"  (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^3\n"
+				"else\n"
+				"  ((opt_height-height)/opt_height)^3+\n"
+				"  (pad_weight*abs_dif(padding,opt_padding)/opt_padding)^3\n"
+				"Dimensions are taken from the first page.",
+				"Splice",
+				"horiz_pad=3% opt_pad=5% min_pad=1.2% opt_hgt=55% excs_wgt=10 pad_wgt=1 bg=128");
+	}
 }

@@ -2258,7 +2258,21 @@ namespace ScoreProcessor {
 			static PMINLINE  pv parse(InputType it,size_t prefix_len)
 			{
 				auto actual=it+prefix_len+1;
-				if(prefix_len==-1||prefix_len==1||it[2]=='l')
+				if(prefix_len==-1)
+				{
+					auto sl=strlen(it);
+					if(it[sl-1]=='%')
+					{
+						auto amount=parse01(actual,TolName());
+						return pv(amount,PadBase::width);
+					}
+					else
+					{
+						auto amount=IntegerParser<unsigned int,TolName>().parse(actual);
+						return pv(amount);
+					}
+				}
+				if(prefix_len==1||it[2]=='l')
 				{
 					auto amount=IntegerParser<unsigned int,TolName>().parse(actual);
 					return pv(amount);
@@ -2331,18 +2345,106 @@ namespace ScoreProcessor {
 				del.pl.add_process<RescaleGray>(min,mid,max);
 			}
 		};
-		
+
 		extern SingMaker<UseTuple,LabelId,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker;
 	}
 
 	namespace CutMaker {
-		
+
 		struct MinWidth {
 			cnnm("min width")
-			
+
 		};
 	}
 
+	namespace SpliceMaker {
+		using pv=decltype(Splice::standard_heuristics().horiz_padding);
+		struct LabelId {
+			static PMINLINE size_t id(InputType it,size_t prefix_len)
+			{
+				static constexpr auto table=make_ltable(
+					le("hp",0),le("hppw",0),le("hpph",0),
+					le("op",1),le("oppw",1),le("opph",1),
+					le("mp",2),le("mppw",2),le("mpph",2),
+					le("oh",3),le("ohpw",3),le("ohph",3),
+					le("exw",4),le("ew",4),
+					le("pw",5),
+					le("bg",6));
+				return find_prefix(table,it,prefix_len);
+			}
+		};
+		struct HP {
+			cnnm("horizontal padding")
+				cndf(pv(0.03,0))
+		};
+		struct OP {
+			cnnm("optimal padding")
+				cndf(pv(0.05,0))
+		};
+		struct MP {
+			cnnm("min padding")
+				cndf(pv(0.012,0))
+		};
+		struct OH {
+			cnnm("optimal height")
+				cndf(pv(0.55,0))
+		};
+		struct EXC {
+			cnnm("excess weight")
+				cndf(10.0f)
+		};
+		struct PW {
+			cnnm("padding weight")
+				cndf(1.0f)
+		};
+		struct BG {
+			cnnm("background")
+				cndf(unsigned char(128))
+		};
+		template<typename Base>
+		struct pv_parser:public Base {
+			PMINLINE pv parse(InputType it,size_t prefix_len) const
+			{
+				if(prefix_len==-1)
+				{
+					auto sl=strlen(it);
+					if(sl==0) throw std::invalid_argument(std::string("Empty argument for ").append(Base::name()));
+					if(it[sl-1]=='%') return pv(parse01(it,*this),0);
+					return pv(UIntParser<Base>().parse(it));
+				}
+				if(prefix_len==2)
+				{
+					return pv(UIntParser<Base>().parse(it+3));
+				}
+				auto amount=parse01(it+5,*this);
+				if(it[3]=='w')
+				{
+					return pv(amount,0);
+				}
+				return pv(amount,1);
+			}
+		};
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv hp,pv op,pv mp,pv oh,float exc,float pw,unsigned char bg)
+			{
+				del.splice_args.horiz_padding=hp;
+				del.splice_args.optimal_padding=op;
+				del.splice_args.min_padding=mp;
+				del.splice_args.optimal_height=oh;
+				del.splice_args.excess_weight=exc;
+				del.splice_args.padding_weight=pw;
+				del.splice_args.background_color=bg;
+			}
+		};
+		extern
+			MakerTFull<
+			UseTuple,
+			MultiCommand<CommandMaker::delivery::do_state::do_splice>,
+			LabelId,
+			pv_parser<HP>,pv_parser<OP>,pv_parser<MP>,pv_parser<OH>,
+			FloatParser<EXC>,FloatParser<PW>,FloatParser<BG>> maker;
+	}
 	struct compair {
 	private:
 		char const* _key;
@@ -2381,7 +2483,8 @@ namespace ScoreProcessor {
 			compair("rb",&RBMaker::maker),
 			compair("rs",&RsMaker::maker));
 
-		constexpr auto mcl=exlib::make_array<compair>();
+		constexpr auto mcl=exlib::make_array<compair>(
+			compair("spl",&SpliceMaker::maker));
 
 		constexpr auto ol=exlib::make_array<compair>(
 			compair("o",&Output::maker),
@@ -2394,7 +2497,8 @@ namespace ScoreProcessor {
 
 		constexpr auto aliases=exlib::make_array<compair>(
 			compair("rotate",&RotMaker::maker),
-			compair("ccga",&CCGMaker::maker));
+			compair("ccga",&CCGMaker::maker),
+			compair("splice",&SpliceMaker::maker));
 
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const

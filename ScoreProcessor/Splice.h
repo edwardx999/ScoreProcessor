@@ -60,6 +60,10 @@ namespace ScoreProcessor {
 			cil::CImg<unsigned char> img;
 			unsigned int top;
 			unsigned int bottom;
+			unsigned int true_height() const
+			{
+				return bottom-top;
+			}
 		};
 		struct edge {
 			unsigned int raw;
@@ -114,22 +118,26 @@ namespace ScoreProcessor {
 			Splice::page_layout layout;
 			size_t previous;
 		};
-		size_t const c=end-begin+1;
-		std::vector<node> nodes(c);
+		size_t const c=end-begin;
+		std::vector<node> nodes(c+1);
 		nodes[0].cost=0;
 		for(size_t i=1;i<=c;++i)
 		{
 			nodes[i].cost=INFINITY;
-			for(size_t j=i-1;;) //make this a binary search? no, mininum is almost always a few pages down
+			for(size_t j=i-1;;)
 			{
-				auto layout=cl(&begin[i],i-j);
+				auto layout=cl(&begin[j],i-j);
 				auto local_cost=cost(layout);
 				auto total_cost=local_cost+nodes[j].cost;
-				if(total_cost<nodes[i].cost)
+				if(total_cost<=nodes[i].cost)
 				{
 					nodes[i].cost=total_cost;
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
+				}
+				else
+				{
+					break;
 				}
 				if(j==0)
 				{
