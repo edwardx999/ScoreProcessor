@@ -311,20 +311,34 @@ namespace ScoreProcessor {
 				case 1:
 				case 2:
 					if(num_layers==3||num_layers==4&&color[3]==255)
-						img=cil::get_map<1,3>(img,[](auto color)
 					{
-						return std::array<unsigned char,3>({color[0],color[0],color[0]});
-					});
+						cil::CImg<unsigned char> temp(img._width,img._height,1,3);
+						size_t const size=img._width*img._height;
+						memcpy(temp.data(),img.data(),size);
+						memcpy(temp.data()+size,img.data(),size);
+						memcpy(temp.data()+2U*size,img.data(),size);
+						img.swap(temp);
+					}
 					else if(num_layers==4)
-						img=cil::get_map<1,4>(img,[](auto color)
 					{
-						return std::array<unsigned char,4>({color[0],color[0],color[0],255});
-					});
+						cil::CImg<unsigned char> temp(img._width,img._height,1,4);
+						size_t const size=img._width*img._height;
+						memcpy(temp.data(),img.data(),size);
+						memcpy(temp.data()+size,img.data(),size);
+						memcpy(temp.data()+2U*size,img.data(),size);
+						memset(temp.data()+3U*size,255,size);
+						img.swap(temp);
+					};
 					break;
 				case 3:
 					if(num_layers==4&&color[3]!=255)
-						img=cil::get_map<3,4>(img,[](auto color){
-						return std::array<unsigned char,4>({color[0],color[1],color[2],255});});
+					{
+						cil::CImg<unsigned char> temp(img._width,img._height,1,4);
+						size_t const size=img._width*img._height;
+						memcpy(temp.data(),img.data(),3U*size);
+						memset(temp.data()+3U*size,255,size);
+						img.swap(temp);
+					}
 			}
 		}
 #define ucast static_cast<unsigned int>
