@@ -1778,6 +1778,7 @@ namespace ScoreProcessor {
 			auto start=disregard_spaces(in);
 			auto end=find_comma(start);
 			if(*end!=',') throw std::invalid_argument(error);
+			return std::make_pair(start,end);
 		}
 
 		template<typename T>
@@ -1820,19 +1821,17 @@ namespace ScoreProcessor {
 			static PMINLINE std::array<unsigned int,2> parse(InputType in)
 			{
 				std::array<unsigned int,2> ret;
-				auto start=disregard_spaces(in);
-				auto end=find_comma(start);
-				if(*end!=',') throw std::invalid_argument("Missing cluster size range max value");
+				auto ff=find_first(in,"Missing bad size range max value");
 				constexpr char const* range_error="Cluster size input out of range";
-				if(start==end)
+				if(ff.first==ff.second)
 				{
 					ret[0]=0;
 				}
 				else
 				{
-					parse_to(start,',',ret[0],"Invalid input for cluster size min value",range_error);
+					parse_to(ff.first,',',ret[0],"Invalid input for cluster size min value",range_error);
 				}
-				parse_to(start,'\0',ret[1],"Invalid input for cluster size max value",range_error);
+				parse_to(ff.second+1,'\0',ret[1],"Invalid input for cluster size max value",range_error);
 				if(ret[0]>ret[1]) throw std::invalid_argument("Cluster size min value cannot be greater than max value");
 				return ret;
 			}

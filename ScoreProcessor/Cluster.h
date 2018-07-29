@@ -27,11 +27,6 @@ namespace ScoreProcessor {
 		::std::vector<ImageUtils::Rectangle<unsigned int>> ranges;
 	public:
 		/*
-			Constructs a cluster with no ranges
-		*/
-		Cluster();
-		~Cluster();
-		/*
 			Returns the area of the cluster
 			(i.e. the sum of the areas of all sub-rectangles)
 		*/
@@ -88,7 +83,7 @@ namespace ScoreProcessor {
 			Given a vector of rectangles,
 			Returns a vector of pointers to clusters made from those rectangles
 		*/
-		static ::std::vector<::std::unique_ptr<Cluster>> cluster_ranges(::std::vector<ImageUtils::Rectangle<unsigned int>> const& ranges);
+		static ::std::vector<Cluster> cluster_ranges(::std::vector<ImageUtils::Rectangle<unsigned int>> const& ranges);
 	};
 }
 #endif // !CLUSTER_H

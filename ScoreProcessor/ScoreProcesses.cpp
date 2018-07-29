@@ -864,7 +864,7 @@ namespace ScoreProcessor {
 				for(auto c=clusters.cbegin();c!=clusters.cend();++c)
 				{
 					//if(clusters[i]->size()>threshold)
-					auto box=(*c)->bounding_box();
+					auto box=c->bounding_box();
 					if(heuristic_filter(box))
 					{
 						boxes.push_back(line{box.top,box.bottom,box.right});
@@ -1459,14 +1459,14 @@ namespace ScoreProcessor {
 			return false;
 		}
 		unsigned int top_size=0;
-		Cluster* top_cluster;
+		Cluster const* top_cluster;
 		for(auto const& cluster:clusters)
 		{
-			auto size=cluster->size();
+			auto size=cluster.size();
 			if(size>top_size)
 			{
 				top_size=size;
-				top_cluster=cluster.get();
+				top_cluster=&cluster;
 			}
 		}
 		auto com=top_cluster->bounding_box().center<double>();

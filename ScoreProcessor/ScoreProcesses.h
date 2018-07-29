@@ -790,7 +790,7 @@ namespace ScoreProcessor {
 		unsigned int range_found=0,range_start=0,range_end=0;
 		auto const height=image._height;
 		auto const width=image._width;
-		auto const size=height*width;
+		size_t const size=height*width;
 		auto const data=image._data;
 		std::vector<ImageUtils::Rectangle<unsigned int>> container;
 		for(unsigned int y=0;y<height;++y)
@@ -856,10 +856,10 @@ namespace ScoreProcessor {
 		bool edited=false;
 		for(auto it=clusters.cbegin();it!=clusters.cend();++it)
 		{
-			if(cl(**it))
+			if(cl(*it))
 			{
 				edited=true;
-				for(auto rect:(*it)->get_ranges())
+				for(auto rect:it->get_ranges())
 				{
 					ScoreProcessor::fill_selection(img,rect,replacer);
 				}

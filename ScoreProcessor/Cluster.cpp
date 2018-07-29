@@ -20,8 +20,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <algorithm>
 using namespace std;
 namespace ScoreProcessor {
-	Cluster::Cluster():ranges() {}
-	Cluster::~Cluster() {}
 	unsigned int Cluster::size() const
 	{
 		unsigned int size=0;
@@ -113,13 +111,13 @@ namespace ScoreProcessor {
 		}
 		return line;
 	}
-	vector<unique_ptr<Cluster>> Cluster::cluster_ranges(vector<ImageUtils::Rectangle<unsigned int>> const& ranges)
+	vector<Cluster> Cluster::cluster_ranges(vector<ImageUtils::Rectangle<unsigned int>> const& ranges)
 	{
-		vector<unique_ptr<Cluster>> cluster_container;
+		vector<Cluster> cluster_container;
 		struct ClusterPart {
-			Cluster* cluster;
+			bool clustered;
 			ImageUtils::Rectangle<unsigned int> const* rect;
-			ClusterPart(ImageUtils::Rectangle<unsigned int> const* rect):cluster(nullptr),rect(rect) {}
+			ClusterPart(ImageUtils::Rectangle<unsigned int> const* rect):clustered(false),rect(rect) {}
 		};
 		struct ClusterTestNode {
 			ClusterPart* parent;
@@ -157,26 +155,26 @@ namespace ScoreProcessor {
 		}
 		sort(tests.begin(),tests.end());
 		stack<unsigned int> search_stack;
-		unsigned int const& max=tests.size();
+		size_t const max=tests.size();
 		for(unsigned int i=max-1;i<max;--i)
 		{
 			ClusterTestNode const& current_node=tests[i];
 			if(current_node.is_top()) { continue; }
-			if(current_node.parent->cluster==nullptr)
+			if(!current_node.parent->clustered)
 			{
-				unique_ptr<Cluster> current_cluster=make_unique<Cluster>();
+				Cluster current_cluster;
 				search_stack.push(i);
 				while(!search_stack.empty())
 				{
 					unsigned int search_index=search_stack.top();
 					search_stack.pop();
 					ClusterTestNode const& search_node=tests[search_index];
-					if(search_node.parent->cluster!=nullptr)
+					if(search_node.parent->clustered)
 					{
 						continue;
 					}
-					search_node.parent->cluster=current_cluster.get();
-					current_cluster->ranges.push_back(*search_node.parent->rect);
+					search_node.parent->clustered=true;
+					current_cluster.ranges.push_back(*search_node.parent->rect);
 					for(unsigned int s=search_index-1;s<max;--s)
 					{
 						if(tests[s].is_bottom())
@@ -191,7 +189,6 @@ namespace ScoreProcessor {
 								search_stack.push(s);
 							}
 						}
-
 					}
 					for(unsigned int s=search_index+1;s<max;++s)
 					{
