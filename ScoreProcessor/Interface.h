@@ -229,20 +229,10 @@ namespace ScoreProcessor {
 				std::string err_msg("Argument for ");
 				err_msg.append(Base::name());
 				err_msg.append(" must be in range [");
-				if constexpr(std::is_unsigned<T>())
-				{
-					constexpr auto min=exlib::to_string_unsigned<std::numeric_limits<T>::min()>();
-					err_msg.append(min.data(),min.size()-1);
-					constexpr auto max=exlib::to_string_unsigned<std::numeric_limits<T>::max()>();
-					err_msg.append(",").append(max.data(),max.size()-1);
-				}
-				else
-				{
-					constexpr auto min=exlib::to_string<std::numeric_limits<T>::min()>();
-					err_msg.append(min.data(),min.size()-1);
-					constexpr auto max=exlib::to_string<std::numeric_limits<T>::max()>();
-					err_msg.append(",").append(max.data(),max.size()-1);
-				}
+				constexpr auto min=exlib::to_string<std::numeric_limits<T>::min()>();
+				err_msg.append(min.data(),min.size()-1);
+				constexpr auto max=exlib::to_string<std::numeric_limits<T>::max()>();
+				err_msg.append(",").append(max.data(),max.size()-1);
 				err_msg.append("]");
 				throw std::invalid_argument(err_msg);
 			}
