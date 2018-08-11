@@ -201,7 +201,8 @@ void list_files(std::vector<std::string> const& files)
 		{
 			std::cout<<file<<'\n';
 		}
-		std::cout<<'\n'<<files.size()<<" files were found.\n";
+		auto const n=files.size();
+		std::cout<<'\n'<<n<<(n==1?" file was found.\n":" files were found.\n");
 	}
 	std::cout<<'\n';
 }
