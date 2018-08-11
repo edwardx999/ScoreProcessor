@@ -317,7 +317,7 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 			auto file_attr=GetFileAttributesA(*pos);
 			if(file_attr==INVALID_FILE_ATTRIBUTES)
 			{
-				std::string err_msg("File not found: ");
+				std::string err_msg("File or folder not found: ");
 				err_msg.append(*pos);
 				throw std::invalid_argument(err_msg);
 			}
@@ -329,16 +329,13 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 					path+='\\';
 				}
 				auto fid=do_recursive?exlib::files_in_dir_rec(path):exlib::files_in_dir(path);
-				files.reserve(files.size()+fid.size());
 				if(path=="./"||path==".\\")
 				{
-					for(auto& str:fid)
-					{
-						files.emplace_back(std::move(str));
-					}
+					files.insert(files.end(),std::make_move_iterator(fid.begin()),std::make_move_iterator(fid.end()));
 				}
 				else
 				{
+					files.reserve(files.size()+fid.size());
 					for(auto const& str:fid)
 					{
 						std::string name(path);
@@ -352,7 +349,9 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 			{
 				if(do_recursive)
 				{
-					throw std::logic_error("Cannot recursively search a non-folder");
+					std::string err_msg("Cannot recursively search non-folder: ");
+					err_msg.append(*pos);
+					throw std::logic_error(err_msg);
 				}
 				files.emplace_back(std::move(*pos));
 			}
