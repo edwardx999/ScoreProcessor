@@ -257,7 +257,7 @@ namespace cimg_library {
 	{
 		return get_map<3,1>(image,[](auto color)
 		{
-			return std::array<unsigned char,1>{unsigned char(std::round((float(color[0])+color[1]+color[2])/3.0f))};
+			return std::array<unsigned char,1>{unsigned char(std::round((double(color[0])+color[1]+color[2])/3.0f))};
 		});
 	}
 

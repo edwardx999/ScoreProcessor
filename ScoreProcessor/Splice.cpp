@@ -2,22 +2,12 @@
 #include "Splice.h"
 #include "ScoreProcesses.h"
 namespace ScoreProcessor {
-	cil::CImg<unsigned char> splice_images(Splice::page const* imgs,size_t num,unsigned int padding)
+
+	template<typename TreatPixel>//function (tog_pixel_pointer,tog_size,current_img,x,y)
+	cil::CImg<unsigned char>& splice_images_h(Splice::page const* imgs,size_t num,unsigned int padding,cil::CImg<unsigned char>& tog,TreatPixel tp)
 	{
-		unsigned int height=0;
-		unsigned int width=0;
-		for(size_t i=0;i<num;++i)
-		{
-			height+=imgs[i].true_height();
-			if(imgs[i].img._width>width)
-			{
-				width=imgs[i].img._width;
-			}
-		}
-		height+=padding*(num+1);
-		cil::CImg<unsigned char> tog(width,height,1);
-		tog.fill(255);
 		unsigned int ypos=padding;
+		auto const size=size_t{tog._width}*tog._height;
 		for(size_t i=0;i<num;++i)
 		{
 			auto const& current=imgs[i];
@@ -28,14 +18,147 @@ namespace ScoreProcessor {
 				{
 					for(unsigned int x=1;x<=current.img._width;++x)
 					{
-						unsigned char& tpixel=tog(tog._width-x,yabs);
-						tpixel=std::min(current.img(current.img._width-x,y),tpixel);
+						tp(&tog(tog._width-x,yabs),size,current.img,current.img._width-x,y);
 					}
 				}
 			}
 			ypos+=padding+current.true_height();
 		}
 		return tog;
+	}
+	
+	cil::CImg<unsigned char> splice_images(Splice::page const* imgs,size_t num,unsigned int padding)
+	{
+		unsigned int height=0;
+		unsigned int width=0;
+		unsigned int spectrum=0;
+		for(size_t i=0;i<num;++i)
+		{
+			height+=imgs[i].true_height();
+			if(imgs[i].img._width>width)
+			{
+				width=imgs[i].img._width;
+			}
+			if(imgs[i].img._spectrum>spectrum)
+			{
+				spectrum=imgs[i].img._spectrum;
+			}
+		}
+		height+=padding*(num+1);
+		cil::CImg<unsigned char> tog(width,height,1,spectrum);
+		tog.fill(255);
+		switch(spectrum)
+		{
+			case 1:
+			case 2:
+				return splice_images_h(imgs,num,padding,tog,[](unsigned char* pixel,size_t const size,cil::CImg<unsigned char> const& current,unsigned int x,unsigned int y)
+				{
+					*pixel=std::min(*pixel,current(x,y));
+				});
+				/*return splice_images_h(imgs,num,padding,tog,[](unsigned char* pixel,size_t const size,cil::CImg<unsigned char> const& current,unsigned int x,unsigned int y)
+				{
+					double dark=(255U-*pixel)*(pixel[size]/255.0);
+					double cdark;
+					auto const cpixel=&current(x,y);
+					size_t csize;
+					switch(current._spectrum)
+					{
+						case 1:
+							cdark=255U-*cpixel;
+							break;
+						case 2:
+							cdark=(255U-*cpixel)*(cpixel[csize=current._width*current._height]/255.0);
+					}
+					if(cdark>dark)
+					{
+						switch(current._spectrum)
+						{
+							case 1:
+								*pixel=*cpixel;
+								pixel[size]=255;
+								break;
+							case 2:
+								*pixel=*cpixel;
+								pixel[size]=cpixel[csize];
+						}
+					}
+				});*/
+			case 3:
+				using pinfo=uint_fast32_t;
+				return splice_images_h(imgs,num,padding,tog,[](unsigned char* pixel,size_t const size,cil::CImg<unsigned char> const& current,unsigned int x,unsigned int y)
+				{
+					pinfo br=(pinfo{pixel[0]}+pixel[size]+pixel[2*size]);
+					size_t csize;
+					pinfo cbr;
+					auto const cpixel=&current(x,y);
+					switch(current._spectrum)
+					{
+						case 1:
+							cbr=*cpixel*3U;
+							break;
+						case 3:
+							csize=size_t{current._height}*current._width;
+							cbr=pinfo{cpixel[0]}+cpixel[csize]+cpixel[2*csize];
+					}
+					if(cbr<br)
+					{
+						switch(current._spectrum)
+						{
+							case 1:
+								pixel[0]=pixel[size]=pixel[2*size]=cpixel[0];
+								break;
+							case 3:
+								pixel[0]=cpixel[0];
+								pixel[size]=cpixel[csize];
+								pixel[2*size]=cpixel[2*csize];
+						}
+					}
+				});
+			case 4:
+				return splice_images_h(imgs,num,padding,tog,[](unsigned char* pixel,size_t const size,cil::CImg<unsigned char> const& current,unsigned int x,unsigned int y)
+				{
+					constexpr pinfo max=3U*255U;
+					pinfo drk=(max-(pinfo{pixel[0]}+pixel[size]+pixel[2*size]))*pixel[3*size];
+					size_t csize;
+					pinfo cdrk;
+					auto const cpixel=&current(x,y);
+					switch(current._spectrum)
+					{
+						case 1:
+							cdrk=max-(*cpixel*3U);
+							break;
+						case 3:
+							csize=size_t{current._height}*current._width;
+							cdrk=(max-(pinfo{cpixel[0]}+cpixel[csize]+cpixel[2*csize]))*255U;
+							break;
+						case 4:
+							csize=size_t{current._height}*current._width;
+							cdrk=(max-(pinfo{cpixel[0]}+cpixel[csize]+cpixel[2*csize]))*cpixel[3*csize];
+							break;
+					}
+					if(cdrk>drk)
+					{
+						switch(current._spectrum)
+						{
+							case 1:
+								pixel[0]=pixel[size]=pixel[2*size]=cpixel[0];
+								pixel[3*size]=255;
+								break;
+							case 3:
+								pixel[0]=cpixel[0];
+								pixel[size]=cpixel[csize];
+								pixel[2*size]=cpixel[2*csize];
+								pixel[3*size]=255;
+								break;
+							case 4:
+								pixel[0]=cpixel[0];
+								pixel[size]=cpixel[csize];
+								pixel[2*size]=cpixel[2*csize];
+								pixel[3*size]=cpixel[3*csize];
+						}
+					}
+				});
+		}
 	}
 
 	struct spacing {

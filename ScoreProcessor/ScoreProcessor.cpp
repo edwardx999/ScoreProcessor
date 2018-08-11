@@ -192,7 +192,7 @@ void list_files(std::vector<std::string> const& files)
 {
 	if(files.empty())
 	{
-		std::cout<<"No files found\n";
+		std::cout<<"No files were found.\n";
 	}
 	else
 	{

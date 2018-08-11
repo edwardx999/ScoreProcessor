@@ -172,13 +172,23 @@ namespace exlib {
 		}
 
 		/*
+			Makes threads no longer attempt to find new tasks; does not wait for them to stop.
+		*/
+		inline void deactivate()
+		{
+			running=false;
+		}
+
+		/*
 		Stops as soon as all threads are done with their current tasks
 		*/
 		inline void stop()
 		{
-			running=false;
+			deactivate();
 			wait();
 		}
+
+
 
 		inline void join()
 		{
