@@ -174,7 +174,7 @@ namespace exlib {
 		/*
 			Makes threads no longer attempt to find new tasks; does not wait for them to stop.
 		*/
-		inline void deactivate()
+		inline void give_up()
 		{
 			running=false;
 		}
@@ -184,11 +184,9 @@ namespace exlib {
 		*/
 		inline void stop()
 		{
-			deactivate();
+			give_up();
 			wait();
 		}
-
-
 
 		inline void join()
 		{

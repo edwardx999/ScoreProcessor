@@ -2483,9 +2483,10 @@ namespace ScoreProcessor {
 				cndf(pv(0))
 		};
 
+		using uchar=unsigned char;
 		struct BG {
 			cnnm("background")
-				cndf(unsigned char(128))
+				cndf(uchar(128))
 		};
 
 		struct LabelId {

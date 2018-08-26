@@ -269,11 +269,11 @@ namespace ScoreProcessor {
 				"  tags: mw, mwpw, mwph\n"
 				"min_height: pixel groups under this height are not considered a system;\n"
 				"  tags: mh, mhpw, mhph\n"
-				"min_vert_space: a vertical under this height is not considered a system divisionl\n"
+				"min_vert_space: a vertical under this height is not considered a system division\n"
 				"  tags: mv, mvpw, mvph\n"
 				"horiz_weight: energy rating compared to vertical space to consider spacing;\n"
 				"  tags: hw\n"
-				"bg: colors under this brightness can be considered part of a system; tags: bg"
+				"bg: colors under this brightness can be considered part of a system; tags: bg\n"
 				"pw or ph at end of tags indicates value is taken as proportion of width or height,respectively\n"
 				"if untagged, % indicates percentage of width taken, otherwise fixed amount",
 				"Cut",

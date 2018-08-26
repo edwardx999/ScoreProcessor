@@ -428,6 +428,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 				}
 				cil::CImg<unsigned char> in(input->c_str());
 				cut_heuristics cut_args;
+				cut_args.background=ca->background;
 				cut_args.horizontal_energy_weight=ca->horiz_weight;
 				std::array<unsigned int,2> bases{in._width,in._height};
 				cut_args.min_height=(ca->min_height)(bases);
@@ -460,7 +461,16 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 	{
 		tp.add_task<CutProcess>(&files[i],i+del.starting_index,del);
 	}
-	cut_args ca{&del.sr,del.pl.get_verbosity(),del.cut_args.background,del.cut_args.min_width,del.cut_args.min_height,del.cut_args.min_vert_space,del.cut_args.horiz_weight,del.pl.get_log()};
+	cut_args ca{
+		&del.sr,
+		del.pl.get_verbosity(),
+		del.cut_args.background,
+		del.cut_args.min_width,
+		del.cut_args.min_height,
+		del.cut_args.min_vert_space,
+		del.cut_args.horiz_weight,
+		del.pl.get_log()
+	};
 	tp.start(&ca);
 }
 

@@ -358,6 +358,8 @@ namespace cimg_library {
 		return std::make_pair<decltype(loc),decltype(min_value)>(loc,min_value);
 	}
 
+	unsigned char otsu(CImg<unsigned char> const& img);
+
 	/*
 	Returns an image that has the vertical brightness gradient at each point
 	*/

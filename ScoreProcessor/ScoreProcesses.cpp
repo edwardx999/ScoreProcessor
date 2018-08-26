@@ -820,20 +820,21 @@ namespace ScoreProcessor {
 	}
 	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch)
 	{
-		//bool isRGB;
-		//switch(image._spectrum)
-		//{
-		//	case 1:
-		//		isRGB=false;
-		//		break;
-		//	case 3:
-		//		isRGB=true;
-		//		//return 0;
-		//		break;
-		//	default:
-		//		return 0;
-		//}
-
+		/*
+		bool isRGB;
+		switch(image._spectrum)
+		{
+			case 1:
+				isRGB=false;
+				break;
+			case 3:
+				isRGB=true;
+				//return 0;
+				break;
+			default:
+				return 0;
+		}
+		*/
 		std::vector<std::vector<unsigned int>> paths;
 		{
 			struct line {
@@ -842,11 +843,12 @@ namespace ScoreProcessor {
 			float const VEC=100.0f;
 			CImg<float> map=create_vertical_energy(image,VEC,ch.minimum_vertical_space,ch.background);
 			if(ch.horizontal_energy_weight!=0)
-				add_horizontal_energy(image,map,ch.horizontal_energy_weight,ch.background);
+				add_horizontal_energy(image,map,ch.horizontal_energy_weight*VEC,ch.background);
 			min_energy_to_right(map);
 #ifndef NDEBUG
 			map.display();
 #endif
+			
 			auto selector=[](std::array<float,1> color)
 			{
 				return color[0]==INFINITY;
@@ -1552,29 +1554,29 @@ namespace ScoreProcessor {
 		map.fill(INFINITY);
 		for(unsigned int x=0;x<map._width;++x)
 		{
-			unsigned int y=0U;
+			unsigned int y=0;
 			unsigned int node_start;
 			bool node_found;
 			auto assign_node_found=[&,background]()
 			{
 				return node_found=ref(x,y)>background;
 			};
-			auto place_values=[&,min_vert_space]()
+			auto place_values=[&,vec,min_vert_space](unsigned int begin,unsigned int end)
 			{
-				if(y-node_start>min_vert_space)
+				if(end-begin>min_vert_space)
 				{
 					unsigned int mid=(node_start+y)/2;
 					float val_div=2.0f;
-					unsigned int node_y;
-					for(node_y=node_start;node_y<mid;++node_y)
+					unsigned int y;
+					for(y=begin;y<mid;++y)
 					{
 						++val_div;
-						map(x,node_y)=vec/(val_div*val_div*val_div);
+						map(x,y)=vec/(val_div*val_div*val_div);
 					}
-					for(;node_y<y;++node_y)
+					for(;y<end;++y)
 					{
 						--val_div;
-						map(x,node_y)=vec/(val_div*val_div*val_div);
+						map(x,y)=vec/(val_div*val_div*val_div);
 					}
 				}
 			};
@@ -1588,7 +1590,7 @@ namespace ScoreProcessor {
 				{
 					if(!assign_node_found())
 					{
-						place_values();
+						place_values(node_start,y);
 					}
 				}
 				else
@@ -1601,7 +1603,7 @@ namespace ScoreProcessor {
 			}
 			if(node_found)
 			{
-				place_values();
+				place_values(node_start,y);
 			}
 		}
 		return map;

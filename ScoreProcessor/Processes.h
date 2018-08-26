@@ -265,5 +265,15 @@ namespace ScoreProcessor {
 		{}
 		bool process(Img& img) const override;
 	};
+
+	class ThreadOverride:public ImageProcess<> {
+		unsigned int const* _num_threads;
+	protected:
+		ThreadOverride(unsigned int const* num_threads):_num_threads(num_threads){}
+		inline unsigned int num_threads() const
+		{
+			return *_num_threads;
+		}
+	};
 }
 #endif

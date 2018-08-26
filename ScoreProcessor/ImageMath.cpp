@@ -31,6 +31,54 @@ using namespace std;
 using namespace misc_alg;
 namespace cimg_library {
 
+	unsigned char otsu(CImg<unsigned char> const& img)
+	{
+		size_t const total=size_t{img._width}*img._height;
+		size_t histogram[256]{0};
+		auto const data=img._data;
+		if(img._spectrum>=3)
+		{
+			for(size_t i=0;i<total;++i)
+			{
+				++histogram[static_cast<size_t>(std::round((data[i]+data[i+total]+data[i+total*2])/3.0))];
+			}
+		}
+		else
+		{
+			for(size_t i=0;i<total;++i)
+			{
+				++histogram[data[i]];
+			}
+		}
+		size_t sum1=0;
+		for(size_t i=0;i<255;++i)
+		{
+			sum1+=i*histogram[i];
+		}
+		size_t sum_b=0;
+		size_t w_b=0;
+		unsigned char level;
+		double maximum=0;
+		for(unsigned char i=0;i<255;++i)
+		{
+			w_b+=histogram[i];
+			auto const w_f=total-w_b;
+			if(w_b==0||w_f==0)
+			{
+				continue;
+			}
+			sum_b+=i*histogram[i];
+			auto const m_f=(sum1-sum_b)/static_cast<double>(w_f);
+			auto const temp=static_cast<double>(sum_b)/w_b-m_f;
+			auto const between=w_b*w_f*temp*temp;
+			if(between>=maximum)
+			{
+				level=i;
+				maximum=between;
+			}
+		}
+	}
+
 	void place_vertical_gradient(unsigned char const* const __restrict img,unsigned int const width,unsigned int const height,signed char * const place)
 	{
 		typedef unsigned char const* const uccpc;

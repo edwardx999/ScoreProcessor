@@ -621,12 +621,22 @@ namespace ScoreProcessor {
 		unsigned int const starting_index,
 		bool move) const
 	{
-		exlib::ThreadPool tp(num_threads);
-		for(size_t i=0;i<imgs.size();++i)
+		if(num_threads<2) //avoid threadpool overhead
 		{
-			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].c_str(),this,psr,i+starting_index,move);
+			for(size_t i=0;i<imgs.size();++i)
+			{
+				process(imgs[i].data(),psr,i+starting_index,move);
+			}
 		}
-		tp.start();
+		else
+		{
+			exlib::ThreadPool tp(num_threads);
+			for(size_t i=0;i<imgs.size();++i)
+			{
+				tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].data(),this,psr,i+starting_index,move);
+			}
+			tp.start();
+		}
 	}
 
 	template<typename T>

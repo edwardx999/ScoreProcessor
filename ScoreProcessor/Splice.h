@@ -211,7 +211,7 @@ namespace ScoreProcessor {
 				catch(std::exception const& ex)
 				{
 					err_log->log(work->fname(),": ",ex.what(),"\n");
-					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->deactivate();
+					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
 				}
 			}
 		};
@@ -230,7 +230,7 @@ namespace ScoreProcessor {
 					catch(std::exception const& ex)
 					{
 						err_log->log(wpointer->fname(),": ",ex.what(),"\n");
-						reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->deactivate();
+						reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
 						return 1;
 					}
 				};
@@ -258,7 +258,7 @@ namespace ScoreProcessor {
 				catch(std::exception const& ex)
 				{
 					err_log->log(work->fname(),": ",ex.what(),"\n");
-					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->deactivate();
+					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
 				}
 			}
 		};
@@ -313,7 +313,7 @@ namespace ScoreProcessor {
 				catch(std::exception const& ex)
 				{
 					err_log->log(ex.what(),"\n");
-					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->deactivate();
+					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
 				}
 			}
 		};
