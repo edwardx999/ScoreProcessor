@@ -505,6 +505,7 @@ int main(int argc,InputIter argv)
 #ifdef MAKE_README
 	if(argc>1)
 		make_readme(argv[1]);
+	return 0;
 #endif
 	if(argc==1)
 	{

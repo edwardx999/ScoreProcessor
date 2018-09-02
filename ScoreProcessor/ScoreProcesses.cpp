@@ -543,14 +543,14 @@ namespace ScoreProcessor {
 		assert(image._spectrum==3||image._spectrum==4);
 		std::vector<unsigned int> container(image._width);
 		unsigned int limit=image._height/2;
-		unsigned int color=background.r+background.g+background.b;
+		unsigned int color=static_cast<unsigned int>(background.r)+background.g+background.b;
 		for(unsigned int x=0;x<image._width;++x)
 		{
 			container[x]=limit;
 			for(unsigned int y=0;y<limit;++y)
 			{
 				ColorRGB pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
-				if(unsigned int(pixel.r)+pixel.g+pixel.b<=color)
+				if(static_cast<unsigned int>(pixel.r)+pixel.g+pixel.b<=color)
 				{
 					container[x]=y;
 					break;
@@ -582,7 +582,7 @@ namespace ScoreProcessor {
 	{
 		assert(image._spectrum==3||image._spectrum==4);
 		std::vector<unsigned int> container(image._width);
-		unsigned int color=background.r+background.g+background.b;
+		unsigned int color=static_cast<unsigned int>(background.r)+background.g+background.b;
 		unsigned int limit=image._height/2;
 		for(unsigned int x=0;x<image._width;++x)
 		{
@@ -590,7 +590,7 @@ namespace ScoreProcessor {
 			for(unsigned int y=image._height-1;y>=limit;--y)
 			{
 				ColorRGB pixel={image(x,y,0),image(x,y,1),image(x,y,2)};
-				if(unsigned int(pixel.r)+pixel.g+pixel.b<=color)
+				if(static_cast<unsigned int>(pixel.r)+pixel.g+pixel.b<=color)
 				{
 					container[x]=y;
 					break;

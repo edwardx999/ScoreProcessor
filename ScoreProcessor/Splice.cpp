@@ -11,22 +11,36 @@ namespace ScoreProcessor {
 		for(size_t i=0;i<num;++i)
 		{
 			auto const& current=imgs[i];
-			for(unsigned int y=0;y<current.img._height;++y)
+			unsigned int begin,end;
+			if(ypos<current.top)
 			{
-				unsigned int yabs=ypos+y-current.top;
-				if(yabs<tog._height)
+				begin=current.top;
+			}
+			else
+			{
+				begin=0;
+			}
+			if(ypos+current.img._height>tog._height+current.top)
+			{
+				end=tog._height+current.top-ypos;
+			}
+			else
+			{
+				end=current.img._height;
+			}
+			for(unsigned int y=begin;y<end;++y)
+			{
+				auto yabs=ypos+y-current.top;
+				for(unsigned int x=1;x<=current.img._width;++x)
 				{
-					for(unsigned int x=1;x<=current.img._width;++x)
-					{
-						tp(&tog(tog._width-x,yabs),size,current.img,current.img._width-x,y);
-					}
+					tp(&tog(tog._width-x,yabs),size,current.img,current.img._width-x,y);
 				}
 			}
 			ypos+=padding+current.true_height();
 		}
 		return tog;
 	}
-	
+
 	cil::CImg<unsigned char> splice_images(Splice::page const* imgs,size_t num,unsigned int padding)
 	{
 		unsigned int height=0;
@@ -87,7 +101,7 @@ namespace ScoreProcessor {
 				using pinfo=uint_fast32_t;
 				return splice_images_h(imgs,num,padding,tog,[](unsigned char* pixel,size_t const size,cil::CImg<unsigned char> const& current,unsigned int x,unsigned int y)
 				{
-					pinfo br=(pinfo{pixel[0]}+pixel[size]+pixel[2*size]);
+					pinfo const br=(pinfo{pixel[0]}+pixel[size]+pixel[2*size]);
 					size_t csize;
 					pinfo cbr;
 					auto const cpixel=&current(x,y);
@@ -125,7 +139,7 @@ namespace ScoreProcessor {
 					switch(current._spectrum)
 					{
 						case 1:
-							cdrk=max-(*cpixel*3U);
+							cdrk=(max-(*cpixel*3U))*255U;
 							break;
 						case 3:
 							csize=size_t{current._height}*current._width;
@@ -254,7 +268,7 @@ namespace ScoreProcessor {
 				{
 					for(unsigned int y=0;y<min;++y)
 					{
-						if(img(x,y)+img(x,y,1)+img(x,y,2)<=limit)
+						if(static_cast<unsigned int>(img(x,y))+img(x,y,1)+img(x,y,2)<=limit)
 						{
 							min=y;
 							break;
@@ -277,8 +291,10 @@ namespace ScoreProcessor {
 			auto bot_min=*std::min_element(bot.begin(),bot.end());
 			auto spacing=find_spacing(top,top_max,bot);
 			Splice::page_desc ret;
-			ret.top={bot_min,spacing.top_sg};
-			ret.bottom={top_max,spacing.bottom_sg};
+			ret.bottom.kerned=spacing.bottom_sg;
+			ret.bottom.raw=top_max;
+			ret.top.kerned=spacing.top_sg;
+			ret.top.raw=bot_min;
 			return ret;
 		},[bg=sh.background_color](Img const& img)
 		{
@@ -287,18 +303,13 @@ namespace ScoreProcessor {
 			{
 				for(unsigned int x=0;x<img._width;++x)
 				{
-					for(unsigned int y=img._height-1;;)
+					for(unsigned int y=img._height-1;y>max;--y)
 					{
 						if(img(x,y)<=bg)
 						{
 							max=y;
 							break;
 						}
-						if(y==max)
-						{
-							break;
-						}
-						--y;
 					}
 				}
 			}
@@ -307,16 +318,12 @@ namespace ScoreProcessor {
 				unsigned int limit=3U*bg;
 				for(unsigned int x=0;x<img._width;++x)
 				{
-					for(unsigned int y=img._height;;)
+					for(unsigned int y=img._height-1;y>max;--y)
 					{
-						if(img(x,y)+img(x,y,1)+img(x,y,2)<=limit)
+						if(static_cast<unsigned int>(img(x,y))+img(x,y,1)+img(x,y,2)<=limit)
 						{
 							max=y;
 							break;
-						}
-						if(y==max)
-						{
-							--y;
 						}
 					}
 				}
@@ -341,7 +348,7 @@ namespace ScoreProcessor {
 				total_height+=items[n-1].bottom.raw-items[n-1].top.kerned;
 			}
 			unsigned int minned=total_height+(n+1)*min_pad;
-			if(minned>opt_height)
+			if(minned>=opt_height)
 			{
 				return Splice::page_layout{min_pad,minned};
 			}
