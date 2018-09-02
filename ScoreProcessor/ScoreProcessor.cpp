@@ -315,16 +315,21 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 		}
 		else
 		{
-			auto file_attr=GetFileAttributesA(*pos);
+			auto fixed_path=std::move(
+				((*pos)[0]=='-'&&(*pos)[1]=='-')?
+				(*pos)+1:
+				*pos);
+			auto file_attr=GetFileAttributesA(fixed_path);
 			if(file_attr==INVALID_FILE_ATTRIBUTES)
 			{
 				std::string err_msg("File or folder not found: ");
-				err_msg.append(*pos);
+				err_msg.append(fixed_path);
 				throw std::invalid_argument(err_msg);
 			}
 			if(file_attr&FILE_ATTRIBUTE_DIRECTORY)
 			{
-				std::string path(*pos);
+
+				std::string path(fixed_path);
 				if(path.back()!='/'&&path.back()!='\\')
 				{
 					path+='\\';
@@ -351,10 +356,10 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 				if(do_recursive)
 				{
 					std::string err_msg("Cannot recursively search non-folder: ");
-					err_msg.append(*pos);
+					err_msg.append(fixed_path);
 					throw std::logic_error(err_msg);
 				}
-				files.emplace_back(std::move(*pos));
+				files.emplace_back(std::move(fixed_path));
 			}
 		}
 	}
@@ -601,4 +606,4 @@ int main(int argc,InputIter argv)
 			break;
 	}
 	return 0;
-	}
+}

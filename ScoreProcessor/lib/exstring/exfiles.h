@@ -157,7 +157,7 @@ namespace exlib {
 	template<typename String>
 	String clean_multislashes(String const& input)
 	{
-		return clean_multislahes<String>(input.c_str());
+		return clean_multislashes<String>(input.c_str());
 	}
 
 	template<typename T>

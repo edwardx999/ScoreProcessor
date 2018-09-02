@@ -132,6 +132,7 @@ namespace ScoreProcessor {
 		return false;
 	}
 
+	/*
 	bool ClusterClearGray::process(Img& img) const
 	{
 		if(img._spectrum==1)
@@ -153,17 +154,22 @@ namespace ScoreProcessor {
 			throw std::invalid_argument("Cluster Clear Grayscale requires grayscale image");
 		}
 	}
+	*/
 
 	bool ClusterClearGrayAlt::process(Img& img) const
 	{
-		if(img._spectrum<3)
+		auto grayscale_sel=[smn=sel_min,smx=sel_max](std::array<unsigned char,1> v)
 		{
-			return clear_clusters(img,std::array<unsigned char,1>({background}),
-				[this](std::array<unsigned char,1> v)
-			{
-				return v[0]>=sel_min&&v[0]<=sel_max;
-			},
-				[this,&img](Cluster const& c)
+			return v[0]>=smn&&v[0]<=smx;
+		};
+		auto color_sel=[smn=3U*sel_min,smx=3U*sel_max](std::array<unsigned char,3> v)
+		{
+			auto brightness=static_cast<unsigned int>(v[0])+v[1]+v[2];
+			return brightness>=smn&&brightness<=smx;
+		};
+		auto clear_base=[this,&img](auto func)
+		{
+			return [this,&img,func](Cluster const& c)
 			{
 				auto size=c.size();
 				if(size>=min_size&&size<=max_size)
@@ -173,7 +179,7 @@ namespace ScoreProcessor {
 				if(sel_min>=required_min&&sel_max<=required_max)
 				{
 					return false;
-				}
+				};
 				for(auto rect:c.get_ranges())
 				{
 					for(unsigned int y=rect.top;y<rect.bottom;++y)
@@ -181,8 +187,8 @@ namespace ScoreProcessor {
 						auto row=img._data+y*img._width;
 						for(unsigned int x=rect.left;x<rect.right;++x)
 						{
-							auto pix=*(row+x);
-							if(pix>=required_min&&pix<=required_max)
+							auto pix=row+x;
+							if(func(pix))
 							{
 								return false;
 							}
@@ -190,50 +196,42 @@ namespace ScoreProcessor {
 					}
 				}
 				return true;
-			});
+			};
+		};
+		auto grayscale_clear=clear_base([rmn=required_min,rmx=required_max](unsigned char const* pix)
+		{
+			return *pix>=rmn&&*pix<=rmx;
+		});
+		auto color_clear=clear_base([rmn=3U*required_min,rmx=3U*required_max,img_size=size_t{img._height}*img._width](unsigned char const* pix)
+		{
+			unsigned int brightness=0;
+			for(int s=0;s<3;++s)
+			{
+				brightness+=*(pix+s*img_size);
+			}
+			return brightness>=rmn&&brightness<=rmx;
+		});
+		if(eight)
+		{
+			if(img._spectrum<3)
+			{
+				return clear_clusters(img,std::array<unsigned char,1>({background}),grayscale_sel,grayscale_clear);
+			}
+			else
+			{
+				return clear_clusters(img,std::array<unsigned char,3>({background,background,background}),color_sel,color_clear);
+			}
 		}
 		else
 		{
-			return clear_clusters(img,std::array<unsigned char,3>({background,background,background}),
-				[this](std::array<unsigned char,3> v)
+			if(img._spectrum<3)
 			{
-				auto const brightness=(float(v[0])+v[1]+v[2])/3.0f;
-				return brightness>=sel_min&&brightness<=sel_max;
-			},
-				[this,&img](Cluster const& c)
+				return clear_clusters_8way(img,std::array<unsigned char,1>({background}),grayscale_sel,grayscale_clear);
+			}
+			else
 			{
-				auto size=c.size();
-				if(size>=min_size&&size<=max_size)
-				{
-					return true;
-				}
-				if(sel_min>=required_min&&sel_max<=required_max)
-				{
-					return false;
-				}
-				unsigned int const img_size=img._width*img._height;
-				for(auto rect:c.get_ranges())
-				{
-					for(unsigned int y=rect.top;y<rect.bottom;++y)
-					{
-						auto row=img._data+y*img._width;
-						for(unsigned int x=rect.left;x<rect.right;++x)
-						{
-							auto pix=(row+x);
-							float brightness=0;
-							for(unsigned int s=0;s<3;++s)
-							{
-								brightness+=*(pix+s*img_size);
-							}
-							if(brightness>=3U*required_min&&brightness<=3U*required_max)
-							{
-								return false;
-							}
-						}
-					}
-				}
-				return true;
-			});
+				return clear_clusters_8way(img,std::array<unsigned char,3>({background,background,background}),color_sel,color_clear);
+			}
 		}
 	}
 

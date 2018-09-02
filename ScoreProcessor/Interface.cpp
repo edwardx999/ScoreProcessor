@@ -135,15 +135,17 @@ namespace ScoreProcessor {
 	}
 
 	namespace CCGMaker {
-		MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker(
+		MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>,EightWay> maker(
 			"Clears clusters of specific constraints\n"
 			"required_color_range: clusters that do not contains a color in this range are replaced;\n"
 			"  tags: rcr\n"
 			"bad_size_range: clusters within this size range are replaced; tags: bsr\n"
 			"selection_range: pixels in this color range will be clustered; tags: sr\n"
-			"replacement_color: chosen colors are replaced by this color; tags: rc, bc",
+			"replacement_color: chosen colors are replaced by this color; tags: rc, bc\n"
+			"eight_way: whether pixels are clustered in eight way (instead of four ways)\n; tags: ew"
+			,
 			"Cluster Clear Gray",
-			"required_color_range=0,255 bad_size_range=0,0 sel_range=0,200 repl_color=255");
+			"required_color_range=0,255 bad_size_range=0,0 sel_range=0,200 repl_color=255 eight_way=false");
 	}
 
 	namespace BlurMaker {
@@ -269,11 +271,11 @@ namespace ScoreProcessor {
 				"  tags: mw, mwpw, mwph\n"
 				"min_height: pixel groups under this height are not considered a system;\n"
 				"  tags: mh, mhpw, mhph\n"
-				"min_vert_space: a vertical under this height is not considered a system division\n"
+				"min_vert_space: a vertical space under this height is not considered a system division\n"
 				"  tags: mv, mvpw, mvph\n"
 				"horiz_weight: energy rating compared to vertical space to consider spacing;\n"
 				"  tags: hw\n"
-				"bg: colors under this brightness can be considered part of a system; tags: bg\n"
+				"bg: colors less than or equal this brightness can be considered part of a system; tags: bg\n"
 				"pw or ph at end of tags indicates value is taken as proportion of width or height,respectively\n"
 				"if untagged, % indicates percentage of width taken, otherwise fixed amount",
 				"Cut",

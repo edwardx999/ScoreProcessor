@@ -881,7 +881,7 @@ namespace ScoreProcessor {
 
 		struct PatternParser {
 			cndf("%w")
-				PMINLINE constexpr char const* parse(char const* s)
+				PMINLINE constexpr InputType parse(InputType s)
 			{
 				if(s[0]=='-'&&s[1]=='-')
 				{
@@ -893,7 +893,7 @@ namespace ScoreProcessor {
 		};
 
 		struct MoveParser {
-			static PMINLINE constexpr bool parse(char const* s)
+			static PMINLINE constexpr bool parse(InputType s)
 			{
 				auto const c=s[0];
 				if(c=='t'||c=='1'||c=='T')
@@ -908,7 +908,7 @@ namespace ScoreProcessor {
 
 		class UseTuple {
 		public:
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* input,bool do_move)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,InputType input,bool do_move)
 			{
 				if(*input==0)
 				{
@@ -1870,10 +1870,25 @@ namespace ScoreProcessor {
 				cnnm("replacer")
 		};
 
+		struct EightWay {
+			cndf(false)
+				cnnm("eight way")
+				static PMINLINE constexpr bool parse(InputType i)
+			{
+				return Output::MoveParser::parse(i);
+			}
+		};
+
 		struct LabelId {
 			static PMINLINE size_t id(InputType pf,size_t len)
 			{
-				static constexpr auto table=make_ltable(le("rcr",0),le("bsr",1),le("sr",2),le("bc",3),le("rc",3));
+				static constexpr auto table=make_ltable(
+					le("rcr",0),
+					le("bsr",1),
+					le("sr",2),
+					le("bc",3),le("rc",3),
+					le("ew",4)
+				);
 				return find_prefix(table,pf,len);
 			}
 		};
@@ -1890,17 +1905,17 @@ namespace ScoreProcessor {
 		};
 
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,std::array<unsigned char,2> rsr,std::array<unsigned int,2> bsr,std::array<unsigned char,2> sr,unsigned char rc)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,std::array<unsigned char,2> rsr,std::array<unsigned int,2> bsr,std::array<unsigned char,2> sr,unsigned char rc,bool eight_way)
 			{
 				if(rsr[0]==0&&rsr[1]==255&&bsr[0]==0&&bsr[1]==0)
 				{
 					return;
 				}
-				del.pl.add_process<ClusterClearGrayAlt>(rsr[0],rsr[1],bsr[0],bsr[1],sr[0],sr[1],rc);
+				del.pl.add_process<ClusterClearGrayAlt>(rsr[0],rsr[1],bsr[0],bsr[1],sr[0],sr[1],rc,eight_way);
 			}
 		};
 
-		extern MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>> maker;
+		extern MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>,EightWay> maker;
 	}
 
 	namespace BlurMaker {

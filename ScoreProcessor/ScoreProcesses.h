@@ -843,6 +843,7 @@ namespace ScoreProcessor {
 		ImageUtils::compress_rectangles(container);
 		return container;
 	}
+
 	template<typename T,size_t NL,typename PixelSelectorArrayNLToBool,typename ClusterToTrueIfClear>
 	bool clear_clusters(
 		::cil::CImg<T>& img,
@@ -853,6 +854,31 @@ namespace ScoreProcessor {
 		assert(img._spectrum>=NL);
 		auto rects=global_select<NL>(img,ps);
 		auto clusters=ScoreProcessor::Cluster::cluster_ranges(rects);
+		bool edited=false;
+		for(auto it=clusters.cbegin();it!=clusters.cend();++it)
+		{
+			if(cl(*it))
+			{
+				edited=true;
+				for(auto rect:it->get_ranges())
+				{
+					ScoreProcessor::fill_selection(img,rect,replacer);
+				}
+			}
+		}
+		return edited;
+	}
+
+	template<typename T,size_t NL,typename PixelSelectorArrayNLToBool,typename ClusterToTrueIfClear>
+	bool clear_clusters_8way(
+		::cil::CImg<T>& img,
+		std::array<T,NL> replacer,
+		PixelSelectorArrayNLToBool ps,
+		ClusterToTrueIfClear cl)
+	{
+		assert(img._spectrum>=NL);
+		auto rects=global_select<NL>(img,ps);
+		auto clusters=ScoreProcessor::Cluster::cluster_ranges_8way(rects);
 		bool edited=false;
 		for(auto it=clusters.cbegin();it!=clusters.cend();++it)
 		{

@@ -168,15 +168,18 @@ namespace ScoreProcessor {
 		bool process(Img& img) const override;
 	};
 
+	/*
 	class ClusterClearGray:public ImageProcess<> {
 		unsigned int min,max;
 		unsigned char background;
 		float tolerance;
+		bool eight_way;
 	public:
-		inline ClusterClearGray(unsigned int min,unsigned int max,unsigned char background,float tolerance):min(min),max(max),background(background),tolerance(tolerance)
+		inline ClusterClearGray(unsigned int min,unsigned int max,unsigned char background,float tolerance,bool eight_way):min(min),max(max),background(background),tolerance(tolerance),eight_way(eight_way)
 		{}
 		bool process(Img& img) const override;
 	};
+	*/
 
 	class ClusterClearGrayAlt:public ImageProcess<> {
 		unsigned char required_min,required_max;
@@ -184,9 +187,10 @@ namespace ScoreProcessor {
 		unsigned char sel_min;
 		unsigned char sel_max;
 		unsigned char background;
+		bool eight;
 	public:
-		inline ClusterClearGrayAlt(unsigned char rcmi,unsigned char rcma,unsigned int mis,unsigned mas,unsigned char smi,unsigned char sma,unsigned char back):
-			required_min(rcmi),required_max(rcma),min_size(mis),max_size(mas),sel_min(smi),sel_max(sma),background(back)
+		inline ClusterClearGrayAlt(unsigned char rcmi,unsigned char rcma,unsigned int mis,unsigned mas,unsigned char smi,unsigned char sma,unsigned char back,bool eight):
+			required_min(rcmi),required_max(rcma),min_size(mis),max_size(mas),sel_min(smi),sel_max(sma),background(back),eight(eight)
 		{}
 		bool process(Img& img) const override;
 	};
