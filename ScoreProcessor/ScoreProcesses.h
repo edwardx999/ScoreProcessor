@@ -898,5 +898,7 @@ namespace ScoreProcessor {
 	//eval_side: left is false, true is right
 	//eval_direction: from top is false, true is from bottom
 	void horizontal_shift(cil::CImg<unsigned char>& img,bool eval_side,bool eval_direction,unsigned char background_threshold);
+	
+	void vertical_shift(cil::CImg<unsigned char>&img,bool eval_bottom,bool from_right,unsigned char background_threshold);
 }
 #endif // !1

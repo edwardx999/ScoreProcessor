@@ -1862,4 +1862,152 @@ namespace ScoreProcessor {
 			}
 		}
 	}
+	void vertical_shift(cil::CImg<unsigned char>&img,bool eval_bottom,bool from_right,unsigned char background_threshold)
+	{
+
+		std::vector<int> shifts(img._width);
+		if(eval_bottom)
+		{
+			if(from_right)
+			{
+				unsigned int x,y;
+				for(y=img._height;y>0;)
+				{
+					--y;
+					for(x=img._width;x>0;)
+					{
+						--x;
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop1;
+						}
+					}
+				}
+			end_loop1:
+				int shift=img._height-1-y;
+				for(unsigned int x_f=img._width-1;x_f>x;)
+				{
+					--x_f;
+					shifts[x_f]=shift;
+				}
+				for(unsigned int x_f=x;x_f>0;)
+				{
+					--x_f;
+					if(img(x_f,y)>=background_threshold)
+					{
+						--y;
+					}
+					shifts[x_f]=img._height-y-1;
+				}
+			}
+			else
+			{
+				unsigned int x,y;
+				for(y=img._height;y>0;)
+				{
+					--y;
+					for(x=0;x<img._width;++x)
+					{
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop2;
+						}
+					}
+				}
+			end_loop2:
+				int shift=img._height-1-y;
+				for(unsigned int x_f=0;x_f<=x;++x_f)
+				{
+					shifts[x_f]=shift;
+				}
+				for(unsigned int x_f=x+1;x_f<img._width;++x_f)
+				{
+					if(img(x_f,y)>=background_threshold)
+					{
+						--y;
+					}
+					shifts[x_f]=img._height-y-1;
+				}
+			}
+		}
+		else
+		{
+			if(from_right)
+			{
+				unsigned int x,y;
+				for(y=0;x<img._height;++y)
+				{
+					for(x=img._width;x>0;)
+					{
+						--x;
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop3;
+						}
+					}
+				}
+			end_loop3:
+				for(unsigned int x_f=img._width;x_f>x;)
+				{
+					--x_f;
+					shifts[x_f]=-y;
+				}
+				for(unsigned int x_f=x;x_f>0;)
+				{
+					--x_f;
+					if(img(x_f,y)>=background_threshold)
+					{
+						++y;
+					}
+					shifts[x_f]=-y;
+				}
+			}
+			else
+			{
+				unsigned int x,y;
+				for(y=0;y<img._height;++y)
+				{
+					for(x=0;y<img._width;++x)
+					{
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop4;
+						}
+					}
+				}
+			end_loop4:
+				for(unsigned int x_f=0;x_f<=x;++x_f)
+				{
+					shifts[x_f]=-y;
+				}
+				for(unsigned int x_f=x+1;x_f<img._width;++x_f)
+				{
+					if(img(x_f,y)>=background_threshold)
+					{
+						++y;
+					}
+					shifts[x_f]=-y;
+				}
+			}
+		}
+		for(unsigned int x=0;x<img._width;++x)
+		{
+			auto shift=shifts[x];
+			if(shift<0)
+			{
+				auto limit=img._height+shift;
+				for(unsigned int y=0;y<limit;++y)
+				{
+					img(x,y)=img(x,y-shift);
+				}
+			}
+			else
+			{
+				for(unsigned int y=shift;y<img._height;++y)
+				{
+					img(x,y)=img(x,y-shift);
+				}
+			}
+		}
+	}
 }

@@ -2388,7 +2388,7 @@ namespace ScoreProcessor {
 	namespace HSMaker {
 		struct Side {
 			cnnm("side")
-			constexpr PMINLINE static bool parse(InputType it)
+				constexpr PMINLINE static bool parse(InputType it)
 			{
 				if(it[0]=='l'||it[0]=='L')
 				{
@@ -2402,8 +2402,8 @@ namespace ScoreProcessor {
 			}
 		};
 		struct Direction {
-			cnnm("side")
-			constexpr PMINLINE static bool parse(InputType it)
+			cnnm("direction")
+				constexpr PMINLINE static bool parse(InputType it)
 			{
 				if(it[0]=='b'||it[0]=='B')
 				{
@@ -2415,11 +2415,6 @@ namespace ScoreProcessor {
 				}
 				throw std::invalid_argument("Unknown direction");
 			}
-		};
-
-		struct Background {
-			cndf(unsigned char(128))
-			cnnm("background")
 		};
 
 		struct LabelId {
@@ -2437,6 +2432,59 @@ namespace ScoreProcessor {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,bool side,bool dir,unsigned char bg)
 			{
 				del.pl.add_process<HorizontalShift>(side,dir,bg);
+			}
+		};
+
+		extern SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker;
+	}
+
+	namespace VSMaker {
+		struct Side {
+			cnnm("side")
+				constexpr PMINLINE static bool parse(InputType it)
+			{
+				if(it[0]=='t'||it[0]=='T')
+				{
+					return false;
+				}
+				if(it[0]=='B'||it[0]=='b')
+				{
+					return true;
+				}
+				throw std::invalid_argument("Unknown side");
+			}
+		};
+		struct Direction {
+			cnnm("direction")
+				constexpr PMINLINE static bool parse(InputType it)
+			{
+				if(it[0]=='r'||it[0]=='R')
+				{
+					return true;
+				}
+				if(it[0]=='l'||it[0]=='L')
+				{
+					return false;
+				}
+				throw std::invalid_argument("Unknown direction");
+			}
+		};
+
+		struct LabelId {
+			static PMINLINE size_t id(InputType it,size_t prefix_len)
+			{
+				static constexpr auto table=make_ltable(
+					le("side",0),
+					le("dir",1),
+					le("bg",2));
+				return find_prefix(table,it,prefix_len);
+			}
+		};
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,bool side,bool dir,unsigned char bg)
+			{
+				del.pl.add_process<VerticalShift>(side,dir,bg);
 			}
 		};
 
@@ -2631,8 +2679,7 @@ namespace ScoreProcessor {
 			compair("exl",&EXLMaker::maker),
 			compair("ct",&CTMaker::maker),
 			compair("rb",&RBMaker::maker),
-			compair("rs",&RsMaker::maker),
-			compair("hs",&HSMaker::maker));
+			compair("rs",&RsMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),
@@ -2650,7 +2697,9 @@ namespace ScoreProcessor {
 		constexpr auto aliases=exlib::make_array<compair>(
 			compair("rotate",&RotMaker::maker),
 			compair("ccga",&CCGMaker::maker),
-			compair("splice",&SpliceMaker::maker));
+			compair("splice",&SpliceMaker::maker),
+			compair("hs",&HSMaker::maker),
+			compair("vs",&VSMaker::maker));
 
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const

@@ -383,4 +383,10 @@ namespace ScoreProcessor {
 		horizontal_shift(img,side,direction,background_threshold);
 		return true;
 	}
+
+	bool VerticalShift::process(Img& img) const
+	{
+		vertical_shift(img,side,direction,background_threshold);
+		return true;
+	}
 }

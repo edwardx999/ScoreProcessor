@@ -230,8 +230,13 @@ namespace ScoreProcessor {
 	}
 
 	namespace HSMaker {
-		SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker("","Horizontal Shift","side direction background=128");
+		SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker("specific to a problem with my scanner; don't use","Horizontal Shift","side direction background=128");
 	}
+
+	namespace VSMaker {
+		SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker("specific to a problem with my scanner; don't use","Vertical Shift","side direction background=128");
+	}
+
 	namespace SpliceMaker {
 		MakerTFull<
 			UseTuple,

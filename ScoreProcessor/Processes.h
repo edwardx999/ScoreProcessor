@@ -290,7 +290,14 @@ namespace ScoreProcessor {
 
 	class HorizontalShift:public ShiftFixer {
 	public:
-		HorizontalShift(bool eval_bottom,bool from_bottom,unsigned char bt):ShiftFixer(eval_bottom,from_bottom,bt)
+		HorizontalShift(bool eval_right,bool from_bottom,unsigned char bt):ShiftFixer(eval_right,from_bottom,bt)
+		{}
+		bool process(Img&) const override;
+	};
+
+	class VerticalShift:public ShiftFixer {
+	public:
+		VerticalShift(bool eval_bottom,bool from_right,unsigned char bt):ShiftFixer(eval_bottom,from_right,bt)
 		{}
 		bool process(Img&) const override;
 	};
