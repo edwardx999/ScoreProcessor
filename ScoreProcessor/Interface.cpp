@@ -229,6 +229,9 @@ namespace ScoreProcessor {
 		);
 	}
 
+	namespace HSMaker {
+		SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker("","Horizontal Shift","side direction background=128");
+	}
 	namespace SpliceMaker {
 		MakerTFull<
 			UseTuple,

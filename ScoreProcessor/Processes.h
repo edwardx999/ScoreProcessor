@@ -273,11 +273,26 @@ namespace ScoreProcessor {
 	class ThreadOverride:public ImageProcess<> {
 		unsigned int const* _num_threads;
 	protected:
-		ThreadOverride(unsigned int const* num_threads):_num_threads(num_threads){}
+		ThreadOverride(unsigned int const* num_threads):_num_threads(num_threads)
+		{}
 		inline unsigned int num_threads() const
 		{
 			return *_num_threads;
 		}
+	};
+
+	class ShiftFixer:public ImageProcess<> {
+	protected:
+		bool side,direction;unsigned char background_threshold;
+		ShiftFixer(bool side,bool direction,unsigned char bt):side(side),direction(direction),background_threshold(bt)
+		{}
+	};
+
+	class HorizontalShift:public ShiftFixer {
+	public:
+		HorizontalShift(bool eval_bottom,bool from_bottom,unsigned char bt):ShiftFixer(eval_bottom,from_bottom,bt)
+		{}
+		bool process(Img&) const override;
 	};
 }
 #endif

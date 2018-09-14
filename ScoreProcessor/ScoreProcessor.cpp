@@ -315,10 +315,10 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 		}
 		else
 		{
-			auto fixed_path=std::move(
+			auto fixed_path=
 				((*pos)[0]=='-'&&(*pos)[1]=='-')?
 				(*pos)+1:
-				*pos);
+				*pos;
 			auto file_attr=GetFileAttributesA(fixed_path);
 			if(file_attr==INVALID_FILE_ATTRIBUTES)
 			{

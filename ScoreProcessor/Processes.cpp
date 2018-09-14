@@ -368,13 +368,19 @@ namespace ScoreProcessor {
 
 	bool Rotate::process(Img& img) const
 	{
-		img.rotate(angle,mode,1);
+		img.rotate(-angle,mode,1);
 		return true;
 	}
 
 	bool Gamma::process(Img& img) const
 	{
 		apply_gamma(img,gamma);
+		return true;
+	}
+
+	bool HorizontalShift::process(Img& img) const
+	{
+		horizontal_shift(img,side,direction,background_threshold);
 		return true;
 	}
 }

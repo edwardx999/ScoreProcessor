@@ -848,7 +848,7 @@ namespace ScoreProcessor {
 #ifndef NDEBUG
 			map.display();
 #endif
-			
+
 			auto selector=[](std::array<float,1> color)
 			{
 				return color[0]==INFINITY;
@@ -1717,6 +1717,148 @@ namespace ScoreProcessor {
 					pixel=mid-(mid-pixel)*scale_down;
 					assert(pixel<=mid);
 				}
+			}
+		}
+	}
+
+	void horizontal_shift(cil::CImg<unsigned char>& img,bool eval_side,bool eval_direction,unsigned char background_threshold)
+	{
+		std::vector<int> shifts(img._height);
+		if(eval_side)
+		{
+			if(eval_direction)
+			{
+				unsigned int x,y;
+				for(x=img._width;x>0;)
+				{
+					--x;
+					for(y=img._height;y>0;)
+					{
+						--y;
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop1;
+						}
+					}
+				}
+			end_loop1:
+				int shift=img._width-1-x;
+				for(unsigned int y_f=img._height;y_f>y;)
+				{
+					--y_f;
+					shifts[y_f]=shift;
+				}
+				for(unsigned int y_f=y;y_f>0;)
+				{
+					--y_f;
+					if(img(x,y_f)>=background_threshold)
+					{
+						--x;
+					}
+					shifts[y_f]=img._width-x-1;
+				}
+			}
+			else
+			{
+				unsigned int x,y;
+				for(x=img._width;x>0;)
+				{
+					--x;
+					for(y=0;y<img._height;++y)
+					{
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop2;
+						}
+					}
+				}
+			end_loop2:
+				int shift=img._width-1-x;
+				for(unsigned int y_f=0;y_f<=y;++y_f)
+				{
+					shifts[y_f]=shift;
+				}
+				for(unsigned int y_f=y+1;y_f<img._height;++y_f)
+				{
+					if(img(x,y_f)>=background_threshold)
+					{
+						--x;
+					}
+					shifts[y_f]=img._width-x-1;
+				}
+			}
+		}
+		else
+		{
+			if(eval_direction)
+			{
+				unsigned int x,y;
+				for(x=0;x<img._width;++x)
+				{
+					for(y=img._height;y>0;)
+					{
+						--y;
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop3;
+						}
+					}
+				}
+			end_loop3:
+				for(unsigned int y_f=img._height;y_f>y;)
+				{
+					--y_f;
+					shifts[y_f]=-x;
+				}
+				for(unsigned int y_f=y;y_f>0;)
+				{
+					--y_f;
+					if(img(x,y_f)>=background_threshold)
+					{
+						++x;
+					}
+					shifts[y_f]=-x;
+				}
+			}
+			else
+			{
+				unsigned int x,y;
+				for(x=0;x<img._width;++x)
+				{
+					for(y=0;y<img._height;++y)
+					{
+						if(img(x,y)<background_threshold)
+						{
+							goto end_loop4;
+						}
+					}
+				}
+			end_loop4:
+				for(unsigned int y_f=0;y_f<=y;++y_f)
+				{
+					shifts[y_f]=-x;
+				}
+				for(unsigned int y_f=y+1;y_f<img._height;++y_f)
+				{
+					if(img(x,y_f)>=background_threshold)
+					{
+						++x;
+					}
+					shifts[y_f]=-x;
+				}
+			}
+		}
+		for(unsigned int y=0;y<img._height;++y)
+		{
+			auto data=&img(0,y);
+			auto shift=shifts[y];
+			if(shift<0)
+			{
+				std::memmove(data,data+(-shift),img._width+shift);
+			}
+			else if(shifts[y]>0)
+			{
+				std::memmove(data+shift,data,img._width-shift);
 			}
 		}
 	}

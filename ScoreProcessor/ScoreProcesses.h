@@ -893,5 +893,10 @@ namespace ScoreProcessor {
 		}
 		return edited;
 	}
+
+	//a function specific to fixing a problem with my scanner
+	//eval_side: left is false, true is right
+	//eval_direction: from top is false, true is from bottom
+	void horizontal_shift(cil::CImg<unsigned char>& img,bool eval_side,bool eval_direction,unsigned char background_threshold);
 }
 #endif // !1
