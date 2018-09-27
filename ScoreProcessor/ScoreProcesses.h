@@ -900,5 +900,47 @@ namespace ScoreProcessor {
 	void horizontal_shift(cil::CImg<unsigned char>& img,bool eval_side,bool eval_direction,unsigned char background_threshold);
 	
 	void vertical_shift(cil::CImg<unsigned char>&img,bool eval_bottom,bool from_right,unsigned char background_threshold);
+
+	template<typename Base>
+	struct smart_scaler_base {
+		inline auto& smart_scale(cil::CImg<unsigned char>& img,float scale,unsigned int num_threads=std::thread::hardware_concurrency()) const
+		{
+			unsigned int new_x=std::round(img._width*scale);
+			unsigned int new_y=std::round(img._height*scale);
+			if(new_x==img._width&&new_y==img._height)
+			{
+				return img;
+			}
+			img=static_cast<Base*>(this)->get_smart_scale(img,scale,num_threads);
+			return img;
+		}
+	};
+
+	struct neural_scaler:smart_scaler_base<neural_scaler> {
+	private:
+		unsigned int _nscale;
+
+	public:
+		cil::CImg<unsigned char> get_smart_scale(cil::CImg<unsigned char> const& img,float scale,unsigned int num_threads=std::thread::hardware_concurrency()) const;
+		template<typename Stream>
+		neural_scaler(Stream& src)
+		{
+		}
+	public:
+		unsigned int input_dim() const;
+		unsigned int output_dim() const;
+		unsigned int scale_factor() const;
+		void feed(float* out,float const* in) const;
+	private:
+		static void place_values(cil::CImg<unsigned char>& img,float const* in,unsigned int x,unsigned int y,unsigned int dim);
+	public:
+
+
+
+	};
+
+
+	
+	
 }
 #endif // !1

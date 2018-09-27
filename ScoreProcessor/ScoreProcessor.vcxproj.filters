@@ -63,9 +63,6 @@
     <ClInclude Include="old.txt">
       <Filter>Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="neuralnet.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="support.h">
       <Filter>Header Files</Filter>
     </ClInclude>

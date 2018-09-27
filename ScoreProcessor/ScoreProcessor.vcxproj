@@ -404,7 +404,6 @@
     <ClInclude Include="ImageUtils.h" />
     <ClInclude Include="Logs.h" />
     <ClInclude Include="moreAlgorithms.h" />
-    <ClInclude Include="neuralnet.h" />
     <ClInclude Include="old.txt" />
     <ClInclude Include="parse.h" />
     <ClInclude Include="Processes.h" />
