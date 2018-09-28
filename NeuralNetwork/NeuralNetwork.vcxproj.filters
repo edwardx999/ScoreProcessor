@@ -18,9 +18,15 @@
     <ClInclude Include="neural_net.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="neural_scaler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Test.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="neural_scaler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

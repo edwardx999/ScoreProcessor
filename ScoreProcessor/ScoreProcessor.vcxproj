@@ -457,6 +457,11 @@
     <Image Include="TestPicNew.jpg" />
     <Image Include="TestPicNew2.jpg" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NeuralNetwork\NeuralNetwork.vcxproj">
+      <Project>{804df0f3-7bc7-42d4-9382-eef4064a3df6}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

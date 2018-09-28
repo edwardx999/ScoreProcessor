@@ -218,6 +218,8 @@ namespace neural_net {
 		std::unique_ptr<DataType[]> _biases;
 		size_t _count;
 	public:
+		layer(layer&&)=default;
+		layer& operator=(layer&&)=default;
 		inline layer(size_t nodes):_weights(),_biases(),_count(nodes)
 		{}
 		inline layer(size_t nodes,size_t connections):_weights(new DataType[nodes*connections]),_biases(new DataType[nodes]),_count(nodes)
@@ -262,9 +264,36 @@ namespace neural_net {
 	private:
 		std::vector<layer> _layers;
 	public:
+		inline std::vector<layer>& layers()
+		{
+			return _layers;
+		}
+		inline std::vector<layer> const& layers() const
+		{
+			return _layers;
+		}
+		net()=default;
+		net(net const& other)
+		{
+			auto const& l=other.layers();
+			_layers.reserve(l.size());
+			_layers.emplace_back(l.front().neuron_count());
+			for(size_t i=1;i<l.size();++i)
+			{
+				_layers.emplace_back(l[i].neuron_count(),l[i-1].neuron_count());
+				std::memcpy(_layers.back().biases(),l[i].biases(),l[i].neuron_count()*sizeof(float));
+				std::memcpy(_layers.back().weights(),l[i].weights(),l[i].neuron_count()*l[i-1].neuron_count()*sizeof(float));
+			}
+		}
+		net(net&&)=default;
+		net& operator=(net const& other)
+		{
+			return (*this=std::move(net(other)));
+		}
+		net& operator=(net&&)=default;
 		template<typename A,typename B>
 		friend std::ostream& operator<<(std::ostream&,net<A,B> const&);
-		void randomize()
+		net& randomize()
 		{
 			std::random_device rd;
 			std::mt19937 gen(rd());
@@ -281,11 +310,34 @@ namespace neural_net {
 					_layers[i].biases()[j]=urd(gen);
 				}
 			}
+			return *this;
 		}
 
+	private:
+		template<typename T>
+		struct is_iterable {
+		private:
+			template<typename U>
+			static constexpr auto val(int)->decltype(std::declval<U>().begin(),std::declval<U>().size(),false)
+			{
+				return true;
+			}
+			template<typename U>
+			static constexpr bool val(...)
+			{
+				return false;
+			}
+		public:
+			static constexpr bool value=val<T>(0);
+		};
+	public:
 		template<typename SizeIter>
 		net(SizeIter begin,size_t elements)
 		{
+			if(elements<2)
+			{
+				throw std::invalid_argument("Need at least 2 layers");
+			}
 			_layers.reserve(elements);
 			_layers.emplace_back(*begin);
 			for(size_t i=1;i<elements;++i)
@@ -293,8 +345,15 @@ namespace neural_net {
 				_layers.emplace_back(begin[i],begin[i-1]);
 			}
 		}
+	 
 		template<typename T>
-		net(T layer_info):net(layer_info.begin(),layer_info.size())
+		net(std::vector<T> const& layer_info):net(layer_info.begin(),layer_info.size())
+		{}
+		template<typename T>
+		net(std::initializer_list<T> layer_info):net(layer_info.begin(),layer_info.size())
+		{}
+		template<typename T,size_t N>
+		net(std::array<T,N> const& layer_info):net(layer_info.begin(),layer_info.size())
 		{}
 
 		template<typename... T>
@@ -427,7 +486,8 @@ namespace neural_net {
 		}
 	private:
 	public:
-		void save(std::ofstream& file)
+		template<typename Stream>
+		auto save(Stream& file) -> typename std::enable_if<!std::is_convertible<Stream,char const*>::value>::type
 		{
 			auto bwrite=[&](auto a)
 			{
@@ -466,7 +526,7 @@ namespace neural_net {
 		}
 
 		template<typename Stream>
-		void load(Stream& src)
+		auto load(Stream& src) -> typename std::enable_if<!std::is_convertible<Stream,char const*>::value>::type
 		{
 			auto ensure_fit=[](uint64_t s)
 			{
@@ -529,6 +589,10 @@ namespace neural_net {
 		net(std::fstream& src)
 		{
 			load(src);
+		}
+		net(char const* path)
+		{
+			load(path);
 		}
 	};
 

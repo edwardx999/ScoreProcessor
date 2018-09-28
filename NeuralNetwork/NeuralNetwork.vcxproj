@@ -118,8 +118,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="neural_net.h" />
+    <ClInclude Include="neural_scaler.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="neural_scaler.cpp" />
     <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

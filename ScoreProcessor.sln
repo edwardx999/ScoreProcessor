@@ -11,6 +11,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SProcUnitTests", "SProcUnitTests\SProcUnitTests.vcxproj", "{347630B6-FDC2-49D8-86E8-562E287BD49E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Trainer", "Trainer\Trainer.vcxproj", "{CF03F3BF-60DE-4D9C-9E46-D9B074A097BC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{804DF0F3-7BC7-42D4-9382-EEF4064A3DF6} = {804DF0F3-7BC7-42D4-9382-EEF4064A3DF6}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NeuralNetwork", "NeuralNetwork\NeuralNetwork.vcxproj", "{804DF0F3-7BC7-42D4-9382-EEF4064A3DF6}"
 EndProject
