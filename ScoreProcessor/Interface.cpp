@@ -289,4 +289,13 @@ namespace ScoreProcessor {
 				"Cut",
 				"min_width=66% min_height=8% horiz_weight=20 min_vert_space=0 bg=128");
 	}
+
+	namespace SmartScale {
+		SingMaker<UseTuple,LabelId,FloatParser<Ratio>,Input> maker(
+			"Scales using an neural network\n"
+			"factor tag: f\n"
+			"network_path tag: net\n",
+			"Smart Scale",
+			"factor network_path=(search program directory for first network)");
+	}
 }

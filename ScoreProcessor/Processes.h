@@ -4,6 +4,7 @@
 #include "ImageUtils.h"
 #include "ScoreProcesses.h"
 #include "ImageProcess.h"
+#include "../NeuralNetwork/neural_scaler.h"
 namespace ScoreProcessor {
 
 	class ChangeToGrayscale:public ImageProcess<> {
@@ -273,7 +274,7 @@ namespace ScoreProcessor {
 	class ThreadOverride:public ImageProcess<> {
 		unsigned int const* _num_threads;
 	protected:
-		ThreadOverride(unsigned int const* num_threads):_num_threads(num_threads)
+		inline ThreadOverride(unsigned int const* num_threads):_num_threads(num_threads)
 		{}
 		inline unsigned int num_threads() const
 		{
@@ -284,7 +285,7 @@ namespace ScoreProcessor {
 	class ShiftFixer:public ImageProcess<> {
 	protected:
 		bool side,direction;unsigned char background_threshold;
-		ShiftFixer(bool side,bool direction,unsigned char bt):side(side),direction(direction),background_threshold(bt)
+		inline ShiftFixer(bool side,bool direction,unsigned char bt):side(side),direction(direction),background_threshold(bt)
 		{}
 	};
 
@@ -297,7 +298,16 @@ namespace ScoreProcessor {
 
 	class VerticalShift:public ShiftFixer {
 	public:
-		VerticalShift(bool eval_bottom,bool from_right,unsigned char bt):ShiftFixer(eval_bottom,from_right,bt)
+		inline VerticalShift(bool eval_bottom,bool from_right,unsigned char bt):ShiftFixer(eval_bottom,from_right,bt)
+		{}
+		bool process(Img&) const override;
+	};
+
+	class NeuralScale:public ThreadOverride {
+		ScoreProcessor::neural_scaler scaler;
+		float ratio;
+	public:
+		inline NeuralScale(float ratio,char const* network,unsigned int const* num_threads):ratio(ratio),scaler(network),ThreadOverride(num_threads)
 		{}
 		bool process(Img&) const override;
 	};

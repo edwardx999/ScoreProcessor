@@ -564,9 +564,17 @@ int main(int argc,InputIter argv)
 		del.starting_index=1;
 	}
 	using ui=decltype(del.num_threads);
-	del.num_threads=std::min(
-		del.num_threads,
-		ui(std::min(size_t(std::numeric_limits<ui>::max()),files.size())));
+	if(del.overridden_num_threads)
+	{
+		del.overridden_num_threads=del.num_threads;
+		del.num_threads=1;
+	}
+	else
+	{
+		del.num_threads=std::min(
+			del.num_threads,
+			ui(std::min(size_t(std::numeric_limits<ui>::max()),files.size())));
+	}
 	std::optional<Loggers::AmountLog> al;
 	Loggers::CoutLog cl;
 	switch(del.lt)

@@ -6,7 +6,7 @@
 #include "../ScoreProcessor/CImg.h"
 #include <type_traits>
 namespace ScoreProcessor {
-	template<typename Base>
+	template<typename Derived>
 	struct smart_scaler_base {
 		auto& smart_scale(cil::CImg<unsigned char>& img,float scale,unsigned int num_threads=std::thread::hardware_concurrency()) const
 		{
@@ -16,7 +16,7 @@ namespace ScoreProcessor {
 			{
 				return img;
 			}
-			img=static_cast<Base*>(this)->get_smart_scale(img,scale,num_threads);
+			img=static_cast<Derived const*>(this)->get_smart_scale(img,scale,num_threads);
 			return img;
 		}
 	};
@@ -144,11 +144,10 @@ namespace ScoreProcessor {
 			uint64_t scale;
 			src.read(reinterpret_cast<char*>(&scale),sizeof(scale));
 			neural_net::net<> net(src);
-			auto id=int_sqrt(net.layers().front().neuron_count(),"Invalid input dim");
-			auto od=int_sqrt(net.layers().front().neuron_count(),"Invalid input dim");
+			auto res=assert_dim(scale,net);
 			_nscale=static_cast<unsigned int>(scale);
-			_in_dim=id;
-			_out_dim=od;
+			_in_dim=std::get<1>(res);
+			_out_dim=std::get<0>(res);
 			_net=std::move(net);
 		}
 		void load(char const* path)
@@ -177,10 +176,9 @@ namespace ScoreProcessor {
 			auto res=_net.feed_forward_store(in);
 			std::memcpy(out,res[_net.layers().size()-1].get(),_net.layers().back().neuron_count()*sizeof(float));
 		}
-		template<typename Stream>
-		neural_scaler(Stream& src)
+		neural_scaler(char const* path)
 		{
-
+			load(path);
 		}
 	private:
 		static void place_values(cil::CImg<unsigned char>& img,float const* in,unsigned int x,unsigned int y,unsigned int dim);

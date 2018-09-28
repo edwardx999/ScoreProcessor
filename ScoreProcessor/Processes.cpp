@@ -389,4 +389,10 @@ namespace ScoreProcessor {
 		vertical_shift(img,side,direction,background_threshold);
 		return true;
 	}
+
+	bool NeuralScale::process(Img& img) const
+	{
+		scaler.smart_scale(img,ratio,ThreadOverride::num_threads());
+		return true;
+	}
 }

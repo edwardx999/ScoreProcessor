@@ -69,8 +69,16 @@ namespace ScoreProcessor {
 			};
 			std::vector<sel_boundary> selections;
 			unsigned int num_threads;
+			unsigned int overridden_num_threads;
 			bool list_files;
-			PMINLINE delivery():starting_index(-1),flag(do_absolutely_nothing),num_threads(0),do_move(false),list_files(false),lt(unassigned_log)
+			PMINLINE delivery():
+				starting_index(-1),
+				flag(do_absolutely_nothing),
+				num_threads(0),
+				overridden_num_threads(0),
+				do_move(false),
+				list_files(false),
+				lt(unassigned_log)
 			{}
 		};
 	private:
@@ -2643,6 +2651,71 @@ namespace ScoreProcessor {
 
 	}
 
+	namespace SmartScale {
+
+		struct Ratio {
+			cnnm("factor")
+		};
+
+		struct Input {
+			PMINLINE static char const* parse(InputType it)
+			{
+				return it;
+			}
+			cnnm("network_file")
+				cndf(nullptr)
+		};
+
+		struct LabelId {
+			static PMINLINE size_t id(InputType it,size_t prefix_len)
+			{
+				static constexpr auto table=make_ltable(
+					le("net",1),le("f",0));
+				return find_prefix(table,it,prefix_len);
+			}
+		};
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,float ratio,char const* network)
+			{
+				if(ratio<=0)
+				{
+					throw std::invalid_argument("Ratio must be positive");
+				}
+				if(ratio>1)
+				{
+					del.overridden_num_threads=1;
+					if(network==nullptr)
+					{
+						std::string path;
+						path.reserve(MAX_PATH);
+						GetModuleFileNameA(NULL,path.data(),MAX_PATH);
+						auto const files=exlib::files_in_dir(path);
+						for(auto const& f:files)
+						{
+							auto ext=exlib::find_extension(f.data(),f.data()+f.size());
+							if(strcmp(ext,"ssn")==0)
+							{
+								del.pl.add_process<NeuralScale>(ratio,f.data(),&del.overridden_num_threads);
+								break;
+							}
+						}
+						throw std::invalid_argument("Failed to find network data");
+					}
+					else
+					{
+						del.pl.add_process<NeuralScale>(ratio,network,&del.overridden_num_threads);
+					}
+				}
+				if(ratio<1)
+				{
+					del.pl.add_process<Rescale>(ratio,Rescale::moving_average);
+				}
+			}
+		};
+
+		extern SingMaker<UseTuple,LabelId,FloatParser<Ratio>,Input> maker;
+	}
 	struct compair {
 	private:
 		char const* _key;
@@ -2679,7 +2752,8 @@ namespace ScoreProcessor {
 			compair("exl",&EXLMaker::maker),
 			compair("ct",&CTMaker::maker),
 			compair("rb",&RBMaker::maker),
-			compair("rs",&RsMaker::maker));
+			compair("rs",&RsMaker::maker),
+			compair("ss",&SmartScale::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),
