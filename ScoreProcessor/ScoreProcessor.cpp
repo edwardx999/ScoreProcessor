@@ -381,7 +381,7 @@ InputIter find_file_list(InputIter begin,InputIter end)
 
 void do_single(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
-	del.pl.process(files,&del.sr,del.num_threads,del.starting_index,del.do_move);
+	del.pl.process(files,&del.sr,del.num_threads,del.starting_index,del.do_move,del.quality);
 }
 
 void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& files)

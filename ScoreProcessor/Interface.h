@@ -71,6 +71,7 @@ namespace ScoreProcessor {
 			unsigned int num_threads;
 			unsigned int overridden_num_threads;
 			bool list_files;
+			int quality;
 			PMINLINE delivery():
 				starting_index(-1),
 				flag(do_absolutely_nothing),
@@ -78,7 +79,8 @@ namespace ScoreProcessor {
 				overridden_num_threads(0),
 				do_move(false),
 				list_files(false),
-				lt(unassigned_log)
+				lt(unassigned_log),
+				quality(-1)
 			{}
 		};
 	private:
@@ -2716,6 +2718,73 @@ namespace ScoreProcessor {
 
 		extern SingMaker<UseTuple,LabelId,FloatParser<Ratio>,Input> maker;
 	}
+
+	namespace Cropper {
+		struct Left {
+			cnnm("left")
+		};
+		struct Top {
+			cnnm("top")
+		};
+		struct Right {
+			cnnm("right")
+		};
+		struct Bottom {
+			cnnm("bottom")
+		};
+
+		struct Label {
+			static PMINLINE size_t id(InputType it,size_t prefix_len)
+			{
+				static constexpr auto table=make_ltable(le("l",0),le("t",1),le("r",2),le("b",3));
+				return find_prefix(table,it,prefix_len);
+			}
+		};
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,int l,int t,int r,int b)
+			{
+				if(l>=r)
+				{
+					throw std::invalid_argument("Left must be less than right");
+				}
+				if(t>=b)
+				{
+					throw std::invalid_argument("Top must be less than bottom");
+				}
+				del.pl.add_process<Crop>(l,t,r,b);
+			}
+		};
+
+		extern SingMaker<UseTuple,Label,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker;
+	}
+
+	namespace Quality {
+		struct Value {
+			cnnm("quality")
+		};
+		struct Precheck {
+			static PMINLINE void check(CommandMaker::delivery& del)
+			{
+				if(del.quality!=-1)
+				{
+					throw std::invalid_argument("Quality already set");
+				}
+			}
+		};
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,int quality)
+			{
+				if(quality<0||quality>100)
+				{
+					throw std::invalid_argument("Quality must be an integer [0,100]");
+				}
+				del.quality=quality;
+			}
+		};
+		extern MakerTFull<UseTuple,Precheck,empty2,IntParser<Value>> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -2753,7 +2822,8 @@ namespace ScoreProcessor {
 			compair("ct",&CTMaker::maker),
 			compair("rb",&RBMaker::maker),
 			compair("rs",&RsMaker::maker),
-			compair("ss",&SmartScale::maker));
+			compair("ss",&SmartScale::maker),
+			compair("crp",&Cropper::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),
@@ -2766,7 +2836,8 @@ namespace ScoreProcessor {
 			compair("bsel",&BSel::maker),
 			compair("si",&SIMaker::maker),
 			compair("flt",&RgxFilter::maker),
-			compair("list",&List::maker));
+			compair("list",&List::maker),
+			compair("q",&Quality::maker));
 
 		constexpr auto aliases=exlib::make_array<compair>(
 			compair("rotate",&RotMaker::maker),

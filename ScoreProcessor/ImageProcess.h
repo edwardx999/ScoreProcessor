@@ -180,13 +180,14 @@ namespace ScoreProcessor {
 			SaveRules const* output;
 			unsigned int index;
 			bool move;
+			int quality;
 		public:
-			ProcessTaskFName(char const* fname,ProcessList<T> const* pparent,SaveRules const* output,unsigned int index,bool move):
-				fname(fname),pparent(pparent),output(output),index(index),move(move)
+			ProcessTaskFName(char const* fname,ProcessList<T> const* pparent,SaveRules const* output,unsigned int index,bool move,int quality):
+				fname(fname),pparent(pparent),output(output),index(index),move(move),quality(quality)
 			{}
 			void execute() override
 			{
-				pparent->process(fname,output,index,move);
+				pparent->process(fname,output,index,move,quality);
 			}
 		};
 		Log* plog;
@@ -225,7 +226,7 @@ namespace ScoreProcessor {
 		void add_process(Args&&... args);
 
 		void process_unsafe(cimg_library::CImg<T>& img,char const* output) const;
-		void process_unsafe(char const* input,char const* output,bool move=false) const;
+		void process_unsafe(char const* input,char const* output,bool move,int quality) const;
 		/*
 			Processes an image.
 		*/
@@ -247,12 +248,12 @@ namespace ScoreProcessor {
 		/*
 			Processes an image at the given filename, and saves it to the output.
 		*/
-		void process(char const* filename,char const* output,bool move=false) const;
+		void process(char const* filename,char const* output,bool move,int quality) const;
 		/*
 			Processes an image at the given filename, and saves it based on the SaveRules.
 			Pass nullptr to SaveRules if you do not want it saved (useless, but ok).
 		*/
-		void process(char const* filename,SaveRules const* psr,unsigned int index=1,bool move=false) const;
+		void process(char const* filename,SaveRules const* psr,unsigned int index,bool move,int quality) const;
 
 		/*
 			Processes all the images in the vector.
@@ -261,8 +262,8 @@ namespace ScoreProcessor {
 		*/
 		void process(std::vector<cimg_library::CImg<T>>& files,
 			SaveRules const* psr,
-			unsigned int const num_threads=std::thread::hardware_concurrency(),
-			unsigned int const starting_index=1) const;
+			unsigned int const num_threads,
+			unsigned int const starting_index) const;
 
 		/*
 			Processes all the images in the vector.
@@ -271,9 +272,10 @@ namespace ScoreProcessor {
 		template<typename String>
 		void process(std::vector<String> const& filenames,
 			SaveRules const* psr,
-			unsigned int const num_threads=std::thread::hardware_concurrency(),
-			unsigned int const starting_index=1,
-			bool move=false) const;
+			unsigned int const num_threads,
+			unsigned int const starting_index,
+			bool move,
+			int quality) const;
 
 		/*
 			Processes all the images in the vector.
@@ -281,9 +283,9 @@ namespace ScoreProcessor {
 		*/
 		void process(std::vector<char*> const& filenames,
 			SaveRules const* psr,
-			unsigned int const num_threads=std::thread::hardware_concurrency(),
-			unsigned int const starting_index=1,
-			bool move=false) const;
+			unsigned int const num_threads,
+			unsigned int const starting_index,
+			bool move,int quality) const;
 	};
 	typedef ProcessList<unsigned char> IPList;
 
@@ -359,7 +361,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move) const
+	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move,int quality) const
 	{
 		using namespace std::experimental::filesystem;
 		path in(fname),out(output);
@@ -428,7 +430,35 @@ namespace ScoreProcessor {
 				dst<<src.rdbuf();
 			}
 		};
-		if(empty())
+		auto load_s=[fname](cil::CImg<T>& img,auto s)
+		{
+			switch(s.first)
+			{
+				case support_type::bmp:
+					img.load_bmp(fname);
+					break;
+				case support_type::jpeg:
+					img.load_jpeg(fname);
+					break;
+				case support_type::png:
+					img.load_png(fname);
+			}
+		};
+		auto save_s=[output,quality](cil::CImg<T>& img,auto s)
+		{
+			switch(s.second)
+			{
+				case support_type::bmp:
+					img.save_bmp(output);
+					break;
+				case support_type::jpeg:
+					img.save_jpeg(output,quality);
+					break;
+				case support_type::png:
+					img.save_png(output);
+			}
+		};
+		if(this->empty())
 		{
 			if(!exlib::strncmp_nocase(in_ext,out_ext))
 			{
@@ -444,28 +474,8 @@ namespace ScoreProcessor {
 				else
 				{
 					cil::CImg<T> img;
-					switch(s.first)
-					{
-						case support_type::bmp:
-							img.load_bmp(fname);
-							break;
-						case support_type::jpeg:
-							img.load_jpeg(fname);
-							break;
-						case support_type::png:
-							img.load_png(fname);
-					}
-					switch(s.second)
-					{
-						case support_type::bmp:
-							img.save_bmp(output);
-							break;
-						case support_type::jpeg:
-							img.save_jpeg(output);
-							break;
-						case support_type::png:
-							img.save_png(output);
-					}
+					load_s(img,s);
+					save_s(img,s);
 					if(do_move&&!std::experimental::filesystem::equivalent(in,out))
 					{
 						remove(in);
@@ -479,20 +489,10 @@ namespace ScoreProcessor {
 			bool edited=false;
 			{
 				cil::CImg<T> img;
-				switch(s.first)
-				{
-					case support_type::bmp:
-						img.load_bmp(fname);
-						break;
-					case support_type::jpeg:
-						img.load_jpeg(fname);
-						break;
-					case support_type::png:
-						img.load_png(fname);
-				}
+				load_s(img,s);
 				for(auto it=this->begin();it<this->end();++it)
 				{
-					edited|=(*it)->process(img);
+					edited=edited||(*it)->process(img);
 				}
 				if(s.first!=s.second)
 				{
@@ -500,17 +500,7 @@ namespace ScoreProcessor {
 				}
 				if(edited)
 				{
-					switch(s.second)
-					{
-						case support_type::bmp:
-							img.save_bmp(output);
-							break;
-						case support_type::jpeg:
-							img.save_jpeg(output);
-							break;
-						case support_type::png:
-							img.save_png(output);
-					}
+					save_s(img,s);
 					if(do_move&&!std::experimental::filesystem::equivalent(in,out))
 					{
 						remove(in);
@@ -525,11 +515,11 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(char const* fname,char const* output,bool move) const
+	void ProcessList<T>::process(char const* fname,char const* output,bool move,int quality) const
 	{
 		try
 		{
-			process_unsafe(fname,output);
+			process_unsafe(fname,output,move,quality);
 		}
 		catch(std::exception const& ex)
 		{
@@ -548,7 +538,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index,bool move) const
+	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index,bool move,int quality) const
 	{
 		size_t len=strlen(filename);
 		bool out_loud=plog&&vb>=decltype(vb)::loud;
@@ -564,7 +554,7 @@ namespace ScoreProcessor {
 			output=psr?psr->make_filename(std::string_view(filename,len),index):filename;
 			try
 			{
-				process_unsafe(filename,output.c_str(),move);
+				process_unsafe(filename,output.c_str(),move,quality);
 			}
 			catch(std::exception const& ex)
 			{
@@ -602,12 +592,13 @@ namespace ScoreProcessor {
 		SaveRules const* psr,
 		unsigned int const num_threads,
 		unsigned int const starting_index,
-		bool move) const
+		bool move,
+		int quality) const
 	{
 		exlib::ThreadPool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
 		{
-			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i],this,psr,i+starting_index);
+			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i],this,psr,i+starting_index,move,quality);
 		}
 		tp.start();
 	}
@@ -619,13 +610,14 @@ namespace ScoreProcessor {
 		SaveRules const* psr,
 		unsigned int const num_threads,
 		unsigned int const starting_index,
-		bool move) const
+		bool move,
+		int quality) const
 	{
 		if(num_threads<2) //avoid threadpool overhead
 		{
 			for(size_t i=0;i<imgs.size();++i)
 			{
-				process(imgs[i].data(),psr,i+starting_index,move);
+				process(imgs[i].data(),psr,i+starting_index,move,quality);
 			}
 		}
 		else
@@ -633,7 +625,7 @@ namespace ScoreProcessor {
 			exlib::ThreadPool tp(num_threads);
 			for(size_t i=0;i<imgs.size();++i)
 			{
-				tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].data(),this,psr,i+starting_index,move);
+				tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].data(),this,psr,i+starting_index,move,quality);
 			}
 			tp.start();
 		}

@@ -179,10 +179,10 @@ namespace neural_net {
 
 	template<typename Leak,typename Clip>
 	struct clipped_leaky_relu_deriv_t {
+		static constexpr DataType clip=(static_cast<DataType>(Clip::num)/Clip::den);
+		static constexpr DataType leak=(static_cast<DataType>(Leak::num)/Leak::den);
 		inline DataType operator()(DataType x) const
 		{
-			constexpr DataType clip=(static_cast<DataType>(Clip::num)/Clip::den);
-			constexpr DataType leak=(static_cast<DataType>(Leak::num)/Leak::den);
 			if(x>clip||x<0)
 			{
 				return leak;
@@ -195,10 +195,10 @@ namespace neural_net {
 	template<typename Leak=std::ratio<1,32>,typename Clip=std::ratio<1,1>>
 	struct clipped_leaky_relu_t {
 		using derivative=clipped_leaky_relu_deriv_t<Leak,Clip>;
+		static constexpr DataType clip=derivative::clip;
+		static constexpr DataType leak=derivative::leak;
 		inline DataType operator()(DataType x) const
 		{
-			constexpr DataType clip=(static_cast<DataType>(Clip::num)/Clip::den);
-			constexpr DataType leak=(static_cast<DataType>(Leak::num)/Leak::den);
 			if(x>clip)
 			{
 				constexpr DataType off=(1-leak)*clip;
@@ -259,7 +259,7 @@ namespace neural_net {
 		}
 	};
 
-	template<typename ActivationFunc=leaky_relu_t<>,typename Deriv=ActivationFunc::derivative>
+	template<typename ActivationFunc=clipped_leaky_relu_t<>,typename Deriv=ActivationFunc::derivative>
 	struct net:private ActivationFunc,private Deriv {
 	private:
 		std::vector<layer> _layers;
@@ -297,7 +297,7 @@ namespace neural_net {
 		{
 			std::random_device rd;
 			std::mt19937 gen(rd());
-			std::uniform_real_distribution<DataType> urd(-1.0f,1.0f);
+			std::normal_distribution<DataType> urd(0,1);
 			for(size_t i=1;i<_layers.size();++i)
 			{
 				size_t const limit=_layers[i].neuron_count()*_layers[i-1].neuron_count();
@@ -399,7 +399,7 @@ namespace neural_net {
 			return ret;
 		}
 
-		inline void update_weights(DataType* weights,DataType* biases,DataType const* activations,DataType const* deltas,size_t far_nodes,size_t near_nodes,DataType learning_rate)
+		void update_weights(DataType* weights,DataType* biases,DataType const* activations,DataType const* deltas,size_t far_nodes,size_t near_nodes,DataType learning_rate)
 		{
 			for(size_t j=0;j<far_nodes;++j)
 			{
@@ -413,7 +413,7 @@ namespace neural_net {
 				}
 			}
 		}
-		inline void backpropagate(results const& values,DataType const* answers,DataType learning_rate=1)
+		void backpropagate(results const& values,DataType const* answers,DataType learning_rate=1)
 		{
 			struct delta_t:public std::unique_ptr<std::unique_ptr<DataType[]>[]> {
 				using layer_results=std::unique_ptr<DataType[]>;
@@ -473,7 +473,7 @@ namespace neural_net {
 
 		}
 
-		inline void train(DataType const* input_data,DataType const* answers,size_t num_inputs,DataType learning_rate=1)
+		void train(DataType const* input_data,DataType const* answers,size_t num_inputs,DataType learning_rate=1)
 		{
 			auto const out_count=_layers.back().neuron_count();
 			auto const in_count=_layers.front().neuron_count();

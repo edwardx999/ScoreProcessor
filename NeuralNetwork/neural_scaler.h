@@ -171,6 +171,10 @@ namespace ScoreProcessor {
 		{
 			return _nscale;
 		}
+		inline unsigned int padding() const
+		{
+			return (input_dim()-output_dim()/scale_factor())/2;
+		}
 		inline void feed(float* out,float const* in) const
 		{
 			auto res=_net.feed_forward_store(in);

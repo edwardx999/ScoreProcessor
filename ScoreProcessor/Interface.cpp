@@ -298,4 +298,16 @@ namespace ScoreProcessor {
 			"Smart Scale",
 			"factor network_path=(search program directory for first network)");
 	}
+
+	namespace Cropper {
+		SingMaker<UseTuple,Label,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker(
+			"Crops the image\n"
+			"tags: l, t, r, b",
+			"Crop",
+			"left top right bottom");
+	}
+
+	namespace Quality {
+		MakerTFull<UseTuple,Precheck,empty2,IntParser<Value>> maker("Set the quality of the save file [0,100], only affects jpegs","Quality","quality");
+	}
 }

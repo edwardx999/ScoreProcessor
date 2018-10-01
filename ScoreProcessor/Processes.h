@@ -111,29 +111,7 @@ namespace ScoreProcessor {
 
 	class Crop:public ImageProcess<> {
 	public:
-		struct mark {
-			enum class basis {
-				fixed,width,height
-			};
-			basis base;
-			union {
-				int value;
-				float part;
-			};
-			inline constexpr int operator ()(int width,int height) const
-			{
-				switch(base)
-				{
-					case basis::fixed:
-						return value;
-					case basis::width:
-						return std::round(part*width);
-					case basis::height:
-						return std::round(part*height);
-				}
-				assert(false);
-			}
-		};
+		using mark=exlib::maybe_fixed<int,float>;
 	private:
 		mark left,top,right,bottom;
 	public:
