@@ -28,52 +28,56 @@ namespace ScoreProcessor {
 	using InputType=char const*;
 	using iter=InputType const*;
 
+	//Abstract class responsible for taking in iter and modifying delivery based on the input
 	class CommandMaker {
 	public:
+		//information about what ScoreProcessor will do
 		struct delivery {
 			using pv=exlib::maybe_fixed<unsigned int>;
-			SaveRules sr;
-			unsigned int starting_index;
-			bool do_move;
-			ProcessList<unsigned char> pl;
-			enum do_state {
-				do_absolutely_nothing,
-				do_nothing,
-				do_single,
-				do_cut,
-				do_splice
+			SaveRules sr; //output template
+			unsigned int starting_index; //index to number files by
+			bool do_move; //whether files should be moved or copied
+			ProcessList<unsigned char> pl; //list of processes to perform on images
+			enum do_state { //what program is doing
+				do_absolutely_nothing, //program does nothing
+				do_nothing, //program does no image process, but may list files or move/copy files
+				do_single, //program does processes that apply to single images
+				do_cut, //program cuts the images
+				do_splice //program splices images together
 			};
 			do_state flag;
 			enum log_type {
 				unassigned_log,
-				quiet,
-				errors_only,
-				count,
-				full_message
+				quiet, //no output
+				errors_only, 
+				count, //count of files completed
+				full_message //name of files started and completed output
 			};
 			log_type lt;
-			Splice::standard_heuristics splice_args;
+			Splice::standard_heuristics splice_args; //args for splicing
 			struct {
 				pv min_height,min_width,min_vert_space;
 				unsigned char background;
 				float horiz_weight;
-			} cut_args;
-			struct filter {
+			} cut_args; //args for cutting
+			struct filter { //information about what files to process and which to filter out
 				std::regex rgx;
 				bool keep_match;
 			};
-			std::vector<filter> rgxes;
-			struct sel_boundary {
+			std::vector<filter> rgxes; //the filters to apply to file input list
+			struct sel_boundary { //files between begin and end in the input list are kept
 				std::string_view begin; //will always be present in the parameters list
 				std::string_view end;
 			};
 			std::vector<sel_boundary> selections;
-			unsigned int num_threads;
-			unsigned int overridden_num_threads;
-			bool list_files;
-			int quality;
+			unsigned int num_threads; //num threads to use
+			//some processes (like SmartScale) may need multithreading in one image 
+			//and thus override the across image thread count
+			unsigned int overridden_num_threads; 
+			bool list_files; //whether files should be listed out to the user
+			int quality; //[0,100] jpeg file quality
 			PMINLINE delivery():
-				starting_index(-1),
+				starting_index(-1), //invalid values means not given by user
 				flag(do_absolutely_nothing),
 				num_threads(0),
 				overridden_num_threads(0),
@@ -82,6 +86,39 @@ namespace ScoreProcessor {
 				lt(unassigned_log),
 				quality(-1)
 			{}
+			//assigns the default value of num threads if not assigned
+			//num_threads is limited by num_files if the thread_count has not been overridden by a process
+			void fix_values(size_t num_files)
+			{
+				if(num_threads==0) 
+				{
+					num_threads=std::thread::hardware_concurrency();
+					if(num_threads==0)
+					{
+						num_threads=2;
+					}
+				}
+				if(starting_index==-1)
+				{
+					starting_index=1;
+				}
+				if(overridden_num_threads)
+				{
+					overridden_num_threads=num_threads;
+					num_threads=1;
+				}
+				else
+				{
+					using ui=decltype(num_threads);
+					num_threads=std::min(
+						num_threads,
+						static_cast<ui>((std::min<size_t>(std::numeric_limits<ui>::max(),num_files))));
+				}
+				if(quality==-1)
+				{
+					quality==100;
+				}
+			}
 		};
 	private:
 		std::string_view _help_message;
@@ -89,6 +126,9 @@ namespace ScoreProcessor {
 		std::string_view _args;
 	public:
 		//COMPILE-TYPE CONSTANT STRINGS REQUIRED
+		//help: help message of CommandMaker
+		//name: name of CommandMaker
+		//args: arguments that the CommandMaker expects to take
 		template<typename SV1,typename SV2,typename SV3>
 		CommandMaker(SV1& help,SV2& name,SV3& args):_help_message(help),_name(name),_args(args)
 		{}
@@ -104,6 +144,7 @@ namespace ScoreProcessor {
 		{
 			return _args;
 		}
+		//based on the inputs between [begin,end), modifies del according
 		virtual void make_command(iter begin,iter end,delivery& del)=0;
 	};
 
@@ -119,6 +160,7 @@ namespace ScoreProcessor {
 		{}
 	};
 
+	//has check to assert that given values are non-negative
 	struct no_negatives {
 		template<typename T,typename Name>
 		static void check(T val,Name const& n)
@@ -132,6 +174,7 @@ namespace ScoreProcessor {
 		}
 	};
 
+	//has check to assert that given values are positive
 	struct force_positive {
 		template<typename T,typename Name>
 		static void check(T n,Name const& nm)
@@ -146,6 +189,8 @@ namespace ScoreProcessor {
 		}
 	};
 
+	//A float parser that takes the properties of Base
+	//and checks its input using Check::check
 	template<typename Base,typename Check=no_negatives>
 	struct FloatParser:public Base,private Check {
 		using Base::name;
@@ -185,6 +230,8 @@ namespace ScoreProcessor {
 		}
 	};
 
+	//A double parser that takes the properties of Base
+	//and checks its input using Check::check
 	template<typename Base,typename Check=no_negatives>
 	struct DoubleParser:public Base,private Check {
 		using Base::name;
@@ -222,6 +269,8 @@ namespace ScoreProcessor {
 
 	};
 
+	//An integer parser that takes the properties of Base
+	//and checks its input using Check::check
 	template<typename T,typename Base,typename Check=no_check>
 	struct IntegerParser:public Base,private Check {
 		T parse(char const* in) const
@@ -274,6 +323,9 @@ namespace ScoreProcessor {
 	template<typename Base,typename Check=no_check>
 	using UCharParser=IntegerParser<unsigned char,Base,Check>;
 
+	//parses a float and ensures it is between 0 and 1
+	//and allows % at the end to input percentages
+	//n: object to use get name from to throw an appropriate error
 	template<typename Name>
 	float parse01(char const* cp,Name const& n)
 	{

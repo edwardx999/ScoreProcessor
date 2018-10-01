@@ -20,6 +20,7 @@ constexpr bool could_be_command(char const* str)
 	return str[0]=='-'&&str[1]>='a'&&str[1]<='z';
 }
 
+//could be a command but checking that it is not -r
 constexpr bool could_be_command_no_rec(char const* str)
 {
 	if(str[0]=='-')
@@ -39,11 +40,13 @@ constexpr bool could_be_command_no_rec(char const* str)
 	return false;
 }
 
+//whether str is -r
 constexpr bool is_rec(char const* str)
 {
 	return str[0]=='-'&&str[1]=='r'&&str[2]=='\0';
 }
 
+//gets the date in a pretty format at compile time as an array of chars
 constexpr auto date()
 {
 	constexpr char const* dt=__DATE__;
@@ -57,6 +60,7 @@ constexpr auto date()
 	return ret;
 }
 
+//outputs the help message when no args are given
 void info_output()
 {
 	constexpr auto dt=date();
@@ -106,6 +110,7 @@ void info_output()
 }
 
 #ifdef MAKE_README
+//makes a readme and saves it to out
 void make_readme(char const* out)
 {
 	std::ofstream readme(out);
@@ -178,6 +183,7 @@ void make_readme(char const* out)
 }
 #endif
 
+//displays the help message of cm
 void help_output(CommandMaker const& cm)
 {
 	std::cout<<"Command: "<<cm.name()<<"\n";
@@ -188,6 +194,7 @@ void help_output(CommandMaker const& cm)
 	std::cout<<cm.help_message()<<'\n';
 }
 
+//lists out the files in files
 void list_files(std::vector<std::string> const& files)
 {
 	if(files.empty())
@@ -207,6 +214,7 @@ void list_files(std::vector<std::string> const& files)
 	std::cout<<'\n';
 }
 
+//finds each command key between arg_start and end, and calls the appropriate commands to change del
 void parse_commands(CommandMaker::delivery& del,InputIter arg_start,InputIter end)
 {
 	if(arg_start!=end)
@@ -248,6 +256,7 @@ void parse_commands(CommandMaker::delivery& del,InputIter arg_start,InputIter en
 	}
 }
 
+//removes files based on the regexes and boundaries given by del
 void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery const& del)
 {
 	if(!del.selections.empty())
@@ -299,6 +308,7 @@ void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery con
 	}
 }
 
+//returns a list of files as specified by the input from between begin and end
 std::vector<std::string> get_files(InputIter begin,InputIter end)
 {
 	bool do_recursive=false;
@@ -370,6 +380,7 @@ std::vector<std::string> get_files(InputIter begin,InputIter end)
 	return files;
 }
 
+//finds the end of the file input list/the beginning of the command input list
 InputIter find_file_list(InputIter begin,InputIter end)
 {
 	for(auto pos=begin;pos!=end;++pos)
@@ -379,11 +390,13 @@ InputIter find_file_list(InputIter begin,InputIter end)
 	return end;
 }
 
+//applies the single image processes
 void do_single(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
 	del.pl.process(files,&del.sr,del.num_threads,del.starting_index,del.do_move,del.quality);
 }
 
+//applies the cut process to the images
 void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
 	using pv=decltype(CommandMaker::delivery::cut_args.min_width);
@@ -479,6 +492,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 	tp.start(&ca);
 }
 
+//applies the splice process
 void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const& files)
 {
 	try
@@ -551,34 +565,7 @@ int main(int argc,InputIter argv)
 	{
 		list_files(files);
 	}
-	if(del.num_threads==0)
-	{
-		del.num_threads=std::thread::hardware_concurrency();
-		if(del.num_threads==0)
-		{
-			del.num_threads=2;
-		}
-	}
-	if(del.starting_index==-1)
-	{
-		del.starting_index=1;
-	}
-	using ui=decltype(del.num_threads);
-	if(del.overridden_num_threads)
-	{
-		del.overridden_num_threads=del.num_threads;
-		del.num_threads=1;
-	}
-	else
-	{
-		del.num_threads=std::min(
-			del.num_threads,
-			ui(std::min(size_t(std::numeric_limits<ui>::max()),files.size())));
-	}
-	if(del.quality==-1)
-	{
-		del.quality==100;
-	}
+	del.fix_values(files.size());
 	std::optional<Loggers::AmountLog> al;
 	Loggers::CoutLog cl;
 	switch(del.lt)

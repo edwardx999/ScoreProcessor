@@ -12,6 +12,7 @@ namespace ScoreProcessor {
 	//Anything in namespace Splice, except standard_heurstics, you should not access directly
 	namespace Splice {
 
+		//class used to manage when files are open and closed by splice
 		class manager {
 		private:
 			cil::CImg<unsigned char> _img;
@@ -63,11 +64,13 @@ namespace ScoreProcessor {
 			}
 		};
 
+		//descriptor of a page's padding and height
 		struct page_layout {
 			unsigned int padding;
 			unsigned int height;
 		};
 
+		//descriptor of an image's true top and bottom (where actual image data is) as opposed to its raw size
 		struct page {
 			cil::CImg<unsigned char> img;
 			unsigned int top;
@@ -77,21 +80,27 @@ namespace ScoreProcessor {
 				return bottom-top;
 			}
 		};
+
+		//the top or bottom of a page as found by kerning images together or plainly finding where the image data starts
 		struct edge {
 			unsigned int raw;
 			unsigned int kerned;
 		};
 
+		//top and bottom edges of a page
 		struct page_desc {
 			edge top;
 			edge bottom;
 		};
 
+		//
 		struct page_break {
 			size_t index;
 			unsigned int padding;
 		};
 
+		//template class used to find the approprate edges of tops and bottoms
+		//and descriptors between middle pages
 		template<typename Top,typename Middle,typename Bottom>
 		class PageEval:private Top,private Middle,private Bottom {
 		public:
@@ -114,9 +123,12 @@ namespace ScoreProcessor {
 		PageEval(Top,Middle,Bottom)->PageEval<Top,Middle,Bottom>;
 	}
 
+	//splices together the pages pointed to by imgs, padded apart by padding
 	cil::CImg<unsigned char> splice_images(Splice::page const* imgs,size_t num,unsigned int padding);
 
 	//returns breaks in backwards order
+	//determines where page breaks should go using Knuth word-wrap algorithm, based on given cost function, and
+	//way of layout out pages
 	template<typename PageDescIter,typename CreateLayout,typename Cost>
 	std::vector<Splice::page_break> nongreedy_break(PageDescIter begin,PageDescIter end,CreateLayout cl,Cost cost)
 	{
@@ -169,6 +181,8 @@ namespace ScoreProcessor {
 		return breaks;
 	}
 
+	//splices together the non-greedily and multi-threadedly, based on the given page descriptors and evaluators
+	//returns the number of pages spliced together
 	template<typename EvalPage,typename CreateLayout,typename Cost>
 	unsigned int splice_pages_parallel(
 		std::vector<Splice::manager>& files,
@@ -399,6 +413,8 @@ namespace ScoreProcessor {
 		};
 	}
 
+	//splices together images using the standard heuristics and dif^3 cost algorithm
+	//cost is 
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
 		char const* output,
