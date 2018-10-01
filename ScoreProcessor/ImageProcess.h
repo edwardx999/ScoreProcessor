@@ -492,7 +492,7 @@ namespace ScoreProcessor {
 				load_s(img,s);
 				for(auto it=this->begin();it<this->end();++it)
 				{
-					edited=edited||(*it)->process(img);
+					edited|=(*it)->process(img);
 				}
 				if(s.first!=s.second)
 				{
