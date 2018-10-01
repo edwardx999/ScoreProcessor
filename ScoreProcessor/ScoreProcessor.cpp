@@ -575,6 +575,10 @@ int main(int argc,InputIter argv)
 			del.num_threads,
 			ui(std::min(size_t(std::numeric_limits<ui>::max()),files.size())));
 	}
+	if(del.quality==-1)
+	{
+		del.quality==100;
+	}
 	std::optional<Loggers::AmountLog> al;
 	Loggers::CoutLog cl;
 	switch(del.lt)
