@@ -3,7 +3,7 @@
 
 namespace ScoreProcessor {
 	namespace Output {
-		MakerTFull<UseTuple,Precheck,LabelId,PatternParser,MoveParser>
+		MakerTFull<UseTuple,Precheck,PatternParser,MoveParser>
 			maker("Specifies the output format\n"
 				"pattern: the output template, see below; tags: o, out, p, pat\n"
 				"move: whether to copy or move files (ignored by multi); tags: m, mv, move\n"
@@ -21,15 +21,15 @@ namespace ScoreProcessor {
 	}
 
 	namespace NumThreads {
-		MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,force_positive>> maker("Controls number of threads, will not exceed number of files","Number of Threads","num");
+		MakerTFull<UseTuple,Precheck,IntegerParser<unsigned int,Name,force_positive>> maker("Controls number of threads, will not exceed number of files","Number of Threads","num");
 	}
 
 	namespace Verbosity {
-		MakerTFull<UseTuple,Precheck,empty,Level> maker("Changes verbosity of output: Silent=0=s, Errors-only=1=e, Count=2=c (default), Loud=3=l","Verbosity","level");
+		MakerTFull<UseTuple,Precheck,Level> maker("Changes verbosity of output: Silent=0=s, Errors-only=1=e, Count=2=c (default), Loud=3=l","Verbosity","level");
 	}
 
 	namespace StrMaker {
-		SingMaker<UseTuple,LabelId,
+		SingMaker<UseTuple,
 			DoubleParser<MinAngle,no_check>,DoubleParser<MaxAngle,no_check>,
 			DoubleParser<AnglePrec>,DoubleParser<PixelPrec>,
 			IntegerParser<unsigned char,Boundary>,FloatParser<Gamma>>
@@ -45,11 +45,11 @@ namespace ScoreProcessor {
 	}
 
 	namespace CGMaker {
-		SingMaker<UseTuple,empty> maker("Converts the image to grayscale","Convert to Grayscale","");
+		SingMaker<UseTuple> maker("Converts the image to grayscale","Convert to Grayscale","");
 	}
 
 	namespace FRMaker {
-		SingMaker<UseTuple,LabelId,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
+		SingMaker<UseTuple,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
 			maker("Fills in a rectangle of specified color\n"
 				"left: left coord of rectangle; tags: l, left\n"
 				"top: top coord of rectangle; tags: t, top\n"
@@ -67,7 +67,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace RotMaker {
-		SingMaker<UseTuple,LabelId,Degrees,Mode,GammaParser> maker(
+		SingMaker<UseTuple,Degrees,Mode,GammaParser> maker(
 			"Rotates the image\n"
 			"angle: angle to rotate the image, ccw is positive, defaults to degrees; tags: d, deg, r, rad\n"
 			"interpolation_mode: see below; tags: i, im, m\n"
@@ -82,7 +82,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace RsMaker {
-		SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
+		SingMaker<UseTuple,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
 			maker("Rescales image by given factor\n"
 				"factor: factor to scale image by; tags: f, fact\n"
 				"interpolation_mode: see below; tags: i, im\n"
@@ -101,7 +101,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace FGMaker {
-		SingMaker<UseTuple,LabelId,
+		SingMaker<UseTuple,
 			IntegerParser<unsigned char,Min>,
 			IntegerParser<unsigned char,Max>,
 			IntegerParser<unsigned char,Replacer>> maker(
@@ -118,15 +118,15 @@ namespace ScoreProcessor {
 	}
 
 	namespace List {
-		MakerTFull<UseTuple,Precheck,empty> maker("Makes program list out files","List Files","");
+		MakerTFull<UseTuple,Precheck> maker("Makes program list out files","List Files","");
 	}
 
 	namespace SIMaker {
-		MakerTFull<UseTuple,Precheck,empty,IntegerParser<unsigned int,Number>> maker("Indicates the starting index to number files","Starting index","index");
+		MakerTFull<UseTuple,Precheck,IntegerParser<unsigned int,Number>> maker("Indicates the starting index to number files","Starting index","index");
 	}
 
 	namespace RgxFilter {
-		MakerTFull<UseTuple,empty,empty2,Regex,KeepMatch> maker(
+		MakerTFull<UseTuple,empty,Regex,KeepMatch> maker(
 			"Filters the input files by a regex pattern\n"
 			"regex: pattern\n"
 			"keep_match: whether matches are kept or removed",
@@ -135,7 +135,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace CCGMaker {
-		MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>,EightWay> maker(
+		MakerTFull<UseTuple,Precheck,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>,EightWay> maker(
 			"Clears clusters of specific constraints\n"
 			"required_color_range: clusters that do not contains a color in this range are replaced;\n"
 			"  tags: rcr\n"
@@ -149,7 +149,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace BlurMaker {
-		SingMaker<UseTuple,empty,FloatParser<StDev,force_positive>,RotMaker::GammaParser> maker(
+		SingMaker<UseTuple,FloatParser<StDev,force_positive>,RotMaker::GammaParser> maker(
 			"Does a gaussian blur of given standard deviation\n"
 			"st_dev: standard deviation of blur\n"
 			"gamma: gamma correction applied",
@@ -158,11 +158,11 @@ namespace ScoreProcessor {
 	}
 
 	namespace EXLMaker {
-		SingMaker<UseTuple,empty> maker("Extracts the first layer with no reallocation (cheap convert to grayscale)","Extract First Layer","");
+		SingMaker<UseTuple> maker("Extracts the first layer with no reallocation (cheap convert to grayscale)","Extract First Layer","");
 	}
 
 	namespace CTMaker {
-		SingMaker<UseTuple,LabelId,Red,Green,Blue> maker(
+		SingMaker<UseTuple,Red,Green,Blue> maker(
 			"Mixes transparent pixels with the given rgb color"
 			"red tags: r, red\n"
 			"green tags: g, green\n"
@@ -173,7 +173,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace RBMaker {
-		SingMaker<UseTuple,empty,FloatParser<Tol,force_positive>> maker(
+		SingMaker<UseTuple,FloatParser<Tol,force_positive>> maker(
 			"Flood fills pixels from edge with tolerance of black with white\n"
 			"Neither reliable nor safe and you should probably not use it",
 			"Remove Border (DANGER)",
@@ -181,7 +181,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace HPMaker {
-		SingMaker<UseTuple,LabelId,Left,Right,Tol,BGParser> maker(
+		SingMaker<UseTuple,Left,Right,Tol,BGParser> maker(
 			"Pads the left and right sides of image.\n"
 			"left: left padding, use k to keep padding, or r to assign equal to right,\n"
 			"  use lpw or lph to calculate it as a proportion of width or height respectively;\n"
@@ -199,14 +199,14 @@ namespace ScoreProcessor {
 	}
 
 	namespace VPMaker {
-		extern SingMaker<UseTuple,LabelId,Top,Bottom,Tol,HPMaker::BGParser> maker(
+		extern SingMaker<UseTuple,Top,Bottom,Tol,HPMaker::BGParser> maker(
 			"Pads the top and bottom sides of image.\n"
 			"top: top padding, use k to keep padding, or b to assign equal to bottom,\n"
 			"  use lpw or lph to calculate it as a proportion of width or height respectively;\n"
 			"  tags: t, top, tph, tpw\n"
 			"bottom: bottom padding, use k to keep padding, or t to assign equal to top,\n"
 			"  use rpw or rph to calculate it as a proportion of width or height respectively;\n"
-			"  tags: b, bottom, bph, bpw\n"
+			"  tags: b, bottom, bot, bph, bpw\n"
 			"tolerance: this many pixels below background threshold is considered the side,\n"
 			"  use tpw or tph to calculate it as a proportion of width or height respectively;\n"
 			"  tags: tol, tph, tpw\n"
@@ -217,7 +217,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace RCGMaker {
-		SingMaker<UseTuple,LabelId,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker(
+		SingMaker<UseTuple,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker(
 			"Colors are scaled such that values less than or equal to min become 0,\n"
 			"and values greater than or equal to max becomes 255.\n"
 			"They are scaled based on their distance from mid.\n"
@@ -230,18 +230,18 @@ namespace ScoreProcessor {
 	}
 
 	namespace HSMaker {
-		SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker("specific to a problem with my scanner; don't use","Horizontal Shift","side direction background=128");
+		SingMaker<UseTuple,Side,Direction,HPMaker::BGParser> maker("specific to a problem with my scanner; don't use","Horizontal Shift","side direction background=128");
 	}
 
 	namespace VSMaker {
-		SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker("specific to a problem with my scanner; don't use","Vertical Shift","side direction background=128");
+		SingMaker<UseTuple,Side,Direction,HPMaker::BGParser> maker("specific to a problem with my scanner; don't use","Vertical Shift","side direction background=128");
 	}
 
 	namespace SpliceMaker {
 		MakerTFull<
 			UseTuple,
 			MultiCommand<CommandMaker::delivery::do_state::do_splice>,
-			LabelId,
+			
 			pv_parser<HP>,pv_parser<OP>,pv_parser<MP>,pv_parser<OH>,
 			FloatParser<EXC>,FloatParser<PW>,FloatParser<BG>> maker(
 				"Splices the pages together assuming right alignment.\n"
@@ -271,7 +271,6 @@ namespace ScoreProcessor {
 		MakerTFull<
 			UseTuple,
 			MultiCommand<CommandMaker::delivery::do_state::do_cut>,
-			LabelId,
 			pv_parser<MW>,pv_parser<MH>,pv_parser<MV>,FloatParser<HW>,UCharParser<BG>> maker
 			(
 				"Cuts the image into separate systems\n"
@@ -291,7 +290,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace SmartScale {
-		SingMaker<UseTuple,LabelId,FloatParser<Ratio>,Input> maker(
+		SingMaker<UseTuple,FloatParser<Ratio>,Input> maker(
 			"Scales using an neural network\n"
 			"factor tag: f\n"
 			"network_path tag: net\n",
@@ -300,7 +299,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace Cropper {
-		SingMaker<UseTuple,Label,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker(
+		SingMaker<UseTuple,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker(
 			"Crops the image\n"
 			"tags: l, t, r, b",
 			"Crop",
@@ -308,6 +307,6 @@ namespace ScoreProcessor {
 	}
 
 	namespace Quality {
-		MakerTFull<UseTuple,Precheck,empty2,IntParser<Value>> maker("Set the quality of the save file [0,100], only affects jpegs","Quality","quality");
+		MakerTFull<UseTuple,Precheck,IntParser<Value>> maker("Set the quality of the save file [0,100], only affects jpegs","Quality","quality");
 	}
 }

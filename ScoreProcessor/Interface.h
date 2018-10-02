@@ -49,7 +49,7 @@ namespace ScoreProcessor {
 			enum log_type {
 				unassigned_log,
 				quiet, //no output
-				errors_only, 
+				errors_only,
 				count, //count of files completed
 				full_message //name of files started and completed output
 			};
@@ -73,7 +73,7 @@ namespace ScoreProcessor {
 			unsigned int num_threads; //num threads to use
 			//some processes (like SmartScale) may need multithreading in one image 
 			//and thus override the across image thread count
-			unsigned int overridden_num_threads; 
+			unsigned int overridden_num_threads;
 			bool list_files; //whether files should be listed out to the user
 			int quality; //[0,100] jpeg file quality
 			PMINLINE delivery():
@@ -90,7 +90,7 @@ namespace ScoreProcessor {
 			//num_threads is limited by num_files if the thread_count has not been overridden by a process
 			void fix_values(size_t num_files)
 			{
-				if(num_threads==0) 
+				if(num_threads==0)
 				{
 					num_threads=std::thread::hardware_concurrency();
 					if(num_threads==0)
@@ -155,36 +155,31 @@ namespace ScoreProcessor {
 	struct empty3 {};
 
 	struct no_check {
-		template<typename T,typename Name>
-		static constexpr void check(T,Name const&)
+		template<typename T>
+		static constexpr void check(T)
 		{}
 	};
 
 	//has check to assert that given values are non-negative
 	struct no_negatives {
-		template<typename T,typename Name>
-		static void check(T val,Name const& n)
+		template<typename T>
+		static void check(T val)
 		{
 			if(val<0)
 			{
-				std::string err_msg("Value for ");
-				err_msg.append(n.name()).append(" must be non-negative");
-				throw std::invalid_argument(err_msg);
+				throw std::invalid_argument("Value must be non-negative");
 			}
 		}
 	};
 
 	//has check to assert that given values are positive
 	struct force_positive {
-		template<typename T,typename Name>
-		static void check(T n,Name const& nm)
+		template<typename T>
+		static void check(T n)
 		{
 			if(n<=0)
 			{
-				std::string err_msg("Value for ");
-				err_msg.append(nm.name());
-				err_msg.append(" must be positive");
-				throw std::invalid_argument(err_msg);
+				throw std::invalid_argument("Value must be positive");
 			}
 		}
 	};
@@ -193,7 +188,6 @@ namespace ScoreProcessor {
 	//and checks its input using Check::check
 	template<typename Base,typename Check=no_negatives>
 	struct FloatParser:public Base,private Check {
-		using Base::name;
 		float parse(char const* sv) const
 		{
 			float f;
@@ -221,11 +215,9 @@ namespace ScoreProcessor {
 			};
 			if(err||find_bad())
 			{
-				std::string err_msg("Invalid input for ");
-				err_msg.append(Base::name());
-				throw std::invalid_argument(err_msg);
+				throw std::invalid_argument("Invalid input");
 			}
-			Check::check(f,static_cast<Base const&>(*this));
+			Check::check(f);
 			return f;
 		}
 	};
@@ -234,7 +226,6 @@ namespace ScoreProcessor {
 	//and checks its input using Check::check
 	template<typename Base,typename Check=no_negatives>
 	struct DoubleParser:public Base,private Check {
-		using Base::name;
 		double parse(char const* sv) const
 		{
 			double f;
@@ -259,11 +250,9 @@ namespace ScoreProcessor {
 			};
 			if(err||find_bad())
 			{
-				std::string err_msg("Invalid input for ");
-				err_msg.append(Base::name());
-				throw std::invalid_argument(err_msg);
+				throw std::invalid_argument("Invalid input");
 			}
-			Check::check(f,static_cast<Base const&>(*this));
+			Check::check(f);
 			return f;
 		}
 
@@ -273,27 +262,25 @@ namespace ScoreProcessor {
 	//and checks its input using Check::check
 	template<typename T,typename Base,typename Check=no_check>
 	struct IntegerParser:public Base,private Check {
+	public:
 		T parse(char const* in) const
 		{
 			T t;
 			exlib::conv_res res=exlib::parse(in,t);
 			if(res.ce==exlib::conv_error::invalid_characters)
 			{
-				std::string err_msg("Invalid argument for ");
-				err_msg.append(Base::name());
-				throw std::invalid_argument(err_msg);
+				throw std::invalid_argument("Invalid argument");
 			}
 			if(res.ce==exlib::conv_error::out_of_range)
 			{
-				std::string err_msg("Argument for ");
-				err_msg.append(Base::name());
-				err_msg.append(" must be in range [");
-				constexpr auto min=exlib::to_string<std::numeric_limits<T>::min()>();
-				err_msg.append(min.data(),min.size()-1);
-				constexpr auto max=exlib::to_string<std::numeric_limits<T>::max()>();
-				err_msg.append(",").append(max.data(),max.size()-1);
-				err_msg.append("]");
-				throw std::invalid_argument(err_msg);
+				static constexpr auto err_msg=exlib::str_concat(
+					"Argument must be in range [",
+					exlib::to_string<std::numeric_limits<T>::min()>(),
+					",",
+					exlib::to_string<std::numeric_limits<T>::max()>(),
+					"]"
+				);
+				throw std::invalid_argument(err_msg.data());
 			}
 			for(auto it=res.last;;++it)
 			{
@@ -304,12 +291,10 @@ namespace ScoreProcessor {
 				}
 				if(c!=' ')
 				{
-					std::string err_msg("Invalid trailing characters for ");
-					err_msg.append(Base::name());
-					throw std::invalid_argument(err_msg);
+					throw std::invalid_argument("Invalid trailing characters");
 				}
 			}
-			Check::check(t,static_cast<Base const&>(*this));
+			Check::check(t);
 			return t;
 		}
 	};
@@ -326,18 +311,17 @@ namespace ScoreProcessor {
 	//parses a float and ensures it is between 0 and 1
 	//and allows % at the end to input percentages
 	//n: object to use get name from to throw an appropriate error
-	template<typename Name>
-	float parse01(char const* cp,Name const& n)
+	inline float parse01(char const* cp)
 	{
 		float v;
 		auto res=exlib::parse(cp,v);
 		if(res.ce==exlib::conv_error::invalid_characters)
 		{
-			throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
+			throw std::invalid_argument("Invalid characters");
 		}
 		if(res.ce==exlib::conv_error::out_of_range)
 		{
-			throw std::invalid_argument(std::string("Argument out of range for ").append(n.name()));
+			throw std::invalid_argument("Argument out of range");
 		}
 		if(*res.last=='%')
 		{
@@ -347,23 +331,114 @@ namespace ScoreProcessor {
 		while(true)
 		{
 			if(*res.last=='\0') break;
-			if(*res.last!=' ') throw std::invalid_argument(std::string("Invalid argument for ").append(n.name()));
+			if(*res.last!=' ') throw std::invalid_argument("Invalid argument");
 			++res.last;
 		}
 		if(v<0||v>1)
 		{
-			throw std::invalid_argument(std::string("Argument for ").append(n.name()).append(" must be in range [0,1]"));
+			throw std::invalid_argument("Argument must be in range [0,1]");
 		}
 		return v;
 	}
 
-	//if LabelId defines a function id(InputType,(optional)size_t prefix_len), this function returns a size_t in range [0,MaxArgs)
-	//indicating the index of the tag, or throws an exception indicating the tag does not exist
+	namespace {
+		[[noreturn]]
+		PMINLINE void bad_pf(InputType sv,size_t len)
+		{
+			std::string err_msg("Unknown prefix ");
+			err_msg.append(sv,len);
+			throw std::invalid_argument(err_msg);
+		}
+
+		class lookup_entry {
+			char const* _key;
+			size_t _index;
+		public:
+			PMINLINE constexpr lookup_entry(char const* key,size_t index):_key(key),_index(index)
+			{}
+			PMINLINE constexpr char const* key() const
+			{
+				return _key;
+			}
+			PMINLINE constexpr size_t index() const
+			{
+				return _index;
+			}
+		};
+
+		using le=lookup_entry;
+
+		template<size_t N>
+		using ltable=std::array<lookup_entry,N>;
+
+		struct lcomp {
+			PMINLINE constexpr int operator()(InputType sv,lookup_entry le) const
+			{
+				for(size_t i=0;;++i)
+				{
+					if(sv[i]==':')
+					{
+						return le.key()[i]==0?0:-1;
+					}
+					if(le.key()[i]==0)
+					{
+						return 1;
+					}
+					if(sv[i]<le.key()[i])
+					{
+						return -1;
+					}
+					if(le.key()[i]<sv[i])
+					{
+						return 1;
+					}
+				}
+			}
+			PMINLINE constexpr bool operator()(lookup_entry a,lookup_entry b) const
+			{
+				return exlib::less<char const*>()(a.key(),b.key());
+			}
+		};
+
+		template<size_t N>
+		constexpr auto make_ltable(ltable<N> const& arr)
+		{
+			return exlib::sorted(arr,lcomp());
+		}
+
+		template<typename... Args>
+		constexpr auto make_ltable(Args... args)
+		{
+			return make_ltable(ltable<sizeof...(args)>{
+				{
+					args...
+				}});
+		}
+
+		template<size_t N>
+		constexpr auto lfind(ltable<N> const& arr,InputType target)
+		{
+			return exlib::binary_find(arr.data(),arr.data()+arr.size(),target,lcomp());
+		}
+
+		template<size_t N>
+		PMINLINE size_t lookup_prefix(ltable<N> const& arr,InputType pf,size_t pflen)
+		{
+			auto idx=lfind(arr,pf);
+			if(idx!=arr.data()+arr.size())
+			{
+				return idx->index();
+			}
+			bad_pf(pf,pflen);
+		}
+	}
+
 	//otherwise, the parser will just go through arguments in order
 	//Each type of ArgParsers must define 
 	//  - a function Type parse(char const*,(optional)size_t prefix_len)
+	//  - a static constexpr member name that is convertible to std::string_view, preferably char const*
 	//  - optionally a function (constexpr) ConvertibleToType def_val() that returns the default value
-	//  - a function constexpr CompatibleWithString name() (if LabelId is used)
+	//  - optionally a static constexpr member char (const)* labels[] that identifies labels for this type
 	//If parse accepts a second real_start argument, the first arg is of the whole input and prefix_len
 	//is the length of the prefix not including the colon separator. If there is no prefix, prefix_len is -1. 
 	//Otherwise the first string is only a view past the colon.
@@ -377,14 +452,14 @@ namespace ScoreProcessor {
 	// Then, the number of args is checked to be between MinArgs and MaxArgs.
 	//   MinArgs is found to be the first N ArgParsers which do not define def_val
 	//   MaxArgs is equal to sizeof...(ArgParsers)
-	//  If LabelId does not define id(...), then the arguments are simply evaluated in order
-	//  If LabelId does define id(...), then the arguments are evaluated in order until an argument with a prefix is found
+	//  If every ArgParser defines labels, then the arguments are simply evaluated in order.
+	//  Otherwise, the arguments are evaluated in order until an argument with a prefix is found
 	//  After this prefixed arguments only are considered (if a prefix is not found now, an exception is thrown).
 	//  If a argument is given repeatedly an exception is thrown, or if an argument with no default value is unfulfilled,
 	//  an exception is thrown.
 	//  The delivery and the parsed arguments are then supplied to UseTuple::use_tuple(...)
-	template<typename UseTuple,typename Precheck,typename LabelId,typename... ArgParsers>
-	class MakerTFull:protected LabelId,protected Precheck,protected UseTuple,protected std::tuple<ArgParsers...>,public CommandMaker {
+	template<typename UseTuple,typename Precheck,typename... ArgParsers>
+	class MakerTFull:protected Precheck,protected UseTuple,protected std::tuple<ArgParsers...>,public CommandMaker {
 	public:
 		using CommandMaker::CommandMaker;
 	private:
@@ -506,16 +581,33 @@ namespace ScoreProcessor {
 			constexpr static int const value=val<Precheck>(0);
 		};
 
+		template<typename T>
+		struct has_labels {
+		private:
+			template<typename U>
+			constexpr static auto concattable(int) -> decltype(exlib::concat(U::labels,std::array<char const*,0>()),bool())
+			{
+				return true;
+			}
+			template<typename U>
+			constexpr static auto concattable(...)
+			{
+				return false;
+			}
+		public:
+			static constexpr bool value=concattable<T>(0);
+		};
 	public:
-		constexpr static size_t const MinArgs=defaults<ArgParsers...>();
-		constexpr static size_t const MaxArgs=sizeof...(ArgParsers);
+		constexpr static size_t MinArgs=defaults<ArgParsers...>();
+		constexpr static size_t MaxArgs=sizeof...(ArgParsers);
+		constexpr static bool enable_labels=sizeof...(ArgParsers)>0&&std::conjunction<has_labels<ArgParsers>...>::value;
 	protected:
 		using MyParsers=std::tuple<ArgParsers...>;
 		using MyArgs=std::tuple<decltype(check_parse<ArgParsers>(0))...>;
 		static_assert(std::tuple_size<MyParsers>::value==MaxArgs);
 		static_assert(std::tuple_size<MyArgs>::value==MaxArgs);
 	private:
-		constexpr MyParsers&as_parsers()
+		constexpr MyParsers& as_parsers()
 		{
 			return static_cast<MyParsers&>(*this);
 		}
@@ -532,46 +624,47 @@ namespace ScoreProcessor {
 			}
 		}
 
-		template<size_t N>
-		void eval_arg_at(MyArgs& mt,InputType str,size_t prefix_len)
-		{
-			static_assert(N<MaxArgs,"Invalid tuple index");
-			std::get<N>(mt)=std::get<N>(as_parsers()).parse(str,prefix_len);
-		}
-
-		template<size_t N>
-		void eval_arg_at(MyArgs& mt,InputType str)
-		{
-			static_assert(N<MaxArgs,"Invalid tuple index");
-			std::get<N>(mt)=std::get<N>(as_parsers()).parse(str);
-		}
-
-		template<size_t N>
-		void find_arg_h(MyArgs& mt,InputType str,size_t prefix_len)
-		{
-			if constexpr(accepts_prefix<std::decay<decltype(std::get<N>(as_parsers()))>::type>::value)
-			{
-				eval_arg_at<N>(mt,str,prefix_len);
-			}
-			else
-			{
-				eval_arg_at<N>(mt,str+prefix_len+1);
-			}
-		}
-
 		template<size_t I>
 		struct parse_n {
+			using Parser=std::remove_reference_t<decltype(std::get<I>(std::declval<MyParsers>()))>;
+			static void eval_arg(MyArgs& ma,MyParsers& mp,InputType str)
+			{
+				try
+				{
+					std::get<I>(ma)=std::get<I>(mp).parse(str);
+				}
+				catch(std::exception const& ex)
+				{
+					std::string err_msg(Parser::name);
+					err_msg.append(": ");
+					err_msg.append(ex.what());
+					throw std::invalid_argument(err_msg);
+				}
+			}
+			static void eval_arg(MyArgs& ma,MyParsers& mp,InputType str,size_t prefix_len)
+			{
+				try
+				{
+					if constexpr(accepts_prefix<Parser>::value)
+					{
+						std::get<I>(ma)=std::get<I>(mp).parse(str,prefix_len);
+					}
+					else
+					{
+						std::get<I>(ma)=std::get<I>(mp).parse(str+prefix_len+1);
+					}
+				}
+				catch(std::exception const& ex)
+				{
+					std::string err_msg(Parser::name);
+					err_msg.append(": ");
+					err_msg.append(ex.what());
+					throw std::invalid_argument(err_msg);
+				}
+			}
 			void operator()(MyArgs& ma,MyParsers& mp,InputType str,size_t prefix_len) const
 			{
-				using Parser=std::remove_reference_t<decltype(std::get<I>(mp))>;
-				if constexpr(accepts_prefix<Parser>::value)
-				{
-					std::get<I>(ma)=std::get<I>(mp).parse(str,prefix_len);
-				}
-				else
-				{
-					std::get<I>(ma)=std::get<I>(mp).parse(str+prefix_len+1);
-				}
+				eval_arg(ma,mp,str,prefix_len);
 			}
 		};
 
@@ -581,41 +674,22 @@ namespace ScoreProcessor {
 			return std::make_tuple(parse_n<Is>()...);
 		}
 
-		template<size_t N>
 		void find_arg(size_t i,MyArgs& mt,InputType str,size_t prefix_len)
 		{
 			constexpr static auto parse_table=make_parse_table(std::make_index_sequence<MaxArgs>());
 			exlib::apply_ind(i,parse_table,mt,as_parsers(),str,prefix_len);
 		}
 
-		template<size_t... I>
-		static constexpr auto name_table(std::index_sequence<I...>)
+		static constexpr auto name_table()
 		{
-			constexpr std::array<std::string_view,MaxArgs> arr{{
-					std::string_view(std::remove_reference_t<decltype(std::get<I>(std::declval<MyParsers>()))>().name())...}};
+			constexpr std::array<std::string_view,MaxArgs> arr{{ArgParsers::name...}};
 			return arr;
 		}
 
-		template<size_t N>
-		constexpr std::string_view find_arg_name(size_t i)
+		static constexpr std::string_view find_arg_name(size_t i)
 		{
-			constexpr static auto table=name_table(std::make_index_sequence<MaxArgs>());
+			constexpr static auto table=name_table();
 			return table[i];
-			/*if constexpr(N<MaxArgs)
-			{
-				if(i==N)
-				{
-					return std::get<N>(as_parsers()).name();
-				}
-				else
-				{
-					find_arg_name<N+1>(i);
-				}
-			}
-			else
-			{
-				throw std::runtime_error("Name not found, index too high");
-			}*/
 		}
 
 	public:
@@ -638,37 +712,39 @@ namespace ScoreProcessor {
 
 	private:
 
-		struct has_labels {
-		private:
-			template<typename U>
-			constexpr static auto val(int) -> decltype(size_t(std::declval<U>().id(InputType(),size_t())),int())
-			{
-				return 2;
-			}
-			template<typename U>
-			constexpr static auto val(int) -> decltype(size_t(std::declval<U>().id(std::string_view())),int())
-			{
-				return 1;
-			}
-			template<typename>
-			constexpr static int val(...)
-			{
-				return 0;
-			}
-		public:
-			constexpr static bool const value=val<LabelId>(0);
-		};
+		template<typename Parser>
+		static constexpr size_t num_labels(){
+			return exlib::array_size<decltype(Parser::labels)>::value;
+		}
+		template<typename Parser,size_t I,size_t... Is>
+		static constexpr auto make_lookup_entries(std::index_sequence<Is...>)
+		{
+			return std::array<lookup_entry,sizeof...(Is)>{
+				{
+					le(Parser::labels[Is],I)...
+				}};
+		}
+
+		template<typename T,size_t F>
+		static constexpr auto make_lookup_table(std::index_sequence<F>)
+		{
+			return make_lookup_entries<T,F>(std::make_index_sequence<num_labels<T>()>());
+		}
+
+		template<typename First,typename... Rest,size_t F,size_t... R>
+		static constexpr auto make_lookup_table(std::index_sequence<F,R...>)
+		{
+			return exlib::concat(
+				make_lookup_entries<First,F>(
+					std::make_index_sequence<num_labels<First>()>()),
+				make_lookup_table<Rest...>(std::index_sequence<R...>()));
+		}
 
 		size_t find_label(InputType data,size_t len)
 		{
-			if constexpr(has_labels::value==1)
-			{
-				return LabelId::id(data,len);
-			}
-			else
-			{
-				return LabelId::id(data);
-			}
+			static constexpr auto lookup_table=
+				make_ltable(make_lookup_table<ArgParsers...>(std::make_index_sequence<sizeof...(ArgParsers)>()));
+			return lookup_prefix(lookup_table,data,len);
 		}
 
 		template<size_t N>
@@ -678,7 +754,7 @@ namespace ScoreProcessor {
 			{
 				if(N<n)
 				{
-					eval_arg_at<N>(mt,begin[N]);
+					parse_n<N>::eval_arg(mt,as_parsers(),begin[N]);
 					ordered_args<N+1>(begin,n,mt);
 				}
 			}
@@ -689,7 +765,7 @@ namespace ScoreProcessor {
 			if(fulfilled[index])
 			{
 				std::string err_msg("Argument already given for ");
-				err_msg.append(find_arg_name<0>(index));
+				err_msg.append(find_arg_name(index));
 				throw std::invalid_argument(err_msg);
 			}
 			fulfilled[index]=true;
@@ -699,7 +775,7 @@ namespace ScoreProcessor {
 		{
 			auto const index=find_label(data,prefix_len);
 			throw_if_repeat(index,fulfilled);
-			find_arg<0>(index,mt,data,prefix_len);
+			find_arg(index,mt,data,prefix_len);
 		}
 
 		template<size_t N>
@@ -713,7 +789,7 @@ namespace ScoreProcessor {
 					auto const prefix=find_prefix(sv);
 					if(prefix==-1)
 					{
-						find_arg_h<N>(mt,sv,prefix);
+						parse_n<N>::eval_arg(mt,as_parsers(),sv,prefix);
 						fulfilled[N]=true;
 						unordered_args<N+1>(begin,n,mt,fulfilled);
 					}
@@ -740,20 +816,19 @@ namespace ScoreProcessor {
 			}
 		}
 
-		template<size_t N>
 		void check_required(bool fulfilled[])
 		{
-			if constexpr(N<MinArgs)
+			for(size_t i=0;i<MinArgs;++i)
 			{
-				if(!fulfilled[N])
+				if(!fulfilled[i])
 				{
 					std::string err_msg("Missing input for ");
-					err_msg.append(std::get<N>(as_parsers()).name());
+					err_msg.append(find_arg_name(i));
 					throw std::invalid_argument(err_msg);
 				}
-				check_required<N+1>(fulfilled);
 			}
 		}
+
 		template<size_t I>
 		constexpr auto get_def_val(int) -> decltype(std::get<I>(std::declval<MyParsers>()).def_val())
 		{
@@ -790,11 +865,11 @@ namespace ScoreProcessor {
 			auto mt=init_args();
 			if constexpr(MaxArgs>0)
 			{
-				if constexpr(has_labels::value)
+				if constexpr(enable_labels)
 				{
 					bool fulfilled[MaxArgs]{false};
 					unordered_args<0>(begin,n,mt,fulfilled);
-					check_required<0>(fulfilled);
+					check_required(fulfilled);
 				}
 				else
 				{
@@ -840,110 +915,18 @@ namespace ScoreProcessor {
 		}
 	};
 
-	template<typename UseTuple,typename LabelId,typename... ArgParsers>
-	using SingMaker=MakerTFull<UseTuple,SingleCheck,LabelId,ArgParsers...>;
+	template<typename UseTuple,typename... ArgParsers>
+	using SingMaker=MakerTFull<UseTuple,SingleCheck,ArgParsers...>;
 
-	[[noreturn]]
-	PMINLINE void bad_pf(InputType sv,size_t len)
-	{
-		std::string err_msg("Unknown prefix ");
-		err_msg.append(sv,len);
-		throw std::invalid_argument(err_msg);
-	}
-
-	namespace {
-		class lookup_entry {
-			char const* _key;
-			size_t _index;
-		public:
-			PMINLINE constexpr lookup_entry(char const* key,size_t index):_key(key),_index(index)
-			{}
-			PMINLINE constexpr char const* key() const
-			{
-				return _key;
-			}
-			PMINLINE constexpr size_t index() const
-			{
-				return _index;
-			}
-		};
-
-		using le=lookup_entry;
-
-		template<size_t N>
-		using ltable=std::array<lookup_entry,N>;
-
-		struct lcomp {
-			PMINLINE constexpr int operator()(InputType sv,lookup_entry le) const
-			{
-				for(size_t i=0;;++i)
-				{
-					if(sv[i]==':')
-					{
-						return le.key()[i]==0?0:-1;
-					}
-					if(le.key()[i]==0)
-					{
-						return 1;
-					}
-					if(sv[i]<le.key()[i])
-					{
-						return -1;
-					}
-					if(le.key()[i]<sv[i])
-					{
-						return 1;
-					}
-				}
-			}
-			PMINLINE constexpr bool operator()(lookup_entry a,lookup_entry b) const
-			{
-				return exlib::less<char const*>()(a.key(),b.key());
-			}
-		};
-
-		template<size_t N>
-		constexpr auto make_ltable(ltable<N> const& arr)
-		{
-			return exlib::sorted(arr,lcomp());
-		}
-
-		template<typename... Args>
-		constexpr auto make_ltable(Args... args)
-		{
-			return make_ltable(ltable<sizeof...(args)>{
-				{
-					args...
-				}});
-		}
-
-		template<size_t N>
-		constexpr auto lfind(ltable<N> const& arr,InputType target)
-		{
-			return exlib::binary_find(arr.begin(),arr.end(),target,lcomp());
-		}
-
-		template<size_t N>
-		PMINLINE size_t find_prefix(ltable<N> const& arr,InputType pf,size_t pflen)
-		{
-			auto idx=lfind(arr,pf);
-			if(idx!=arr.end())
-			{
-				return idx->index();
-			}
-			bad_pf(pf,pflen);
-		}
-	}
-
-#define cnnm(n) static PMINLINE constexpr std::string_view name() { return (n); }
+#define cnnm(n) static constexpr char const* name=n
+#define clbl(...) static constexpr char const* labels[]={__VA_ARGS__}
 #define cndf(n) static PMINLINE constexpr auto def_val() { return (n); }
 #define ncdf(n) static PMINLINE auto def_val() { return (n); }
 
 	namespace Output {
 
 		struct PatternParser {
-			cndf("%w")
-				PMINLINE constexpr InputType parse(InputType s)
+			PMINLINE constexpr InputType parse(InputType s)
 			{
 				if(s[0]=='-'&&s[1]=='-')
 				{
@@ -951,7 +934,9 @@ namespace ScoreProcessor {
 				}
 				return s;
 			}
-			cnnm("pattern")
+			clbl("p","pat","o","out");
+			cnnm("pattern");
+			cndf("%w")
 		};
 
 		struct MoveParser {
@@ -964,12 +949,13 @@ namespace ScoreProcessor {
 				}
 				return false;
 			}
+			clbl("mv","move","m");
+			cnnm("move");
 			cndf(false)
-				cnnm("move")
+
 		};
 
-		class UseTuple {
-		public:
+		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,InputType input,bool do_move)
 			{
 				if(*input==0)
@@ -982,17 +968,6 @@ namespace ScoreProcessor {
 				}
 				del.sr.assign(input);
 				del.do_move=do_move;
-			}
-		};
-
-		struct LabelId {
-			static PMINLINE size_t id(InputType sv,size_t len)
-			{
-				static constexpr auto table=make_ltable(
-					le("mv",1),le("move",1),le("m",1),
-					le("o",0),le("out",0),
-					le("p",0),le("pat",0));
-				return find_prefix(table,sv,len);
 			}
 		};
 
@@ -1010,8 +985,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern MakerTFull<UseTuple,Precheck,LabelId,PatternParser,MoveParser>
-			maker;
+		extern MakerTFull<UseTuple,Precheck,PatternParser,MoveParser> maker;
 	}
 
 	namespace NumThreads {
@@ -1026,7 +1000,7 @@ namespace ScoreProcessor {
 		};
 
 		struct Name {
-			cnnm("number of threads")
+			cnnm("number of threads");
 		};
 		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,unsigned int nt)
@@ -1034,7 +1008,7 @@ namespace ScoreProcessor {
 				del.num_threads=nt;
 			}
 		};
-		extern MakerTFull<UseTuple,Precheck,empty2,IntegerParser<unsigned int,Name,force_positive>> maker;
+		extern MakerTFull<UseTuple,Precheck,IntegerParser<unsigned int,Name,force_positive>> maker;
 	}
 
 	namespace Verbosity {
@@ -1048,6 +1022,7 @@ namespace ScoreProcessor {
 			}
 		};
 		struct Level {
+			cnnm("level");
 			static PMINLINE auto parse(char const* sv)
 			{
 				auto error=[=]()
@@ -1086,49 +1061,39 @@ namespace ScoreProcessor {
 			}
 		};
 		extern
-			MakerTFull<UseTuple,Precheck,empty,Level> maker;
+			MakerTFull<UseTuple,Precheck,Level> maker;
 	}
 
 	namespace StrMaker {
 		struct MinAngle {
-			cnnm("min angle")
-				cndf(double(-5))
+			cnnm("min angle");
+			clbl("min","mn","mna");
+			cndf(double(-5))
 		};
 		struct MaxAngle {
-			cnnm("max angle")
-				cndf(double(5))
+			cnnm("max angle");
+			clbl("max","mx","mxa");
+			cndf(double(5))
 		};
 		struct AnglePrec {
-			cnnm("angle precision")
-				cndf(double(0.1))
+			cnnm("angle precision");
+			clbl("a","ap");
+			cndf(double(0.1))
 		};
 		struct PixelPrec {
-			cnnm("pixel precision")
-				cndf(double(1))
+			cnnm("pixel precision");
+			clbl("p","pp");
+			cndf(double(1))
 		};
 		struct Boundary {
-			cnnm("boundary")
-				cndf(unsigned char(128))
+			cnnm("boundary");
+			clbl("b");
+			cndf(unsigned char(128))
 		};
 		struct Gamma {
-			cnnm("gamma")
-				cndf(float(2))
-		};
-
-		struct LabelId {
-			PMINLINE static size_t id(InputType sv,size_t len)
-			{
-				static constexpr auto table=make_ltable(ltable<13>
-					(
-						{le("a",2),le("ap",2),
-						le("b",4),
-						le("g",5),le("gam",5),
-						le("max",1),
-						le("min",0),le("mn",0),le("mna",0),
-						le("mx",1),le("mxa",1),
-						le("p",3),le("pp",3)}));
-				return find_prefix(table,sv,len);
-			}
+			cnnm("gamma");
+			clbl("g","gam");
+			cndf(float(2))
 		};
 
 		struct UseTuple {
@@ -1146,7 +1111,7 @@ namespace ScoreProcessor {
 			}
 		};
 		extern
-			SingMaker<UseTuple,LabelId,
+			SingMaker<UseTuple,
 			DoubleParser<MinAngle,no_check>,DoubleParser<MaxAngle,no_check>,
 			DoubleParser<AnglePrec>,DoubleParser<PixelPrec>,
 			IntegerParser<unsigned char,Boundary>,FloatParser<Gamma>>
@@ -1161,31 +1126,34 @@ namespace ScoreProcessor {
 				del.pl.add_process<ChangeToGrayscale>();
 			}
 		};
-		extern SingMaker<UseTuple,empty> maker;
+		extern SingMaker<UseTuple> maker;
 	}
 
 	namespace FRMaker {
 
 		struct Left {
-			cnnm("left")
+			clbl("left","l");
+			cnnm("left");
 		};
 		struct Top {
-			cnnm("top")
+			clbl("t","top");
+			cnnm("top");
 		};
 		struct flagged {
 			bool flag=false;
 			signed int value;
 		};
 		struct Right {
-			cnnm("horizontal extent")
-				PMINLINE static flagged parse(char const* sv,size_t prefix)
+			cnnm("horizontal extent");
+			clbl("r","right");
+			struct Coord {
+				cnnm("right");
+			};
+			struct Width {
+				cnnm("width");
+			};
+			PMINLINE static flagged parse(char const* sv,size_t prefix)
 			{
-				struct Coord {
-					cnnm("right")
-				};
-				struct Width {
-					cnnm("width")
-				};
 				char const* to_parse=sv+prefix+1;
 				if(prefix!=-1&&sv[0]=='w')
 				{
@@ -1196,15 +1164,16 @@ namespace ScoreProcessor {
 		};
 
 		struct Bottom {
-			cnnm("vertical extent")
-				PMINLINE static flagged parse(char const* sv,size_t prefix)
+			cnnm("vertical extent");
+			clbl("b","bot","bottom");
+			struct Coord {
+				cnnm("bottom");
+			};
+			struct Height {
+				cnnm("height");
+			};
+			PMINLINE static flagged parse(char const* sv,size_t prefix)
 			{
-				struct Coord {
-					cnnm("bottom")
-				};
-				struct Height {
-					cnnm("height")
-				};
 				char const* to_parse=sv+prefix+1;
 				if(prefix!=-1&&sv[0]=='h')
 				{
@@ -1222,9 +1191,9 @@ namespace ScoreProcessor {
 		};
 
 		struct Color {
-			cnnm("color")
-				cndf(color())
-				PMINLINE static color parse(char const* data)
+			cnnm("color");
+			clbl("c","clr","color");
+			PMINLINE static color parse(char const* data)
 			{
 				auto error=[](auto res,auto name)
 				{
@@ -1322,11 +1291,13 @@ namespace ScoreProcessor {
 				clr.num_layers=4;
 				return clr;
 			}
+			cndf(color())
 		};
 
 		struct Origin {
-			cnnm("origin")
-				PMINLINE static FillRectangle::origin_reference parse(char const* sv)
+			cnnm("origin");
+			clbl("o","or");
+			PMINLINE static FillRectangle::origin_reference parse(char const* sv)
 			{
 				auto error=[=]()
 				{
@@ -1412,31 +1383,14 @@ namespace ScoreProcessor {
 			}
 		};
 
-		struct LabelId {
-			PMINLINE static size_t id(InputType sv,size_t len)
-			{
-				using le=lookup_entry;
-				static constexpr auto table=make_ltable(std::array<le,16>(
-					{le("b",3),le("bottom",3),
-					le("clr",4),le("color",4),
-					le("h",3),le("height",3),
-					le("l",0),le("left",0),
-					le("o",5),le("or",5),
-					le("r",2),le("right",2),
-					le("t",1),le("top",1),
-					le("w",2),le("width",2)}));
-				return find_prefix(table,sv,len);
-			}
-		};
-
 		extern
-			SingMaker<UseTuple,LabelId,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
+			SingMaker<UseTuple,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Color,Origin>
 			maker;
 	}
 
 	namespace GamMaker {
 		struct Name {
-			cnnm("gamma value")
+			cnnm("gamma value");
 		};
 
 		struct Maker:public CommandMaker {
@@ -1469,9 +1423,10 @@ namespace ScoreProcessor {
 
 	namespace RotMaker {
 		struct RadName {
-			cnnm("angle")
+			cnnm("angle");
 		};
 		struct Degrees:public RadName {
+			clbl("deg","rad","r","d");
 			PMINLINE static float parse(char const* sv,size_t len)
 			{
 				if(len==-1)
@@ -1488,22 +1443,13 @@ namespace ScoreProcessor {
 			}
 		};
 		struct GammaP {
-			cnnm("gamma")
-				cndf(float(2))
-		};
-		struct LabelId {
-			PMINLINE static size_t id(InputType sv,size_t len)
-			{
-				static constexpr auto table=make_ltable(
-					le("deg",0),le("rad",0),le("r",0),le("d",0),le("g",2),le("gam",2),le("im",1),le("i",1),le("m",1)
-				);
-				return find_prefix(table,sv,len);
-			}
+			cnnm("gamma");
+			clbl("g","gam");
+			cndf(float(2))
 		};
 
 		struct Mode {
-			cndf(Rotate::interp_mode(Rotate::cubic))
-				PMINLINE static Rotate::interp_mode parse(char const* sv)
+			PMINLINE static Rotate::interp_mode parse(char const* sv)
 			{
 				switch(sv[0])
 				{
@@ -1519,7 +1465,9 @@ namespace ScoreProcessor {
 						throw std::invalid_argument(err);
 				}
 			}
-			cnnm("interpolation mode")
+			cnnm("interpolation mode");
+			clbl("i","m","im");
+			cndf(Rotate::interp_mode(Rotate::cubic))
 		};
 
 		struct UseTuple {
@@ -1549,15 +1497,17 @@ namespace ScoreProcessor {
 		using GammaParser=FloatParser<GammaP,no_negatives>;
 
 		extern
-			SingMaker<UseTuple,LabelId,Degrees,Mode,GammaParser> maker;
+			SingMaker<UseTuple,Degrees,Mode,GammaParser> maker;
 	}
 
 	namespace RsMaker {
 		struct Factor {
-			cnnm("factor")
+			clbl("f","fact");
+			cnnm("factor");
 		};
 
 		struct Mode {
+			clbl("i","im");
 			PMINLINE static constexpr Rescale::rescale_mode def_val()
 			{
 				return Rescale::automatic;
@@ -1601,15 +1551,7 @@ namespace ScoreProcessor {
 						throw std::invalid_argument("Mode does not exist");
 				};
 			}
-			cnnm("interpolation mode")
-		};
-
-		struct LabelId {
-			PMINLINE static size_t id(InputType in,size_t len)
-			{
-				static constexpr auto table=make_ltable(le("f",0),le("fact",0),le("i",1),le("im",1),le("g",2),le("gam",2));
-				return find_prefix(table,in,len);
-			}
+			cnnm("interpolation mode");
 		};
 
 		struct UseTuple {
@@ -1631,31 +1573,24 @@ namespace ScoreProcessor {
 			}
 		};
 		extern
-			SingMaker<UseTuple,LabelId,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
+			SingMaker<UseTuple,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
 			maker;
 	}
 
 	namespace FGMaker {
 		struct Min {
-			cnnm("min brightness")
+			clbl("mn","min","mnv");
+			cnnm("min brightness");
 		};
 		struct Max {
-			cnnm("max brightness")
-				cndf(unsigned char(255))
+			clbl("mx","max","mxv");
+			cnnm("max brightness");
+			cndf(unsigned char(255))
 		};
 		struct Replacer {
-			cnnm("replacer")
-				cndf(unsigned char(255))
-		};
-		struct LabelId {
-			PMINLINE static size_t id(InputType data,size_t len)
-			{
-				static constexpr auto table=make_ltable(
-					le("mn",0),le("min",0),le("mnv",0),
-					le("mx",1),le("max",1),le("mxv",1),
-					le("r",2),le("rep",2));
-				return find_prefix(table,data,len);
-			}
+			clbl("r","rep");
+			cnnm("replacer");
+			cndf(unsigned char(255))
 		};
 
 		struct UseTuple {
@@ -1673,7 +1608,7 @@ namespace ScoreProcessor {
 			}
 		};
 		extern
-			SingMaker<UseTuple,LabelId,
+			SingMaker<UseTuple,
 			IntegerParser<unsigned char,Min>,
 			IntegerParser<unsigned char,Max>,
 			IntegerParser<unsigned char,Replacer>> maker;
@@ -1734,7 +1669,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern MakerTFull<UseTuple,Precheck,empty> maker;
+		extern MakerTFull<UseTuple,Precheck> maker;
 	}
 
 	namespace SIMaker {
@@ -1749,7 +1684,7 @@ namespace ScoreProcessor {
 		};
 
 		struct Number {
-			cnnm("starting index")
+			cnnm("starting index");
 		};
 
 		struct UseTuple {
@@ -1759,7 +1694,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern MakerTFull<UseTuple,Precheck,empty,IntegerParser<unsigned int,Number>> maker;
+		extern MakerTFull<UseTuple,Precheck,IntegerParser<unsigned int,Number>> maker;
 	}
 
 	namespace RgxFilter {
@@ -1772,7 +1707,7 @@ namespace ScoreProcessor {
 				}
 				return in;
 			}
-			cnnm("regex pattern")
+			cnnm("regex pattern");
 		};
 		struct KeepMatch {
 			static PMINLINE bool parse(InputType in)
@@ -1784,8 +1719,9 @@ namespace ScoreProcessor {
 				}
 				return false;
 			}
+			cnnm("keep match");
 			cndf(true)
-				cnnm("keep match")
+
 		};
 		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* pattern,bool keep)
@@ -1804,7 +1740,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern MakerTFull<UseTuple,empty,empty2,Regex,KeepMatch> maker;
+		extern MakerTFull<UseTuple,empty,Regex,KeepMatch> maker;
 	}
 
 	namespace CCGMaker {
@@ -1865,8 +1801,9 @@ namespace ScoreProcessor {
 				if(ret[0]>ret[1]) throw std::invalid_argument("Required color min value cannot be greater than max value");
 				return ret;
 			}
-			cnnm("required color range")
-				cndf((std::array<unsigned char,2>{0,255}))
+			cnnm("required color range");
+			clbl("rcr");
+			cndf((std::array<unsigned char,2>{0,255}))
 		};
 
 		struct BSR {
@@ -1887,11 +1824,12 @@ namespace ScoreProcessor {
 				if(ret[0]>ret[1]) throw std::invalid_argument("Cluster size min value cannot be greater than max value");
 				return ret;
 			}
-			cnnm("cluster size range")
-				cndf((std::array<unsigned int,2>{
-					{
-						0,0
-					}}))
+			cnnm("cluster size range");
+			clbl("bsr");
+			cndf((std::array<unsigned int,2>{
+				{
+					0,0
+				}}))
 		};
 
 		struct SelRange {
@@ -1920,39 +1858,28 @@ namespace ScoreProcessor {
 				if(ret[0]>ret[1]) throw std::invalid_argument("Selection min value cannot be greater than max value");
 				return ret;
 			}
-			cnnm("selection range")
-				cndf((std::array<unsigned char,2>{
-					{
-						0,254
-					}}))
+			cnnm("selection range");
+			clbl("sr");
+			cndf((std::array<unsigned char,2>{
+				{
+					0,254
+				}}))
 		};
 
 		struct Replacer {
+			clbl("rc");
+			cnnm("replacer");
 			cndf(unsigned char(255))
-				cnnm("replacer")
 		};
 
 		struct EightWay {
-			cndf(false)
-				cnnm("eight way")
-				static PMINLINE constexpr bool parse(InputType i)
+			cnnm("eight way");
+			clbl("ew");
+			static PMINLINE constexpr bool parse(InputType i)
 			{
 				return Output::MoveParser::parse(i);
 			}
-		};
-
-		struct LabelId {
-			static PMINLINE size_t id(InputType pf,size_t len)
-			{
-				static constexpr auto table=make_ltable(
-					le("rcr",0),
-					le("bsr",1),
-					le("sr",2),
-					le("bc",3),le("rc",3),
-					le("ew",4)
-				);
-				return find_prefix(table,pf,len);
-			}
+			cndf(false)
 		};
 
 		struct Precheck {
@@ -1977,12 +1904,12 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern MakerTFull<UseTuple,Precheck,LabelId,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>,EightWay> maker;
+		extern MakerTFull<UseTuple,Precheck,RCR,BSR,SelRange,IntegerParser<unsigned char,Replacer>,EightWay> maker;
 	}
 
 	namespace BlurMaker {
 		struct StDev {
-			cnnm("radius")
+			cnnm("radius");
 		};
 
 		struct UseTuple {
@@ -2001,7 +1928,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,empty,FloatParser<StDev,force_positive>,RotMaker::GammaParser> maker;
+		extern SingMaker<UseTuple,FloatParser<StDev,force_positive>,RotMaker::GammaParser> maker;
 	}
 
 	namespace EXLMaker {
@@ -2013,7 +1940,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,empty> maker;
+		extern SingMaker<UseTuple> maker;
 	}
 
 	namespace CTMaker {
@@ -2024,13 +1951,16 @@ namespace ScoreProcessor {
 			searching=~3
 		};
 		struct RedName {
-			cnnm("red")
+			cnnm("red");
+			clbl("r","red");
 		};
 		struct GreenName {
-			cnnm("green")
+			cnnm("green");
+			clbl("g","green");
 		};
 		struct BlueName {
-			cnnm("blue")
+			cnnm("blue");
+			clbl("b","blue");
 		};
 
 		struct Red:public RedName {
@@ -2106,20 +2036,13 @@ namespace ScoreProcessor {
 			}
 		};
 
-		struct LabelId {
-			static PMINLINE size_t id(InputType sv,size_t pflen)
-			{
-				static constexpr auto table=make_ltable(le("r",0),le("red",0),le("g",1),le("green",1),le("b",2),le("blue",2));
-				return find_prefix(table,sv,pflen);
-			}
-		};
-		extern SingMaker<UseTuple,LabelId,Red,Green,Blue> maker;
+		extern SingMaker<UseTuple,Red,Green,Blue> maker;
 	}
 
 	namespace RBMaker {
 		struct Tol {
+			cnnm("tolerance");
 			cndf(0.5f)
-				cnnm("tolerance")
 		};
 
 		struct UseTuple {
@@ -2128,25 +2051,15 @@ namespace ScoreProcessor {
 				del.pl.add_process<RemoveBorderGray>(tol);
 			}
 		};
-		extern SingMaker<UseTuple,empty,FloatParser<Tol,force_positive>> maker;
+		extern SingMaker<UseTuple,FloatParser<Tol,force_positive>> maker;
 	}
 
 	namespace HPMaker {
 		using pv=exlib::maybe_fixed<unsigned int>;
 
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(
-					le("l",0),le("left",0),le("lpw",0),le("lph",0),
-					le("r",1),le("right",1),le("rpw",1),le("rph",1),
-					le("tol",2),le("tpw",2),le("tph",2),
-					le("bg",3));
-				return find_prefix(table,it,prefix_len);
-			}
-		};
 		struct LName {
-			cnnm("left padding")
+			cnnm("left padding");
+			clbl("lph","lpw","left","l");
 		};
 		struct Left:public LName {
 			static PMINLINE pv parse(InputType it,size_t prefix_len)
@@ -2169,7 +2082,7 @@ namespace ScoreProcessor {
 						return pv(amount);
 					}
 				}
-				auto amount=parse01(actual,LName());
+				auto amount=parse01(actual);
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2181,7 +2094,8 @@ namespace ScoreProcessor {
 			}
 		};
 		struct RName {
-			cnnm("right padding")
+			cnnm("right padding");
+			clbl("rph","rpw","right","r");
 		};
 		struct Right:public RName {
 			static PMINLINE pv parse(InputType it,size_t prefix_len)
@@ -2203,7 +2117,7 @@ namespace ScoreProcessor {
 						return pv(amount);
 					}
 				}
-				auto amount=parse01(actual,RName());
+				auto amount=parse01(actual);
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2216,7 +2130,8 @@ namespace ScoreProcessor {
 			cndf(pv(1,2))
 		};
 		struct TolName {
-			cnnm("tolerance")
+			clbl("tol","tpw","tph");
+			cnnm("tolerance");
 		};
 		struct Tol:public TolName {
 			static PMINLINE pv parse(InputType it,size_t prefix_len)
@@ -2227,7 +2142,7 @@ namespace ScoreProcessor {
 					auto amount=IntegerParser<unsigned int,TolName,no_negatives>().parse(actual);
 					return pv(amount);
 				}
-				auto amount=parse01(actual,TolName());
+				auto amount=parse01(actual);
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2240,8 +2155,9 @@ namespace ScoreProcessor {
 			cndf(pv(0.005,PadBase::height))
 		};
 		struct BGround {
-			cnnm("background threshold")
-				cndf(unsigned char(128))
+			cnnm("background threshold");
+			clbl("bg");
+			cndf(unsigned char(128))
 		};
 		using BGParser=IntegerParser<unsigned char,BGround>;
 		struct UseTuple {
@@ -2262,25 +2178,14 @@ namespace ScoreProcessor {
 				del.pl.add_process<PadHoriz>(left,right,tol,bg);
 			}
 		};
-		extern SingMaker<UseTuple,LabelId,Left,Right,Tol,BGParser> maker;
+		extern SingMaker<UseTuple,Left,Right,Tol,BGParser> maker;
 	}
 
 	namespace VPMaker {
 		using pv=exlib::maybe_fixed<unsigned int>;
-
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(
-					le("t",0),le("top",0),le("tpw",0),le("tph",0),
-					le("b",1),le("bottom",1),le("bpw",1),le("bph",1),
-					le("tol",2),le("tpw",2),le("tph",2),
-					le("bg",3));
-				return find_prefix(table,it,prefix_len);
-			}
-		};
 		struct TName {
-			cnnm("top padding")
+			cnnm("top padding");
+			clbl("t","top","tpw","tph");
 		};
 		struct Top:public TName {
 			static PMINLINE pv parse(InputType it,size_t prefix_len)
@@ -2303,7 +2208,7 @@ namespace ScoreProcessor {
 						return pv(amount);
 					}
 				}
-				auto amount=parse01(actual,TName());
+				auto amount=parse01(actual);
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2315,7 +2220,8 @@ namespace ScoreProcessor {
 			}
 		};
 		struct BName {
-			cnnm("bottom padding")
+			cnnm("bottom padding");
+			clbl("b","bottom","bot","bph","bpw");
 		};
 		struct Bottom:public BName {
 			static PMINLINE pv parse(InputType it,size_t prefix_len)
@@ -2337,7 +2243,7 @@ namespace ScoreProcessor {
 						return pv(amount);
 					}
 				}
-				auto amount=parse01(actual,BName());
+				auto amount=parse01(actual);
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2350,7 +2256,8 @@ namespace ScoreProcessor {
 			cndf(pv(1,2))
 		};
 		struct TolName {
-			cnnm("tolerance")
+			clbl("tol","tpw","tph");
+			cnnm("tolerance");
 		};
 		struct Tol:public TolName {
 			static PMINLINE  pv parse(InputType it,size_t prefix_len)
@@ -2361,7 +2268,7 @@ namespace ScoreProcessor {
 					auto sl=strlen(it);
 					if(it[sl-1]=='%')
 					{
-						auto amount=parse01(actual,TolName());
+						auto amount=parse01(actual);
 						return pv(amount,PadBase::width);
 					}
 					else
@@ -2375,7 +2282,7 @@ namespace ScoreProcessor {
 					auto amount=IntegerParser<unsigned int,TolName>().parse(actual);
 					return pv(amount);
 				}
-				auto amount=parse01(actual,TolName());
+				auto amount=parse01(actual);
 				if(it[2]=='h')
 				{
 					return pv(amount,PadBase::height);
@@ -2405,30 +2312,24 @@ namespace ScoreProcessor {
 				del.pl.add_process<PadVert>(top,bottom,tol,bg);
 			}
 		};
-		extern SingMaker<UseTuple,LabelId,Top,Bottom,Tol,HPMaker::BGParser> maker;
+		extern SingMaker<UseTuple,Top,Bottom,Tol,HPMaker::BGParser> maker;
 	}
 
 	namespace RCGMaker {
 		struct Min {
-			cnnm("min")
+			clbl("mn","min");
+			cnnm("min");
 		};
 		struct Mid {
-			cnnm("mid")
+			clbl("md","mid");
+			cnnm("mid");
 		};
 		struct Max {
-			cnnm("max")
-				cndf(unsigned char(255))
+			clbl("mx","max");
+			cnnm("max");
+			cndf(unsigned char(255))
 		};
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				constexpr static auto table=make_ltable(
-					le("mn",0),le("min",0),
-					le("md",1),le("mid",1),
-					le("mx",2),le("max",2));
-				return find_prefix(table,it,prefix_len);
-			}
-		};
+
 		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,unsigned char min,unsigned char mid,unsigned char max)
 			{
@@ -2444,13 +2345,14 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,LabelId,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker;
+		extern SingMaker<UseTuple,UCharParser<Min>,UCharParser<Mid>,UCharParser<Max>> maker;
 	}
 
 	namespace HSMaker {
 		struct Side {
-			cnnm("side")
-				constexpr PMINLINE static bool parse(InputType it)
+			cnnm("side");
+			clbl("side");
+			constexpr PMINLINE static bool parse(InputType it)
 			{
 				if(it[0]=='l'||it[0]=='L')
 				{
@@ -2464,8 +2366,9 @@ namespace ScoreProcessor {
 			}
 		};
 		struct Direction {
-			cnnm("direction")
-				constexpr PMINLINE static bool parse(InputType it)
+			cnnm("direction");
+			clbl("dir");
+			constexpr PMINLINE static bool parse(InputType it)
 			{
 				if(it[0]=='b'||it[0]=='B')
 				{
@@ -2479,17 +2382,6 @@ namespace ScoreProcessor {
 			}
 		};
 
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(
-					le("side",0),
-					le("dir",1),
-					le("bg",2));
-				return find_prefix(table,it,prefix_len);
-			}
-		};
-
 		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,bool side,bool dir,unsigned char bg)
 			{
@@ -2497,13 +2389,14 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker;
+		extern SingMaker<UseTuple,Side,Direction,HPMaker::BGParser> maker;
 	}
 
 	namespace VSMaker {
 		struct Side {
-			cnnm("side")
-				constexpr PMINLINE static bool parse(InputType it)
+			cnnm("side");
+			clbl("side");
+			constexpr PMINLINE static bool parse(InputType it)
 			{
 				if(it[0]=='t'||it[0]=='T')
 				{
@@ -2517,8 +2410,9 @@ namespace ScoreProcessor {
 			}
 		};
 		struct Direction {
-			cnnm("direction")
-				constexpr PMINLINE static bool parse(InputType it)
+			cnnm("direction");
+			clbl("dir");
+			constexpr PMINLINE static bool parse(InputType it)
 			{
 				if(it[0]=='r'||it[0]=='R')
 				{
@@ -2532,17 +2426,6 @@ namespace ScoreProcessor {
 			}
 		};
 
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(
-					le("side",0),
-					le("dir",1),
-					le("bg",2));
-				return find_prefix(table,it,prefix_len);
-			}
-		};
-
 		struct UseTuple {
 			static PMINLINE void use_tuple(CommandMaker::delivery& del,bool side,bool dir,unsigned char bg)
 			{
@@ -2550,52 +2433,45 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,LabelId,Side,Direction,HPMaker::BGParser> maker;
+		extern SingMaker<UseTuple,Side,Direction,HPMaker::BGParser> maker;
 	}
 
 	namespace SpliceMaker {
 		using pv=decltype(Splice::standard_heuristics().horiz_padding);
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(
-					le("hp",0),le("hppw",0),le("hpph",0),
-					le("op",1),le("oppw",1),le("opph",1),
-					le("mp",2),le("mppw",2),le("mpph",2),
-					le("oh",3),le("ohpw",3),le("ohph",3),
-					le("exw",4),le("ew",4),
-					le("pw",5),
-					le("bg",6));
-				return find_prefix(table,it,prefix_len);
-			}
-		};
 		struct HP {
-			cnnm("horizontal padding")
-				cndf(pv(0.03,0))
+			cnnm("horizontal padding");
+			clbl("hp","hppw","hpph");
+			cndf(pv(0.03,0))
 		};
 		struct OP {
-			cnnm("optimal padding")
-				cndf(pv(0.05,0))
+			cnnm("optimal padding");
+			clbl("op","oppw","opph");
+			cndf(pv(0.05,0))
 		};
 		struct MP {
-			cnnm("min padding")
-				cndf(pv(0.012,0))
+			cnnm("min padding");
+			clbl("mp","mppw","mpph");
+			cndf(pv(0.012,0))
 		};
 		struct OH {
-			cnnm("optimal height")
-				cndf(pv(0.55,0))
+			cnnm("optimal height");
+			clbl("oh","ohph","ohpw");
+			cndf(pv(0.55,0))
 		};
 		struct EXC {
-			cnnm("excess weight")
-				cndf(10.0f)
+			cnnm("excess weight");
+			clbl("ew","exw");
+			cndf(10.0f)
 		};
 		struct PW {
-			cnnm("padding weight")
-				cndf(1.0f)
+			cnnm("padding weight");
+			clbl("pw");
+			cndf(1.0f)
 		};
 		struct BG {
-			cnnm("background")
-				cndf(unsigned char(128))
+			cnnm("background");
+			clbl("bg");
+			cndf(unsigned char(128))
 		};
 		template<typename Base>
 		struct pv_parser:public Base {
@@ -2605,11 +2481,11 @@ namespace ScoreProcessor {
 				if(prefix_len==-1||prefix_len==2)
 				{
 					auto sl=strlen(actual);
-					if(sl==0) throw std::invalid_argument(std::string("Empty argument for ").append(Base::name()));
-					if(actual[sl-1]=='%') return pv(parse01(actual,*this),0);
+					if(sl==0) throw std::invalid_argument(std::string("Empty argument for ").append(Base::name));
+					if(actual[sl-1]=='%') return pv(parse01(actual),0);
 					return pv(UIntParser<Base>().parse(actual));
 				}
-				auto amount=parse01(actual,*this);
+				auto amount=parse01(actual);
 				if(it[3]=='w')
 				{
 					return pv(amount,0);
@@ -2634,7 +2510,6 @@ namespace ScoreProcessor {
 			MakerTFull<
 			UseTuple,
 			MultiCommand<CommandMaker::delivery::do_state::do_splice>,
-			LabelId,
 			pv_parser<HP>,pv_parser<OP>,pv_parser<MP>,pv_parser<OH>,
 			FloatParser<EXC>,FloatParser<PW>,FloatParser<BG>> maker;
 	}
@@ -2647,42 +2522,34 @@ namespace ScoreProcessor {
 		using pv_parser=SpliceMaker::pv_parser<T>;
 
 		struct MW {
-			cnnm("min width")
-				cndf(pv(0.66,0))
+			cnnm("min width");
+			clbl("mw","mwpw","mwph");
+			cndf(pv(0.66,0))
 		};
 
 		struct MH {
-			cnnm("min height")
-				cndf(pv(0.08,0))
+			cnnm("min height");
+			clbl("mh","mhpw","mhph");
+			cndf(pv(0.08,0))
 		};
 
 		struct HW {
-			cnnm("horiz weight")
-				cndf(20.0f)
+			cnnm("horiz weight");
+			clbl("hw");
+			cndf(20.0f)
 		};
 
 		struct MV {
-			cnnm("min vertical space")
-				cndf(pv(0))
+			cnnm("min vertical space");
+			clbl("mv","mvpw","mvph");
+			cndf(pv(0))
 		};
 
 		using uchar=unsigned char;
 		struct BG {
-			cnnm("background")
-				cndf(uchar(128))
-		};
-
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(
-					le("mw",0),le("mwpw",0),le("mwph",0),
-					le("mh",1),le("mhpw",1),le("mhph",1),
-					le("mv",2),le("mvpw",2),le("mvph",2),
-					le("hw",3),
-					le("bg",4));
-				return find_prefix(table,it,prefix_len);
-			}
+			cnnm("background");
+			clbl("bg");
+			cndf(uchar(128))
 		};
 
 		struct UseTuple {
@@ -2700,7 +2567,6 @@ namespace ScoreProcessor {
 			MakerTFull<
 			UseTuple,
 			MultiCommand<CommandMaker::delivery::do_state::do_cut>,
-			LabelId,
 			pv_parser<MW>,pv_parser<MH>,pv_parser<MV>,FloatParser<HW>,UCharParser<BG>> maker;
 
 	}
@@ -2708,25 +2574,18 @@ namespace ScoreProcessor {
 	namespace SmartScale {
 
 		struct Ratio {
-			cnnm("factor")
+			clbl("fact","f");
+			cnnm("factor");
 		};
 
 		struct Input {
+			clbl("net");
 			PMINLINE static char const* parse(InputType it)
 			{
 				return it;
 			}
-			cnnm("network_file")
-				cndf(nullptr)
-		};
-
-		struct LabelId {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(
-					le("net",1),le("f",0));
-				return find_prefix(table,it,prefix_len);
-			}
+			cnnm("network_file");
+			cndf(nullptr)
 		};
 
 		struct UseTuple {
@@ -2768,29 +2627,25 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,LabelId,FloatParser<Ratio>,Input> maker;
+		extern SingMaker<UseTuple,FloatParser<Ratio>,Input> maker;
 	}
 
 	namespace Cropper {
 		struct Left {
-			cnnm("left")
+			cnnm("left");
+			clbl("l","left");
 		};
 		struct Top {
-			cnnm("top")
+			cnnm("top");
+			clbl("t","top");
 		};
 		struct Right {
-			cnnm("right")
+			cnnm("right");
+			clbl("r","right");
 		};
 		struct Bottom {
-			cnnm("bottom")
-		};
-
-		struct Label {
-			static PMINLINE size_t id(InputType it,size_t prefix_len)
-			{
-				static constexpr auto table=make_ltable(le("l",0),le("t",1),le("r",2),le("b",3));
-				return find_prefix(table,it,prefix_len);
-			}
+			cnnm("bottom");
+			clbl("b","bot","bottom");
 		};
 
 		struct UseTuple {
@@ -2808,12 +2663,12 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern SingMaker<UseTuple,Label,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker;
+		extern SingMaker<UseTuple,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker;
 	}
 
 	namespace Quality {
 		struct Value {
-			cnnm("quality")
+			cnnm("quality");
 		};
 		struct Precheck {
 			static PMINLINE void check(CommandMaker::delivery& del)
@@ -2834,7 +2689,7 @@ namespace ScoreProcessor {
 				del.quality=quality;
 			}
 		};
-		extern MakerTFull<UseTuple,Precheck,empty2,IntParser<Value>> maker;
+		extern MakerTFull<UseTuple,Precheck,IntParser<Value>> maker;
 	}
 
 	struct compair {
