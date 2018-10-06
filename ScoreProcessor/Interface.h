@@ -342,6 +342,9 @@ namespace ScoreProcessor {
 	}
 
 	namespace {
+		//throws the error involving an unknown prefix
+		//sv: pointer to prefix 
+		//len: length of prefix
 		[[noreturn]]
 		PMINLINE void bad_pf(InputType sv,size_t len)
 		{
@@ -350,6 +353,7 @@ namespace ScoreProcessor {
 			throw std::invalid_argument(err_msg);
 		}
 
+		//class defining a lookup prefix and its associated parser index
 		class lookup_entry {
 			char const* _key;
 			size_t _index;
@@ -400,12 +404,14 @@ namespace ScoreProcessor {
 			}
 		};
 
+		//makes a sorted table of lookup entries to be searched through
 		template<size_t N>
 		constexpr auto make_ltable(ltable<N> const& arr)
 		{
 			return exlib::sorted(arr,lcomp());
 		}
 
+		//makes a sorted table of lookup entries to be searched through
 		template<typename... Args>
 		constexpr auto make_ltable(Args... args)
 		{
@@ -421,8 +427,12 @@ namespace ScoreProcessor {
 			return exlib::binary_find(arr.data(),arr.data()+arr.size(),target,lcomp());
 		}
 
+		//given a lookup table, does a binary search for the given prefix; throws an error if it is not found
+		//arr: lookup_table
+		//pf: prefix
+		//pflen: prefix length
 		template<size_t N>
-		PMINLINE size_t lookup_prefix(ltable<N> const& arr,InputType pf,size_t pflen)
+		size_t lookup_prefix(ltable<N> const& arr,InputType pf,size_t pflen)
 		{
 			auto idx=lfind(arr,pf);
 			if(idx!=arr.data()+arr.size())
@@ -445,14 +455,14 @@ namespace ScoreProcessor {
 	//UseTuple must define a function use_tuple(CommandMaker::delivery&,Args...), which uses the tuple result
 	//from parsing to change the delivery. The tuple may optionally be referenced directly.
 	//The tuple contains the types return by parse.
-	//if Precheck defines check(CommandMaker::delivery (const)(&),(optional)size_t num_args), this checks the delivery before parsing, 
-	//throwing or doing nothing
+	//if Precheck defines check(CommandMaker::delivery (const)(&),(optional)size_t num_args), this checks the delivery before parsing,
+	//possibly throwing, modifying delivery, or doing nothing
 	//How this works:
 	// First, Precheck checks the input delivery and/or number of args.
 	// Then, the number of args is checked to be between MinArgs and MaxArgs.
 	//   MinArgs is found to be the first N ArgParsers which do not define def_val
 	//   MaxArgs is equal to sizeof...(ArgParsers)
-	//  If every ArgParser defines labels, then the arguments are simply evaluated in order.
+	//  If not every ArgParser defines labels, then the arguments are simply evaluated in order.
 	//  Otherwise, the arguments are evaluated in order until an argument with a prefix is found
 	//  After this prefixed arguments only are considered (if a prefix is not found now, an exception is thrown).
 	//  If a argument is given repeatedly an exception is thrown, or if an argument with no default value is unfulfilled,
@@ -627,6 +637,14 @@ namespace ScoreProcessor {
 		template<size_t I>
 		struct parse_n {
 			using Parser=std::remove_reference_t<decltype(std::get<I>(std::declval<MyParsers>()))>;
+			[[noreturn]]
+			static void rethrow_with_name(std::exception const& ex)
+			{
+				std::string err_msg(Parser::name);
+				err_msg.append(": ");
+				err_msg.append(ex.what());
+				throw std::invalid_argument(err_msg);
+			}
 			static void eval_arg(MyArgs& ma,MyParsers& mp,InputType str)
 			{
 				try
@@ -635,10 +653,7 @@ namespace ScoreProcessor {
 				}
 				catch(std::exception const& ex)
 				{
-					std::string err_msg(Parser::name);
-					err_msg.append(": ");
-					err_msg.append(ex.what());
-					throw std::invalid_argument(err_msg);
+					rethrow_with_name(ex);
 				}
 			}
 			static void eval_arg(MyArgs& ma,MyParsers& mp,InputType str,size_t prefix_len)
@@ -656,10 +671,7 @@ namespace ScoreProcessor {
 				}
 				catch(std::exception const& ex)
 				{
-					std::string err_msg(Parser::name);
-					err_msg.append(": ");
-					err_msg.append(ex.what());
-					throw std::invalid_argument(err_msg);
+					rethrow_with_name(ex);
 				}
 			}
 			void operator()(MyArgs& ma,MyParsers& mp,InputType str,size_t prefix_len) const
@@ -716,13 +728,11 @@ namespace ScoreProcessor {
 		static constexpr size_t num_labels(){
 			return exlib::array_size<decltype(Parser::labels)>::value;
 		}
+
 		template<typename Parser,size_t I,size_t... Is>
 		static constexpr auto make_lookup_entries(std::index_sequence<Is...>)
 		{
-			return std::array<lookup_entry,sizeof...(Is)>{
-				{
-					le(Parser::labels[Is],I)...
-				}};
+			return std::array<lookup_entry,sizeof...(Is)>{{le(Parser::labels[Is],I)...}};
 		}
 
 		template<typename T,size_t F>
@@ -778,7 +788,7 @@ namespace ScoreProcessor {
 			find_arg(index,mt,data,prefix_len);
 		}
 
-		template<size_t N>
+		template<size_t N=0>
 		void unordered_args(iter begin,size_t n,MyArgs& mt,bool fulfilled[])
 		{
 			if constexpr(N<MaxArgs)
@@ -868,7 +878,7 @@ namespace ScoreProcessor {
 				if constexpr(enable_labels)
 				{
 					bool fulfilled[MaxArgs]{false};
-					unordered_args<0>(begin,n,mt,fulfilled);
+					unordered_args(begin,n,mt,fulfilled);
 					check_required(fulfilled);
 				}
 				else
