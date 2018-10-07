@@ -26,22 +26,7 @@ namespace exlib {
 
 	namespace {
 		template<typename... Args>
-		struct no_references;
-
-		template<>
-		struct no_references<> {
-			constexpr static bool const value=true;
-		};
-
-		template<typename T>
-		struct no_references<T> {
-			constexpr static bool const value=!std::is_reference<T>::value;
-		};
-
-		template<typename First,typename... Args>
-		struct no_references<First,Args...> {
-			constexpr static bool const value=no_references<First>::value&&no_references<Args...>::value;
-		};
+		using no_references=std::conjunction<std::negation<std::is_reference<Args>>...>;
 	}
 	/*
 	Overload void execute(...) to use this as a task in ThreadPool
@@ -51,146 +36,292 @@ namespace exlib {
 	protected:
 		ThreadTaskA()=default;
 	public:
-		static_assert(no_references<Args...>::value,"References not allowed as execute arguments");
+		//static_assert(no_references<Args...>::value,"References not allowed as execute arguments");
 		virtual ~ThreadTaskA()=default;
 		virtual void execute(Args...)=0;
 	};
 
 	using ThreadTask=ThreadTaskA<>;
+
 	/*
-	Creates a ThreadTask that calls whatever object of type Task.
+		Creates a ThreadTask that calls whatever object of type Task.
 	*/
-	template<typename Task>
-	class AutoTask:public ThreadTaskA<> {
+	template<typename Task,typename... Args>
+	class AutoTaskA:public ThreadTaskA<Args...> {
 		Task task;
 	public:
-		AutoTask(Task task):task(task)
+		AutoTaskA(Task task):task(task)
 		{}
-		void execute() override
+		void execute(Args... args) override
 		{
-			task();
+			task(args...);
 		}
 	};
 
+	template<typename Task>
+	using AutoTask=AutoTaskA<Task>;
+
+	namespace detail {
+		struct tracked_thread {
+			std::thread thread;
+			std::atomic<bool> working;
+		};
+	}
+
+	struct delay_activation_t {};
+
 	template<typename... Args>
 	class ThreadPoolA {
-	private:
+	public:
 		typedef ThreadTaskA<Args...> Task;
-		std::vector<std::thread> workers;
-		std::queue<std::unique_ptr<Task>> tasks;
-		std::mutex locker;
-		std::atomic<bool> running;
-		inline void task_loop(Args... args)
+	private:
+		std::vector<detail::tracked_thread> _workers;
+		std::queue<std::unique_ptr<Task>> _tasks;
+		std::mutex _locker;
+		std::atomic<bool> _running;
+		std::tuple<Args...> _args;
+		inline void task_loop(size_t id)
 		{
-			while(running)
+			while(_running)
 			{
-				std::unique_ptr<Task> task;
-				bool has_task;
+				while(_workers[id].working)
 				{
-					std::lock_guard<std::mutex> guard(locker);
-					if(has_task=!tasks.empty())
+					std::unique_ptr<Task> task;
 					{
-						task=std::move(tasks.front());
-						tasks.pop();
+						std::lock_guard<std::mutex> guard(_locker);
+						if(!_tasks.empty())
+						{
+							task=std::move(_tasks.front());
+							_tasks.pop();
+						}
 					}
-				}
-				if(has_task)
-				{
-					task->execute(args...);
-				}
-				else
-				{
-					running=false;
+					if(task)
+					{
+						std::apply([&](auto&... args)
+						{
+							task->execute(args...);
+						},_args);
+					}
+					else
+					{
+						_workers[id].working=false;
+					}
 				}
 			}
 		}
 	public:
-		static_assert(no_references<Args...>::value,"References not allowed as start arguments");
+		//static_assert(no_references<Args...>::value,"References not allowed as start arguments");
 		ThreadPoolA(ThreadPoolA const&)=delete;
 		ThreadPoolA(ThreadPoolA&&)=delete;
 
 		/*
-		Creates a thread pool with a certain number of threads
+			Threads start running but they do not look for tasks.
 		*/
-		inline explicit ThreadPoolA(size_t num_threads):workers(num_threads)
-		{}
+		void activate()
+		{
+			_running=true;
+			for(size_t i=0;i<_workers.size();++i)
+			{
+				_workers[i].working=false;
+				_workers[i].thread=std::thread(&ThreadPoolA::task_loop,this,i);
+			}
+		}
+
 		/*
-		Creates a thread pool with number of threads equal to the hardware concurrency
+			Creates a thread pool with a certain number of threads and initialize the arguments sent.
 		*/
-		inline ThreadPoolA():ThreadPoolA(std::thread::hardware_concurrency())
+		template<typename... T>
+		inline explicit ThreadPoolA(size_t num_threads,T&&... args):_workers(num_threads),_args(std::forward<T>(args)...)
+		{
+			activate();
+		}
+
+		/*
+			Creates a thread pool with a certain number of threads and initializes the arguments sent.
+			Threads are not started.
+		*/
+		template<typename... T>
+		inline explicit ThreadPoolA(size_t num_threads,delay_activation_t,T&&... args):_workers(num_threads),_args(std::forward<T>(args)...)
 		{}
 
 		/*
-		Adds a task of type Task constructed with args unsynchronized with running threads
+			Creates a thread pool with number of threads equal to the hardware concurrency
+		*/
+		inline ThreadPoolA():ThreadPoolA([]()->size_t
+		{
+			auto const nt=std::thread::hardware_concurrency();
+			if(nt)
+			{
+				return nt;
+			}
+			return 1;
+		}())
+		{}
+
+		/*
+			Adds a task of type Task constructed with args unsynchronized with running threads
 		*/
 		template<typename ConsTask,typename... ConsArgs>
 		void add_task(ConsArgs&&... args)
 		{
-			tasks.push(std::make_unique<ConsTask>(std::forward<ConsArgs>(args)...));
+			_tasks.push(std::make_unique<ConsTask>(std::forward<ConsArgs>(args)...));
+		}
+
+	private:
+		template<typename T>
+		struct is_thread_task:public std::is_convertible<T*,ThreadTaskA<Args...>*> {};
+
+		template<typename T>
+		struct is_thread_task<T const&>:public is_thread_task<T> {};
+
+		template<typename T>
+		struct is_thread_task<T&>:public is_thread_task<T> {};
+
+		template<typename T>
+		struct is_thread_task<T&&>:public is_thread_task<T> {};
+	public:
+
+		/*
+			Overload for lambdas, std::functions, function pointers...,
+			anything with operator(Args...) defined and which is not a ThreadTaskA<Args...>
+		*/
+		template<typename Function>
+		auto add_task(Function func) -> decltype(func(std::declval<Args>()...),std::enable_if<!is_thread_task<Function>::value>::type())
+		{
+			_tasks.push(std::make_unique<AutoTaskA<decltype(func),Args...>>(func));
 		}
 
 		/*
-		Adds a task of type Task constructed with args synchronized with running threads
+			Overload for copying or moving existing ThreadTasks
+		*/
+		template<typename ATask>
+		auto add_task(ATask&& task) -> decltype(std::enable_if<is_thread_task<ATask>::value>::type())
+		{
+			_tasks.push(std::make_unique<std::remove_reference<ATask>::type>(std::forward<ATask>(task)));
+		}
+
+		/*
+			Adds a task of type Task constructed with args synchronized with running threads
 		*/
 		template<typename ConsTask,typename... ConsArgs>
 		void add_task_sync(ConsArgs&&... args)
 		{
-			std::lock_guard<std::mutex> guard(locker);
+			std::lock_guard<std::mutex> guard(_locker);
 			add_task<ConsTask>(std::forward<ConsArgs>(args)...);
 		}
 
 		/*
-		Whether the thread pool is running
+		Overload for copying or moving existing ThreadTasks
+		*/
+		template<typename ATask>
+		void add_task_sync(ATask&& task)
+		{
+			std::lock_guard<std::mutex> guard(_locker);
+			add_task(std::forward<ATask>(task));
+		}
+
+	private:
+		template<typename First>
+		void add_tasks_base(First&& first)
+		{
+			add_task(std::forward<First>(first));
+		}
+
+		template<typename First,typename... Rest>
+		void add_tasks_base(First&& f,Rest&&... rest)
+		{
+			add_task(std::forward<First>(f));
+			add_tasks_base(std::forward<Rest>(rest)...);
+		}
+
+	public:
+		template<typename... Tasks>
+		void add_tasks_sync(Tasks&&... tasks)
+		{
+			static_assert(sizeof...(tasks)>0,"Arguments needed");
+			std::lock_guard<std::mutex> guard(_locker);
+			add_tasks_base(std::forward<Tasks>(tasks)...);
+		}
+		/*
+			Whether the thread pool is running
 		*/
 		bool is_running() const
 		{
-			return running;
+			return _running;
 		}
-		/*
-		Starts all the threads
-		Calling start on a pool that has not been stopped will result in undefined behavior
-		*/
-		void start(Args... args)
+
+		template<typename... T>
+		void set_args(T&&... args)
 		{
-			running=true;
-			for(size_t i=0;i<workers.size();++i)
+			_args=decltype(_args)(std::forward<T>(args)...);
+		}
+
+		/*
+			Makes threads start looking for tasks.
+		*/
+		void start()
+		{
+			for(auto& w:_workers)
 			{
-				workers[i]=std::thread(&ThreadPoolA::task_loop,this,args...);
+				w.working=true;
 			}
 		}
 
 		/*
-		Waits for all tasks to be finished and then stops the thread pool
+			Causes threads to no longer look for jobs
+			wait cannot be safely called after invoking this; join can
 		*/
+		void give_up()
+		{
+			for(auto& w:_workers)
+			{
+				w.working=false;
+			}
+		}
+
+		/*
+			Starts all the threads
+			Calling start on a pool that has not been stopped will result in undefined behavior
+		*/
+		template<typename... T>
+		void start(T&&... args)
+		{
+			set_args(std::forward<T>(args)...);
+			start();
+		}
+
+		/*
+			Waits for all tasks to be finished. Threads keep running, but you can add tasks without synchronization.
+	   */
 		inline void wait()
 		{
-			for(size_t i=0;i<workers.size();++i)
+			while(true)
 			{
-				if(workers[i].joinable())
-					workers[i].join();
+				for(auto& w:_workers)
+				{
+					if(w.working)
+					{
+						goto cont;
+					}
+				}
+				break;
+			cont:;
 			}
 		}
 
 		/*
-			Makes threads no longer attempt to find new tasks; does not wait for them to stop.
+			Waits for all tasks to be finished. Threads stop.
 		*/
-		inline void give_up()
+		void join()
 		{
-			running=false;
-		}
-
-		/*
-		Stops as soon as all threads are done with their current tasks
-		*/
-		inline void stop()
-		{
-			give_up();
-			wait();
-		}
-
-		inline void join()
-		{
-			wait();
+			_running=false;
+			for(auto& w:_workers)
+			{
+				if(w.thread.joinable())
+				{
+					w.thread.join();
+				}
+			}
 		}
 
 		/*
@@ -198,7 +329,12 @@ namespace exlib {
 		*/
 		inline ~ThreadPoolA()
 		{
-			wait();
+			join();
+		}
+
+		size_t thread_count() const
+		{
+			return _workers.size();
 		}
 	};
 

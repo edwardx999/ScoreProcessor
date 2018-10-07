@@ -218,8 +218,8 @@ namespace neural_net {
 		std::unique_ptr<DataType[]> _biases;
 		size_t _count;
 	public:
-		layer(layer&&)=default;
-		layer& operator=(layer&&)=default;
+		inline layer(layer&&)=default;
+		inline layer& operator=(layer&&)=default;
 		inline layer(size_t nodes):_weights(),_biases(),_count(nodes)
 		{}
 		inline layer(size_t nodes,size_t connections):_weights(new DataType[nodes*connections]),_biases(new DataType[nodes]),_count(nodes)
@@ -246,6 +246,18 @@ namespace neural_net {
 		}
 	};
 
+	inline std::vector<layer> construct_layers(std::vector<layer> const& layers)
+	{
+		std::vector<layer> ret;
+		ret.reserve(layers.size());
+		ret.emplace_back(layers.front().neuron_count());
+		for(size_t i=1;i<layers.size();++i)
+		{
+			ret.emplace_back(layers[i].neuron_count(),layers[i-1].neuron_count());
+		}
+		return ret;
+	}
+
 	struct results:public std::unique_ptr<std::unique_ptr<DataType[]>[]> {
 		using layer_results=std::unique_ptr<DataType[]>;
 		using base=std::unique_ptr<layer_results[]>;
@@ -255,6 +267,28 @@ namespace neural_net {
 			for(size_t i=0;i<layers.size();++i)
 			{
 				(*this)[i]=layer_results(new DataType[2*layers[i].neuron_count()]);
+			}
+		}
+	};
+
+	struct delta_t:public std::unique_ptr<std::unique_ptr<DataType[]>[]> {
+		using layer_results=std::unique_ptr<DataType[]>;
+		using base=std::unique_ptr<layer_results[]>;
+		inline delta_t(std::vector<layer> const& layers):
+			base(new layer_results[layers.size()])
+		{
+			for(size_t i=1;i<layers.size();++i)
+			{
+				(*this)[i]=layer_results(new DataType[layers[i].neuron_count()]);
+			}
+		}
+		struct init0_t {};
+		inline delta_t(std::vector<layer> const& layers,init0_t):
+			base(new layer_results[layers.size()])
+		{
+			for(size_t i=1;i<layers.size();++i)
+			{
+				(*this)[i]=layer_results(new DataType[layers[i].neuron_count()]());
 			}
 		}
 	};
@@ -276,13 +310,11 @@ namespace neural_net {
 		net(net const& other)
 		{
 			auto const& l=other.layers();
-			_layers.reserve(l.size());
-			_layers.emplace_back(l.front().neuron_count());
+			_layers=construct_layers(l);
 			for(size_t i=1;i<l.size();++i)
 			{
-				_layers.emplace_back(l[i].neuron_count(),l[i-1].neuron_count());
-				std::memcpy(_layers.back().biases(),l[i].biases(),l[i].neuron_count()*sizeof(float));
-				std::memcpy(_layers.back().weights(),l[i].weights(),l[i].neuron_count()*l[i-1].neuron_count()*sizeof(float));
+				std::memcpy(_layers[i].biases(),l[i].biases(),l[i].neuron_count()*sizeof(float));
+				std::memcpy(_layers[i].weights(),l[i].weights(),l[i].neuron_count()*l[i-1].neuron_count()*sizeof(float));
 			}
 		}
 		net(net&&)=default;
@@ -345,7 +377,7 @@ namespace neural_net {
 				_layers.emplace_back(begin[i],begin[i-1]);
 			}
 		}
-	 
+
 		template<typename T>
 		net(std::vector<T> const& layer_info):net(layer_info.begin(),layer_info.size())
 		{}
@@ -361,9 +393,8 @@ namespace neural_net {
 		{}
 
 		template<typename FloatIter>
-		results feed_forward_store(FloatIter input) const
+		void feed_forward_store(results& ret,FloatIter input) const
 		{
-			results ret(_layers);
 			for(size_t i=0;i<_layers.front().neuron_count();++i)
 			{
 				ret[0][i]=input[i];
@@ -396,6 +427,13 @@ namespace neural_net {
 				dst[j]=sigmoid(sum);
 				}*/
 			}
+		}
+
+		template<typename FloatIter>
+		results feed_forward_store(FloatIter input) const
+		{
+			results ret(_layers);
+			feed_forward_store(ret,input);
 			return ret;
 		}
 
@@ -413,21 +451,84 @@ namespace neural_net {
 				}
 			}
 		}
-		void backpropagate(results const& values,DataType const* answers,DataType learning_rate=1)
+
+		void update_weights(layer const* gradients)
 		{
-			struct delta_t:public std::unique_ptr<std::unique_ptr<DataType[]>[]> {
-				using layer_results=std::unique_ptr<DataType[]>;
-				using base=std::unique_ptr<layer_results[]>;
-				inline delta_t(std::vector<layer> const& layers):
-					base(new layer_results[layers.size()])
+			for(size_t i=1;i<_layers.size();++i)
+			{
+				size_t limit=_layers[i-1].neuron_count()*_layers[i].neuron_count();
+				for(size_t j=0;j<limit;++j)
 				{
-					for(size_t i=1;i<layers.size();++i)
+					_layers[i].weights()[j]-=gradients[i].weights()[j];
+				}
+				for(size_t j=0;j<_layers[i].neuron_count();++j)
+				{
+					_layers[i].biases()[j]-=gradients[j].biases()[j];
+				}
+			}
+		}
+
+		void update_weights(layer const* gradients,float learning_rate)
+		{
+			for(size_t i=1;i<_layers.size();++i)
+			{
+				size_t limit=_layers[i-1].neuron_count()*_layers[i].neuron_count();
+				for(size_t j=0;j<limit;++j)
+				{
+					_layers[i].weights()[j]-=gradients[i].weights()[j]*learning_rate;
+				}
+				for(size_t j=0;j<_layers[i].neuron_count();++j)
+				{
+					_layers[i].biases()[j]-=gradients[i].biases()[j]*learning_rate;
+				}
+			}
+		}
+
+		void calculate_grads(layer* out,delta_t const& deltas,results const& activations) const
+		{
+			for(size_t i=_layers.size()-1;i>0;)
+			{
+				size_t prev=i-1;
+				DataType* const weights=out[i].weights();
+				DataType* const biases=out[i].biases();
+				DataType const* const acts=activations[prev].get();
+				DataType const* const dels=deltas[i].get();
+				size_t far_nodes=_layers[i].neuron_count();
+				size_t near_nodes=_layers[prev].neuron_count();
+				for(size_t j=0;j<far_nodes;++j)
+				{
+					DataType const adjusted_rate=dels[j];
+					assert(!std::isnan(adjusted_rate));
+					biases[j]=dels[j];
+					DataType* weight_row=weights+j*near_nodes;
+					for(size_t k=0;k<near_nodes;++k)
 					{
-						(*this)[i]=layer_results(new DataType[layers[i].neuron_count()]);
+						weight_row[k]=acts[k]*dels[j];
 					}
 				}
-			};
-			delta_t deltas(_layers);
+				i=prev;
+			}
+		}
+
+		void update_weights(delta_t const& deltas,results const& activations,DataType learning_rate)
+		{
+			for(size_t i=_layers.size()-1;i>0;)
+			{
+				size_t prev=i-1;
+				update_weights(
+					_layers[i].weights(),
+					_layers[i].biases(),
+					activations[prev].get(),
+					deltas[i].get(),
+					_layers[i].neuron_count(),
+					_layers[prev].neuron_count(),
+					learning_rate);
+				i=prev;
+			}
+		}
+
+		void calculate_deltas(delta_t& deltas,results const& values,DataType const* answers) const
+		{
 			size_t const last=_layers.size()-1;
 			auto const c=_layers[last].neuron_count();
 			for(size_t j=0;j<c;++j)
@@ -440,7 +541,6 @@ namespace neural_net {
 			}
 			for(size_t i=last;i>1;)
 			{
-
 				auto const prev=i-1;
 				auto& delta_prev=deltas[prev];
 				auto& delta=deltas[i];
@@ -457,35 +557,73 @@ namespace neural_net {
 				}
 				i=prev;
 			}
-			for(size_t i=last;i>0;)
-			{
-				size_t prev=i-1;
-				update_weights(
-					_layers[i].weights(),
-					_layers[i].biases(),
-					values[prev].get(),
-					deltas[i].get(),
-					_layers[i].neuron_count(),
-					_layers[prev].neuron_count(),
-					learning_rate);
-				i=prev;
-			}
+		}
 
+		void backpropagate(results const& values,DataType const* answers,DataType learning_rate=1)
+		{
+			delta_t deltas(_layers);
+			calculate_deltas(deltas);
+			update_weights(deltas,values,learning_rate);
 		}
 
 		void train(DataType const* input_data,DataType const* answers,size_t num_inputs,DataType learning_rate=1)
 		{
+			if(num_inputs==0)
+			{
+				return;
+			}
 			auto const out_count=_layers.back().neuron_count();
 			auto const in_count=_layers.front().neuron_count();
+			results res(_layers);
+			delta_t dels(_layers);
+			std::vector<layer> average=construct_layers(_layers),single=construct_layers(_layers);
+			for(size_t i=1;i<average.size();++i)
+			{
+				size_t limit=average[i-1].neuron_count()*average[i].neuron_count();
+				for(size_t j=0;j<limit;++j)
+				{
+					average[i].weights()[j]=0;
+				}
+				for(size_t j=0;j<average[i].neuron_count();++j)
+				{
+					average[i].biases()[j]=0;
+				}
+			}
 			for(size_t n=0;n<num_inputs;++n)
 			{
 				auto const in_offset=in_count*n;
 				auto const out_offset=out_count*n;
-				backpropagate(feed_forward_store(input_data+in_offset),answers+out_offset,learning_rate);
+				feed_forward_store(res,input_data+in_offset);
+				calculate_deltas(dels,res,answers+out_offset);
+				calculate_grads(single.data(),dels,res);
+				for(size_t i=1;i<_layers.size();++i)
+				{
+					size_t limit=average[i-1].neuron_count()*average[i].neuron_count();
+					for(size_t j=0;j<limit;++j)
+					{
+						average[i].weights()[j]+=single[i].weights()[j];
+					}
+					for(size_t j=0;j<average[i].neuron_count();++j)
+					{
+						average[i].biases()[j]+=single[i].weights()[j];
+					}
+				}
 			}
+			auto adjustment=learning_rate/num_inputs;
+			for(size_t i=1;i<_layers.size();++i)
+			{
+				size_t limit=average[i-1].neuron_count()*average[i].neuron_count();
+				for(size_t j=0;j<limit;++j)
+				{
+					average[i].weights()[j]*=adjustment;
+				}
+				for(size_t j=0;j<average[i].neuron_count();++j)
+				{
+					average[i].biases()[j]*=adjustment;
+				}
+			}
+			update_weights(average.data());
 		}
-	private:
-	public:
 		template<typename Stream>
 		auto save(Stream& file) -> typename std::enable_if<!std::is_convertible<Stream,char const*>::value>::type
 		{
