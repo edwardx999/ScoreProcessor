@@ -485,6 +485,7 @@ namespace ScoreProcessor {
 			--region.right;
 			--region.bottom;
 			img=get_crop_fill(img,region,unsigned char(255));
+			return true;
 		}
 		else
 		{

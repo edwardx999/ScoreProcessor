@@ -442,6 +442,9 @@ namespace ScoreProcessor {
 					break;
 				case support_type::png:
 					img.load_png(fname);
+					break;
+				case support_type::tiff:
+					img.load_tiff(fname,0,0);
 			}
 		};
 		auto save_s=[output,quality](cil::CImg<T>& img,auto s)
@@ -456,6 +459,9 @@ namespace ScoreProcessor {
 					break;
 				case support_type::png:
 					img.save_png(output);
+					break;
+				case support_type::tiff:
+					img.save_tiff(output,1);
 			}
 		};
 		if(this->empty())

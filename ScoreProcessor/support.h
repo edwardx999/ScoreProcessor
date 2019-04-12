@@ -2,7 +2,7 @@
 #define SUPPORT_H
 #include "lib\exstring\exstring.h"
 enum class support_type {
-	no,png,jpeg,bmp
+	no,png,jpeg,bmp,tiff
 };
 inline support_type supported(wchar_t const* ext)
 {
@@ -30,6 +30,10 @@ inline support_type supported(wchar_t const* ext)
 	{
 		return support_type::bmp;
 	}
+	if(exlib::strncmp_nocase(ext,L"tiff")||exlib::strncmp_nocase(ext,L"tif"))
+	{
+		return support_type::tiff;
+	}
 	return support_type::no;
 }
 inline support_type supported(char const* ext)
@@ -42,7 +46,7 @@ inline support_type supported(char const* ext)
 	{
 		return support_type::png;
 	}
-	if(*ext==L'j')
+	if(*ext==L'j'||*ext==L'J')
 	{
 		auto off=ext+1;
 		if(!(exlib::strncmp_nocase(off,"pg")&&
@@ -57,6 +61,10 @@ inline support_type supported(char const* ext)
 	if(!exlib::strncmp_nocase(ext,"bmp"))
 	{
 		return support_type::bmp;
+	}
+	if(exlib::strncmp_nocase(ext,"tiff")||exlib::strncmp_nocase(ext,"tif"))
+	{
+		return support_type::tiff;
 	}
 	return support_type::no;
 }

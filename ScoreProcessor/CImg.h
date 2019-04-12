@@ -426,7 +426,7 @@
 // (see methods 'CImg<T>::{load,save}_png()'.
 #ifdef cimg_use_png
 extern "C" {
-#include "lib\libpng\png.h"
+#include "png.h"
 }
 #endif
 
@@ -439,7 +439,7 @@ extern "C" {
 // (see methods 'CImg<T>::{load,save}_jpeg()').
 #ifdef cimg_use_jpeg
 extern "C" {
-#include "lib\jpeg-9b\jpeglib.h"
+#include "jpeglib.h"
 #include "setjmp.h"
 }
 #endif
