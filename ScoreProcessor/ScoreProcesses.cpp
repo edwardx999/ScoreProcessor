@@ -1693,7 +1693,7 @@ namespace ScoreProcessor {
 		assert(mid<max);
 		double const scale_up=scast<double>(255-mid)/scast<double>(max-mid);
 		double const scale_down=scast<double>(mid)/scast<double>(mid-min);
-		unsigned char* const limit=img.begin()+img._width*img._height;
+		unsigned char* const limit=img.begin()+size_t{img._width}*img._height;
 		for(unsigned char* it=img.begin();it!=limit;++it)
 		{
 			unsigned char& pixel=*it;

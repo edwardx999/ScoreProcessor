@@ -14,3 +14,7 @@ ScoreProcessor/x64/
 ScoreProcessor/Release/
 Release/test/
 *.user
+*.ssn
+*.tlog
+*.pch
+*.log

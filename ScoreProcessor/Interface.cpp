@@ -57,7 +57,8 @@ namespace ScoreProcessor {
 				"vert: bottom coord or height, defaults to bottom coord; tags: b, bottom, h, height\n"
 				"color: color to fill with, can be grayscale, rgb, or rgba with comma-separated values;\n"
 				"  tags: clr, color\n"
-				"origin: origin from which coords are taken, +y is always down, +x is always right; tags: o, or",
+				"origin: origin from which coords are taken, +y is always down, +x is always right,\n"
+				"  combination of t,m,b and l,m,r, e.g. tl for top left; tags: o, or",
 				"Fill Rectangle",
 				"left top horiz vert color=255 origin=tl");
 	}
@@ -307,6 +308,19 @@ namespace ScoreProcessor {
 	}
 
 	namespace Quality {
-		MakerTFull<UseTuple,Precheck,IntParser<Value>> maker("Set the quality of the save file [0,100], only affects jpegs","Quality","quality");
+		decltype(maker) maker("Set the quality of the save file [0,100], only affects jpegs","Quality","quality");
+	}
+
+	namespace RescaleAbsoluteMaker {
+		decltype(maker) maker{
+			"Rescale to an absolute width and height\n"
+			"Give two out of width height and ratio\n"
+			"width: the width to resize image; tags: w, width\n"
+			"height: the height to resize image; tags: h, height\n"
+			"ratio: the ratio of width to height to resize; tags: r, rat, ratio\n"
+			"mode: resize interpolation mode; see -rs rescale for tags and info\n"
+			"gamma: resize gamma; see -rs rescale for tags and info"
+			,"Rescale Absolute",
+			"width height ratio=preserve mode=automatic gamma=2"};
 	}
 }

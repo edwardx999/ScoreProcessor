@@ -595,17 +595,17 @@ namespace ScoreProcessor {
 		struct has_labels {
 		private:
 			template<typename U>
-			constexpr static auto concattable(int) -> decltype(exlib::concat(U::labels,std::array<char const*,0>()),bool())
+			constexpr static auto concattable() -> decltype(exlib::concat(U::labels,std::array<char const*,1>{}),bool())
 			{
 				return true;
 			}
-			template<typename U>
-			constexpr static auto concattable(...)
+			template<typename U,typename... Extra>
+			constexpr static auto concattable(Extra...)
 			{
 				return false;
 			}
 		public:
-			static constexpr bool value=concattable<T>(0);
+			static constexpr bool value=concattable<T>();
 		};
 	public:
 		constexpr static size_t MinArgs=defaults<ArgParsers...>();
@@ -692,16 +692,11 @@ namespace ScoreProcessor {
 			exlib::apply_ind(i,parse_table,mt,as_parsers(),str,prefix_len);
 		}
 
-		static constexpr auto name_table()
-		{
-			constexpr std::array<std::string_view,MaxArgs> arr{{ArgParsers::name...}};
-			return arr;
-		}
+		constexpr static auto name_table=std::array<std::string_view,MaxArgs>{{ArgParsers::name...}};
 
 		static constexpr std::string_view find_arg_name(size_t i)
 		{
-			constexpr static auto table=name_table();
-			return table[i];
+			return name_table[i];
 		}
 
 	public:
@@ -734,20 +729,11 @@ namespace ScoreProcessor {
 		{
 			return std::array<lookup_entry,sizeof...(Is)>{{le(Parser::labels[Is],I)...}};
 		}
-
-		template<typename T,size_t F>
-		static constexpr auto make_lookup_table(std::index_sequence<F>)
+		
+		template<typename... Parsers,size_t... Indices>
+		static constexpr auto make_lookup_table(std::index_sequence<Indices...>)
 		{
-			return make_lookup_entries<T,F>(std::make_index_sequence<num_labels<T>()>());
-		}
-
-		template<typename First,typename... Rest,size_t F,size_t... R>
-		static constexpr auto make_lookup_table(std::index_sequence<F,R...>)
-		{
-			return exlib::concat(
-				make_lookup_entries<First,F>(
-					std::make_index_sequence<num_labels<First>()>()),
-				make_lookup_table<Rest...>(std::index_sequence<R...>()));
+			return exlib::concat(make_lookup_entries<Parsers,Indices>(std::make_index_sequence<num_labels<Parsers>()>{})...);
 		}
 
 		size_t find_label(InputType data,size_t len)
@@ -1155,7 +1141,7 @@ namespace ScoreProcessor {
 		};
 		struct Right {
 			cnnm("horizontal extent");
-			clbl("r","right");
+			clbl("r","right","w","width");
 			struct Coord {
 				cnnm("right");
 			};
@@ -1175,7 +1161,7 @@ namespace ScoreProcessor {
 
 		struct Bottom {
 			cnnm("vertical extent");
-			clbl("b","bot","bottom");
+			clbl("b","bot","bottom","h","height");
 			struct Coord {
 				cnnm("bottom");
 			};
@@ -1864,7 +1850,7 @@ namespace ScoreProcessor {
 					return ret;
 				}
 				parse_to(start,',',ret[0],inv_min,range_error);
-				parse_to(start,'\0',ret[1],inv_max,range_error);
+				parse_to(end+1,'\0',ret[1],inv_max,range_error);
 				if(ret[0]>ret[1]) throw std::invalid_argument("Selection min value cannot be greater than max value");
 				return ret;
 			}
@@ -2702,6 +2688,54 @@ namespace ScoreProcessor {
 		extern MakerTFull<UseTuple,Precheck,IntParser<Value>> maker;
 	}
 
+	namespace RescaleAbsoluteMaker {
+		using uint=unsigned int;
+		inline constexpr uint interpolate=-1;
+		struct Width {
+			clbl("w","width");
+			cnnm("width");
+			cndf(interpolate)
+		};
+		struct Height {
+			clbl("h","height");
+			cnnm("height");
+			cndf(interpolate)
+		};
+		struct Ratio {
+			clbl("r","rat","ratio");
+			cnnm("ratio");
+			static float parse(InputType it)
+			{
+				if(it[0]=='p')
+				{
+					return -1.0;
+				}
+				return FloatParser<Ratio>{}.parse(it);
+			}
+			cndf(-2.0f)
+		};
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,int width,int height,float ratio,Rescale::rescale_mode mode,float gamma)
+			{
+				if(width!=-1&&height!=-1&&ratio>=-1.0f)
+				{
+					throw std::invalid_argument("You may only give two of three arguments");
+				}
+				if(gamma!=1)
+				{
+					del.pl.add_process<Gamma>(gamma);
+					del.pl.add_process<RescaleAbsolute>(width,height,ratio,mode);
+					del.pl.add_process<Gamma>(1/gamma);
+				}
+				else
+				{
+					del.pl.add_process<RescaleAbsolute>(width,height,ratio,mode);
+				}
+			}
+		};
+		extern SingMaker<UseTuple,UIntParser<Width>,UIntParser<Height>,Ratio,RsMaker::Mode,RotMaker::GammaParser> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -2740,7 +2774,8 @@ namespace ScoreProcessor {
 			compair("rb",&RBMaker::maker),
 			compair("rs",&RsMaker::maker),
 			compair("ss",&SmartScale::maker),
-			compair("crp",&Cropper::maker));
+			compair("crp",&Cropper::maker),
+			compair("rsa",&RescaleAbsoluteMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),

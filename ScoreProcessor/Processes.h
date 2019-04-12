@@ -281,6 +281,16 @@ namespace ScoreProcessor {
 		bool process(Img&) const override;
 	};
 
+	class RescaleAbsolute:public ImageProcess<> {
+		unsigned int width;
+		unsigned int height;
+		float ratio;
+		Rescale::rescale_mode mode;
+	public:
+		RescaleAbsolute(unsigned int width,unsigned int height,float ratio,Rescale::rescale_mode mode):width{width},height{height},ratio{ratio},mode{mode}{}
+		bool process(Img&) const override;
+	};
+
 	class NeuralScale:public ThreadOverride {
 		ScoreProcessor::neural_scaler scaler;
 		float ratio;

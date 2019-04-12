@@ -390,6 +390,55 @@ namespace ScoreProcessor {
 		return true;
 	}
 
+
+	bool RescaleAbsolute::process(Img& img) const
+	{
+		constexpr unsigned int interpolate=-1;
+		unsigned int true_width,true_height;
+		float true_ratio;
+		if(height!=interpolate&&width!=interpolate)
+		{
+			true_height=height;
+			true_width=width;
+		}
+		else
+		{
+			if(ratio<0)
+			{
+				true_ratio=static_cast<double>(img.width())/img.height();
+			}
+			else
+			{
+				true_ratio=ratio;
+			}
+			if(height!=interpolate)
+			{
+				true_height=height;
+				true_width=static_cast<unsigned int>(std::round(true_height*true_ratio));
+			}
+			else
+			{
+				true_width=width;
+				true_height=static_cast<unsigned int>(std::round(width/true_ratio));
+			}
+		}
+		Rescale::rescale_mode true_mode;
+		if(mode==Rescale::automatic)
+		{
+			true_mode=(true_height<img._height||true_width<img._width)?Rescale::moving_average:Rescale::cubic;
+		}
+		else
+		{
+			true_mode=mode;
+		}
+		if(true_width!=img._width||true_height!=img._height)
+		{
+			img.resize(true_width,true_height,img._depth,img._spectrum,true_mode);
+			return true;
+		}
+		return false;
+	}
+
 	bool NeuralScale::process(Img& img) const
 	{
 		scaler.smart_scale(img,ratio,ThreadOverride::num_threads());
