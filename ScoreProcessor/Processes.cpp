@@ -199,9 +199,9 @@ namespace ScoreProcessor {
 			};
 		};
 		auto grayscale_clear=clear_base([rmn=required_min,rmx=required_max](unsigned char const* pix)
-		{
-			return *pix>=rmn&&*pix<=rmx;
-		});
+			{
+				return *pix>=rmn&&*pix<=rmx;
+			});
 		auto color_clear=clear_base([rmn=3U*required_min,rmx=3U*required_max,img_size=size_t{img._height}*img._width](unsigned char const* pix)
 		{
 			unsigned int brightness=0;
@@ -255,25 +255,25 @@ namespace ScoreProcessor {
 		ImageUtils::Point<signed int> porigin;
 		switch(origin_code%3)
 		{
-			case 0:
-				porigin.x=0;
-				break;
-			case 1:
-				porigin.x=width/2;
-				break;
-			case 2:
-				porigin.x=width;
+		case 0:
+			porigin.x=0;
+			break;
+		case 1:
+			porigin.x=width/2;
+			break;
+		case 2:
+			porigin.x=width;
 		}
 		switch(origin_code/3)
 		{
-			case 0:
-				porigin.y=0;
-				break;
-			case 1:
-				porigin.y=height/2;
-				break;
-			case 2:
-				porigin.y=height;
+		case 0:
+			porigin.y=0;
+			break;
+		case 1:
+			porigin.y=height/2;
+			break;
+		case 2:
+			porigin.y=height;
 		}
 		return porigin;
 	}
@@ -306,37 +306,37 @@ namespace ScoreProcessor {
 		{
 			switch(img._spectrum)
 			{
-				case 1:
-				case 2:
-					if(num_layers==3||num_layers==4&&color[3]==255)
-					{
-						cil::CImg<unsigned char> temp(img._width,img._height,1,3);
-						size_t const size=img._width*img._height;
-						memcpy(temp.data(),img.data(),size);
-						memcpy(temp.data()+size,img.data(),size);
-						memcpy(temp.data()+2U*size,img.data(),size);
-						img.swap(temp);
-					}
-					else if(num_layers==4)
-					{
-						cil::CImg<unsigned char> temp(img._width,img._height,1,4);
-						size_t const size=img._width*img._height;
-						memcpy(temp.data(),img.data(),size);
-						memcpy(temp.data()+size,img.data(),size);
-						memcpy(temp.data()+2U*size,img.data(),size);
-						memset(temp.data()+3U*size,255,size);
-						img.swap(temp);
-					};
-					break;
-				case 3:
-					if(num_layers==4&&color[3]!=255)
-					{
-						cil::CImg<unsigned char> temp(img._width,img._height,1,4);
-						size_t const size=img._width*img._height;
-						memcpy(temp.data(),img.data(),3U*size);
-						memset(temp.data()+3U*size,255,size);
-						img.swap(temp);
-					}
+			case 1:
+			case 2:
+				if(num_layers==3||num_layers==4&&color[3]==255)
+				{
+					cil::CImg<unsigned char> temp(img._width,img._height,1,3);
+					size_t const size=img._width*img._height;
+					memcpy(temp.data(),img.data(),size);
+					memcpy(temp.data()+size,img.data(),size);
+					memcpy(temp.data()+2U*size,img.data(),size);
+					img.swap(temp);
+				}
+				else if(num_layers==4)
+				{
+					cil::CImg<unsigned char> temp(img._width,img._height,1,4);
+					size_t const size=img._width*img._height;
+					memcpy(temp.data(),img.data(),size);
+					memcpy(temp.data()+size,img.data(),size);
+					memcpy(temp.data()+2U*size,img.data(),size);
+					memset(temp.data()+3U*size,255,size);
+					img.swap(temp);
+				};
+				break;
+			case 3:
+				if(num_layers==4&&color[3]!=255)
+				{
+					cil::CImg<unsigned char> temp(img._width,img._height,1,4);
+					size_t const size=img._width*img._height;
+					memcpy(temp.data(),img.data(),3U*size);
+					memset(temp.data()+3U*size,255,size);
+					img.swap(temp);
+				}
 			}
 		}
 #define ucast static_cast<unsigned int>
@@ -366,32 +366,32 @@ namespace ScoreProcessor {
 		return true;
 	}
 
-	bool Rotate::process(Img& img) const
+	bool Rotate::process(Img&img) const
 	{
 		img.rotate(-angle,mode,1);
 		return true;
 	}
 
-	bool Gamma::process(Img& img) const
+	bool Gamma::process(Img&img) const
 	{
 		apply_gamma(img,gamma);
 		return true;
 	}
 
-	bool HorizontalShift::process(Img& img) const
+	bool HorizontalShift::process(Img&img) const
 	{
 		horizontal_shift(img,side,direction,background_threshold);
 		return true;
 	}
 
-	bool VerticalShift::process(Img& img) const
+	bool VerticalShift::process(Img&img) const
 	{
 		vertical_shift(img,side,direction,background_threshold);
 		return true;
 	}
 
 
-	bool RescaleAbsolute::process(Img& img) const
+	bool RescaleAbsolute::process(Img&img) const
 	{
 		constexpr unsigned int interpolate=-1;
 		unsigned int true_width,true_height;
@@ -439,7 +439,60 @@ namespace ScoreProcessor {
 		return false;
 	}
 
-	bool NeuralScale::process(Img& img) const
+	bool ChangeCanvasSize::process(Img&img) const
+	{
+		auto const true_width=width==-1?img.width():width;
+		auto const true_height=height==-1?img.height():height;
+		if(true_width!=img._width||true_height!=img._height)
+		{
+			auto region=[origin=this->origin,&img,true_width,true_height]()
+			{
+				ImageUtils::Rectangle<int> ret;
+				switch(origin%3)
+				{
+				case 0: //left
+					ret.left=0;
+					ret.right=true_width;
+					break;
+				case 1: //middle
+				{
+					ret.left=(img.width()-true_width)/2;
+					ret.right=ret.left+true_width;
+					break;
+				}
+				case 2: //right
+					ret.left=img.width()-true_width;
+					ret.right=img.width();
+				}
+				switch(origin/3)
+				{
+				case 0: //top
+					ret.top=0;
+					ret.bottom=img.height();
+					break;
+				case 1: //middle
+				{
+					ret.top=(img.height()-true_height)/2;
+					ret.bottom=ret.top+true_height;
+					break;
+				}
+				case 2: //bottom
+					ret.top=img.height()-true_height;
+					ret.bottom=img.height();
+				}
+				return ret;
+			}();
+			--region.right;
+			--region.bottom;
+			img=get_crop_fill(img,region,unsigned char(255));
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	bool NeuralScale::process(Img&img) const
 	{
 		scaler.smart_scale(img,ratio,ThreadOverride::num_threads());
 		return true;

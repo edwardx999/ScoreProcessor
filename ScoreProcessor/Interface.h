@@ -2736,6 +2736,40 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple,UIntParser<Width>,UIntParser<Height>,Ratio,RsMaker::Mode,RotMaker::GammaParser> maker;
 	}
 
+	namespace CCSMaker {
+		using FRMaker::Origin;
+		inline constexpr int interpolate=1;
+		struct Width {
+			clbl("w","width");
+			cnnm("width");
+			static int parse(InputType it)
+			{
+				if(it[0]=='p')
+				{
+					return interpolate;
+				}
+				return IntParser<empty,no_negatives>{}.parse(it);
+			}
+			cndf(interpolate)
+		};
+		struct Height {
+			clbl("h","height");
+			cnnm("height");
+			static int parse(InputType it)
+			{
+				return Width::parse(it);
+			}
+			cndf(interpolate)
+		};
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,int width,int height,FillRectangle::origin_reference origin)
+			{
+				del.pl.add_process<ChangeCanvasSize>(width,height,origin);
+			}
+		};
+		extern SingMaker<UseTuple,Width,Height,Origin> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -2775,7 +2809,8 @@ namespace ScoreProcessor {
 			compair("rs",&RsMaker::maker),
 			compair("ss",&SmartScale::maker),
 			compair("crp",&Cropper::maker),
-			compair("rsa",&RescaleAbsoluteMaker::maker));
+			compair("rsa",&RescaleAbsoluteMaker::maker),
+			compair("ccs",&CCSMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),

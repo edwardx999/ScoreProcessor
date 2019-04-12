@@ -291,6 +291,15 @@ namespace ScoreProcessor {
 		bool process(Img&) const override;
 	};
 
+	class ChangeCanvasSize:public ImageProcess<> {
+		int width;
+		int height;
+		FillRectangle::origin_reference origin;
+	public:
+		ChangeCanvasSize(int width,int height,FillRectangle::origin_reference origin):width{width},height{height},origin{origin}{}
+		bool process(Img&) const override;
+	};
+
 	class NeuralScale:public ThreadOverride {
 		ScoreProcessor::neural_scaler scaler;
 		float ratio;

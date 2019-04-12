@@ -323,4 +323,15 @@ namespace ScoreProcessor {
 			,"Rescale Absolute",
 			"width height ratio=preserve mode=automatic gamma=2"};
 	}
+
+	namespace CCSMaker {
+		decltype(maker) maker{
+			"Change the canvas size (see paint.net)\n"
+			"width; tags: w, width\n"
+			"height; tags: h, height\n"
+			"origin: tags: o, or",
+			"Change Canvas Size",
+			"width=preserve height=preserve origin=tl"
+		};
+	}
 }
