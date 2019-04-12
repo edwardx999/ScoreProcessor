@@ -76,7 +76,7 @@ void info_output()
 		"parameters that require multiple values are notated with a comma\n"
 		"parameters can be tagged to reference a specific input with prefix:value\n"
 		"prefixes sometimes allow switching between different types of input\n"
-		"ex: img0.png --image1.jpg my_folder -r rec_folder -fg 180 -ccga 20,50,30 -fr l:100 w:100 h:30\n"
+		"ex: img0.png --image1.jpg my_folder -r rec_folder -fg 180 -ccg bsr:0,30 -fr l:100 w:100 h:30 t:0 -o %f.%x t\n"
 		"Type command alone to get readme\n"
 		"Available commands:\n"
 		"  Single Page Operations:\n";
