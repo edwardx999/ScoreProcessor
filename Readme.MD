@@ -2,47 +2,47 @@ Program useful for editing batches of images, specializing in score images
 
 Useful side feature is mass renaming/copying files.
 <pre>
-Version:&nbsp;Apr&nbsp;11&nbsp;2019&nbsp;23:36:26&nbsp;Copyright&nbsp;2017-2019&nbsp;Edward&nbsp;Xie  
-Syntax:&nbsp;filename_or_folder...&nbsp;command&nbsp;params...&nbsp;...  
-If&nbsp;you&nbsp;want&nbsp;to&nbsp;recursively&nbsp;search&nbsp;a&nbsp;folder,&nbsp;type&nbsp;-r&nbsp;before&nbsp;it  
-If&nbsp;a&nbsp;file&nbsp;starts&nbsp;with&nbsp;a&nbsp;dash,&nbsp;double&nbsp;the&nbsp;starting&nbsp;dash:&nbsp;"-my-file.jpg"&nbsp;->&nbsp;"--my-file.jpg"  
-parameters&nbsp;that&nbsp;require&nbsp;multiple&nbsp;values&nbsp;are&nbsp;notated&nbsp;with&nbsp;a&nbsp;comma  
-parameters&nbsp;can&nbsp;be&nbsp;tagged&nbsp;to&nbsp;reference&nbsp;a&nbsp;specific&nbsp;input&nbsp;with&nbsp;prefix:value  
-prefixes&nbsp;sometimes&nbsp;allow&nbsp;switching&nbsp;between&nbsp;different&nbsp;types&nbsp;of&nbsp;input  
-ex:&nbsp;img0.png&nbsp;--image1.jpg&nbsp;my_folder&nbsp;-r&nbsp;rec_folder&nbsp;-fg&nbsp;180&nbsp;-ccga&nbsp;20,50,30  
-Type&nbsp;command&nbsp;alone&nbsp;to&nbsp;get&nbsp;readme  
-Available&nbsp;commands:  
-&nbsp;&nbsp;Single&nbsp;Page&nbsp;Operations:  
-&nbsp;&nbsp;&nbsp;&nbsp;Convert&nbsp;to&nbsp;Grayscale:&nbsp;&nbsp;&nbsp;-cg  
-&nbsp;&nbsp;&nbsp;&nbsp;Filter&nbsp;Gray:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-fg&nbsp;min&nbsp;max=255&nbsp;replacer=255  
-&nbsp;&nbsp;&nbsp;&nbsp;Horizontal&nbsp;Padding:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-hp&nbsp;left&nbsp;right=l&nbsp;tolerance=0.005&nbsp;background_threshold=128  
-&nbsp;&nbsp;&nbsp;&nbsp;Vertical&nbsp;Padding:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-vp&nbsp;top&nbsp;bottom=l&nbsp;tolerance=0.005&nbsp;background_threshold=128  
-&nbsp;&nbsp;&nbsp;&nbsp;Straighten:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-str&nbsp;min_angle=-5&nbsp;max_angle=5&nbsp;angle_prec=0.1&nbsp;pixel_prec=1&nbsp;boundary=128&nbsp;gamma=2  
-&nbsp;&nbsp;&nbsp;&nbsp;Rotate:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-rot&nbsp;angle&nbsp;mode=cubic&nbsp;gamma=2  
-&nbsp;&nbsp;&nbsp;&nbsp;Fill&nbsp;Rectangle:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-fr&nbsp;left&nbsp;top&nbsp;horiz&nbsp;vert&nbsp;color=255&nbsp;origin=tl  
-&nbsp;&nbsp;&nbsp;&nbsp;Rescale&nbsp;Brightness:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-rcg&nbsp;min&nbsp;mid&nbsp;max=255  
-&nbsp;&nbsp;&nbsp;&nbsp;Cluster&nbsp;Clear&nbsp;Gray:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-ccg&nbsp;required_color_range=0,255&nbsp;bad_size_range=0,0&nbsp;sel_range=0,200&nbsp;repl_color=255&nbsp;eight_way=false  
-&nbsp;&nbsp;&nbsp;&nbsp;Blur:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-bl&nbsp;st_dev&nbsp;gamma=2  
-&nbsp;&nbsp;&nbsp;&nbsp;Extract&nbsp;First&nbsp;Layer:&nbsp;&nbsp;&nbsp;&nbsp;-exl  
-&nbsp;&nbsp;&nbsp;&nbsp;Cover&nbsp;Transparency:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-ct&nbsp;red=255&nbsp;green=r&nbsp;blue=r  
-&nbsp;&nbsp;&nbsp;&nbsp;Remove&nbsp;Border&nbsp;(DANGER):&nbsp;-rb&nbsp;tolerance=0.9  
-&nbsp;&nbsp;&nbsp;&nbsp;Rescale:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-rs&nbsp;factor&nbsp;interpolation_mode=auto&nbsp;gamma=2  
-&nbsp;&nbsp;&nbsp;&nbsp;Smart&nbsp;Scale:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-ss&nbsp;factor&nbsp;network_path=(search&nbsp;program&nbsp;directory&nbsp;for&nbsp;first&nbsp;network)  
-&nbsp;&nbsp;&nbsp;&nbsp;Crop:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-crp&nbsp;left&nbsp;top&nbsp;right&nbsp;bottom  
-&nbsp;&nbsp;&nbsp;&nbsp;Rescale&nbsp;Absolute:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-rsa&nbsp;width&nbsp;height&nbsp;ratio=preserve&nbsp;mode=automatic&nbsp;gamma=2  
-&nbsp;&nbsp;&nbsp;&nbsp;Change&nbsp;Canvas&nbsp;Size:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-ccs&nbsp;width=preserve&nbsp;height=preserve&nbsp;origin=tl  
-&nbsp;&nbsp;Multi&nbsp;Page&nbsp;Operations:  
-&nbsp;&nbsp;&nbsp;&nbsp;Splice:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-spl&nbsp;horiz_pad=3%&nbsp;opt_pad=5%&nbsp;min_pad=1.2%&nbsp;opt_hgt=55%&nbsp;excs_wgt=10&nbsp;pad_wgt=1&nbsp;bg=128  
-&nbsp;&nbsp;&nbsp;&nbsp;Cut:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-cut&nbsp;min_width=66%&nbsp;min_height=8%&nbsp;horiz_weight=20&nbsp;min_vert_space=0&nbsp;bg=128  
-&nbsp;&nbsp;Options:  
-&nbsp;&nbsp;&nbsp;&nbsp;Output:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-o&nbsp;pattern=%w&nbsp;move=false  
-&nbsp;&nbsp;&nbsp;&nbsp;Verbosity:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-vb&nbsp;level  
-&nbsp;&nbsp;&nbsp;&nbsp;Number&nbsp;of&nbsp;Threads:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-nt&nbsp;num  
-&nbsp;&nbsp;&nbsp;&nbsp;Boundary&nbsp;Select:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-bsel&nbsp;first_file1&nbsp;last_file1&nbsp;...&nbsp;first_filen&nbsp;last_filen  
-&nbsp;&nbsp;&nbsp;&nbsp;Starting&nbsp;index:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-si&nbsp;index  
-&nbsp;&nbsp;&nbsp;&nbsp;Filter:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-flt&nbsp;pattern&nbsp;keep_match  
-&nbsp;&nbsp;&nbsp;&nbsp;List&nbsp;Files:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-list  
-&nbsp;&nbsp;&nbsp;&nbsp;Quality:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-q&nbsp;quality  
-Multiple&nbsp;Single&nbsp;Page&nbsp;Operations&nbsp;can&nbsp;be&nbsp;done&nbsp;at&nbsp;once.&nbsp;They&nbsp;are&nbsp;performed&nbsp;in&nbsp;the&nbsp;order&nbsp;they&nbsp;are&nbsp;given.  
-A&nbsp;Multi&nbsp;Page&nbsp;Operation&nbsp;can&nbsp;not&nbsp;be&nbsp;done&nbsp;with&nbsp;other&nbsp;operations.
+Version: Apr 11 2019 23:36:26 Copyright 2017-2019 Edward Xie  
+Syntax: filename_or_folder... command params... ...  
+If you want to recursively search a folder, type -r before it  
+If a file starts with a dash, double the starting dash: "-my-file.jpg" -> "--my-file.jpg"  
+parameters that require multiple values are notated with a comma  
+parameters can be tagged to reference a specific input with prefix:value  
+prefixes sometimes allow switching between different types of input  
+ex: img0.png --image1.jpg my_folder -r rec_folder -fg 180 -ccga 20,50,30 -fr l:100 w:100 h:30  
+Type command alone to get readme  
+Available commands:  
+  Single Page Operations:  
+    Convert to Grayscale:   -cg  
+    Filter Gray:            -fg min max=255 replacer=255  
+    Horizontal Padding:     -hp left right=l tolerance=0.005 background_threshold=128  
+    Vertical Padding:       -vp top bottom=l tolerance=0.005 background_threshold=128  
+    Straighten:             -str min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2  
+    Rotate:                 -rot angle mode=cubic gamma=2  
+    Fill Rectangle:         -fr left top horiz vert color=255 origin=tl  
+    Rescale Brightness:     -rcg min mid max=255  
+    Cluster Clear Gray:     -ccg required_color_range=0,255 bad_size_range=0,0 sel_range=0,200 repl_color=255 eight_way=false  
+    Blur:                   -bl st_dev gamma=2  
+    Extract First Layer:    -exl  
+    Cover Transparency:     -ct red=255 green=r blue=r  
+    Remove Border (DANGER): -rb tolerance=0.9  
+    Rescale:                -rs factor interpolation_mode=auto gamma=2  
+    Smart Scale:            -ss factor network_path=(search program directory for first network)  
+    Crop:                   -crp left top right bottom  
+    Rescale Absolute:       -rsa width height ratio=preserve mode=automatic gamma=2  
+    Change Canvas Size:     -ccs width=preserve height=preserve origin=tl  
+  Multi Page Operations:  
+    Splice:                 -spl horiz_pad=3% opt_pad=5% min_pad=1.2% opt_hgt=55% excs_wgt=10 pad_wgt=1 bg=128  
+    Cut:                    -cut min_width=66% min_height=8% horiz_weight=20 min_vert_space=0 bg=128  
+  Options:  
+    Output:                 -o pattern=%w move=false  
+    Verbosity:              -vb level  
+    Number of Threads:      -nt num  
+    Boundary Select:        -bsel first_file1 last_file1 ... first_filen last_filen  
+    Starting index:         -si index  
+    Filter:                 -flt pattern keep_match  
+    List Files:             -list  
+    Quality:                -q quality  
+Multiple Single Page Operations can be done at once. They are performed in the order they are given.  
+A Multi Page Operation can not be done with other operations.
 </pre>
