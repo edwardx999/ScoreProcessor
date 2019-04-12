@@ -2738,7 +2738,7 @@ namespace ScoreProcessor {
 
 	namespace CCSMaker {
 		using FRMaker::Origin;
-		inline constexpr int interpolate=1;
+		inline constexpr int interpolate=-1;
 		struct Width {
 			clbl("w","width");
 			cnnm("width");

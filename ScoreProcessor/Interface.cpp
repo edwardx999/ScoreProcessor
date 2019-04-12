@@ -329,7 +329,7 @@ namespace ScoreProcessor {
 			"Change the canvas size (see paint.net)\n"
 			"width; tags: w, width\n"
 			"height; tags: h, height\n"
-			"origin: tags: o, or",
+			"origin: see -fr, Fill Rectangle; tags: o, or",
 			"Change Canvas Size",
 			"width=preserve height=preserve origin=tl"
 		};
