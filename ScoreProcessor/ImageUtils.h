@@ -350,6 +350,10 @@ namespace ImageUtils {
 	template<typename Iter>
 	Iter compress_rectangles(Iter begin,Iter end)
 	{
+		if(begin==end)
+		{
+			return end;
+		}
 		std::sort(begin,end,[](auto const& rect1,auto const& rect2)
 			{
 				if(rect1.left<rect2.left)
