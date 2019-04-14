@@ -226,8 +226,8 @@ namespace exlib {
 
 		void clear()
 		{
-			_size=0;
-			_data[0]=0;
+			this->_size=0;
+			this->_data[0]=0;
 		}
 	};
 	typedef string_base<char> string;
@@ -276,7 +276,7 @@ namespace exlib {
 		typedef typename string_alg<T,CharT>::const_reverse_iterator const_reverse_iterator;
 		string_manager_base(T* data):string_alg(data,exlib::strlen(data)) {}
 		string_manager_base(T* data,size_t size):string_alg(data,size) {}
-		~string_manager_base() { delete[] data; }
+		~string_manager_base() { delete[] this->_data; }
 	};
 	typedef string_manager_base<char> string_manager;
 	typedef string_manager_base<char> wstring_manager;
@@ -292,31 +292,31 @@ namespace exlib {
 		typename string_base<T,CharT,Alloc>::size_type s)
 	{
 		assert(cp!=nullptr);
-		_size=s;
-		_data=allocate(s+1);
-		for(_capacity=0;_capacity<_size;++_capacity)
+		this->_size=s;
+		this->_data=this->allocate(s+1);
+		for(_capacity=0;_capacity<this->_size;++_capacity)
 		{
-			_data[_capacity]=cp[_capacity];
+			this->_data[_capacity]=cp[_capacity];
 		}
-		_data[_capacity]=0;
+		this->_data[_capacity]=0;
 	}
 	template<typename T,typename CharT,typename Alloc>
 	string_base<T,CharT,Alloc>::string_base(typename string_base<T,CharT,Alloc>::size_type s,T c)
 	{
-		_size=s;
-		_data=allocate(s+1);
-		for(_capacity=0;_capacity<_size;++_capacity)
+		this->_size=s;
+		this->_data=this->allocate(s+1);
+		for(this->_capacity=0;this->_capacity<this->_size;++this->_capacity)
 		{
-			_data[_capacity]=c;
+			this->_data[this->_capacity]=c;
 		}
-		_data[_capacity]=0;
+		this->_data[this->_capacity]=0;
 	}
 	template<typename T,typename CharT,typename Alloc>
 	string_base<T,CharT,Alloc>::string_base(typename string_base<T,CharT,Alloc>::size_type capacity):_capacity(capacity)
 	{
-		_data=allocate(_capacity+1);
-		_data[0]=0;
-		_size=0;
+		this->_data=allocate(this->_capacity+1);
+		this->_data[0]=0;
+		this->_size=0;
 	}
 	template<typename T,typename CharT,typename Alloc>
 	string_base<T,CharT,Alloc>::string_base():string_alg<T,CharT>(nullptr,0),_capacity(0) {}
@@ -333,24 +333,24 @@ namespace exlib {
 	{
 		typedef typename string_base<T,CharT,Alloc>::size_type st;
 		typedef typename string_base<T,CharT,Alloc>::pointer pointer;
-		pointer np=allocate(s+1);
+		pointer np=this->allocate(s+1);
 		st i;
-		for(i=0;i<_size;++i)
+		for(i=0;i<this->_size;++i)
 		{
-			np[i]=_data[i];
+			np[i]=this->_data[i];
 		}
 		np[i]=0;
-		deallocate(_data,_capacity+1);
-		_data=np;
-		_capacity=s;
+		this->deallocate(this->_data,this->_capacity+1);
+		this->_data=np;
+		this->_capacity=s;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::move(string_base<T,CharT,Alloc>&& other) noexcept
 	{
-		_data=other.data();
-		_size=other.size();
-		_capacity=other.capacity();
+		this->_data=other.data();
+		this->_size=other.size();
+		this->_capacity=other.capacity();
 		other.release();
 	}
 	template<typename T,typename CharT,typename Alloc>
@@ -361,7 +361,7 @@ namespace exlib {
 	template<typename T,typename CharT,typename Alloc>
 	string_base<T,CharT,Alloc>::~string_base()
 	{
-		deallocate(_data,_capacity+1);
+		this->deallocate(this->_data,this->_capacity+1);
 	}
 
 	template<typename U,typename CharU>
@@ -378,28 +378,28 @@ namespace exlib {
 	template<typename String>
 	string_base<T,CharT,Alloc>& string_base<T,CharT,Alloc>::operator=(String const& other)
 	{
-		reserve(other.size());
+		this->reserve(other.size());
 		typename string_base<T,CharT,Alloc>::size_type s;
 		for(s=0;s<other.size();++s)
 		{
-			_data[s]=other[s];
+			this->_data[s]=other[s];
 		}
-		_data[s]=0;
-		_size=other.size();
+		this->_data[s]=0;
+		this->_size=other.size();
 		return *this;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	string_base<T,CharT,Alloc>& string_base<T,CharT,Alloc>::operator=(string_base<T,CharT,Alloc> const& other)
 	{
-		reserve(other.size());
+		this->reserve(other.size());
 		typename string_base<T,CharT,Alloc>::size_type s;
 		for(s=0;s<other.size();++s)
 		{
-			_data[s]=other[s];
+			this->_data[s]=other[s];
 		}
-		_data[s]=0;
-		_size=other.size();
+		this->_data[s]=0;
+		this->_size=other.size();
 		return *this;
 	}
 
@@ -407,14 +407,14 @@ namespace exlib {
 	template<typename U>
 	string_base<T,CharT,Alloc>& string_base<T,CharT,Alloc>::operator=(U const* cp)
 	{
-		_size=exlib::strlen(cp);
-		reserve(_size);
+		this->_size=exlib::strlen(cp);
+		this->reserve(this->_size);
 		typename string_base<T,CharT,Alloc>::size_type s;
-		for(s=0;s<_size;++s)
+		for(s=0;s<this->_size;++s)
 		{
-			_data[s]=cp[s];
+			this->_data[s]=cp[s];
 		}
-		_data[s]=0;
+		this->_data[s]=0;
 		return *this;
 	}
 
@@ -422,8 +422,8 @@ namespace exlib {
 	string_base<T,CharT,Alloc>& string_base<T,CharT,Alloc>::operator=(string_base<T,CharT,Alloc>&& other) noexcept
 	{
 		assert(this!=&other);
-		deallocate(_data,_capacity+1);
-		move(std::move(other));
+		this->deallocate(this->_data,this->_capacity+1);
+		this->move(std::move(other));
 		return *this;
 	}
 
@@ -431,90 +431,90 @@ namespace exlib {
 	void string_base<T,CharT,Alloc>::shrink_to_fit()
 	{
 		typedef typename string_base<T,CharT,Alloc>::size_type st;
-		if(_capacity==_size)
+		if(this->_capacity==this->_size)
 		{
 			return;
 		}
-		T* np=allocate(_size+1);
+		T* np=this->allocate(this->_size+1);
 		st i;
-		for(i=0;i<_size;++i)
+		for(i=0;i<this->_size;++i)
 		{
-			np[i]=_data[i];
+			np[i]=this->_data[i];
 		}
 		np[i]=0;
-		deallocte(_data,_capacity+1);
-		_capacity=_size;
-		_data=np;
+		this->deallocte(this->_data,this->_capacity+1);
+		this->_capacity=this->_size;
+		this->_data=np;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::resize(typename string_base<T,CharT,Alloc>::size_type s)
 	{
-		reserve(s);
-		_size=s;
-		_data[s]=0;
+		this->reserve(s);
+		this->_size=s;
+		this->_data[s]=0;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::resize(typename string_base<T,CharT,Alloc>::size_type s,T ch)
 	{
-		reserve(s);
-		for(;_size<s;++_size)
+		this->reserve(s);
+		for(;this->_size<s;++this->_size)
 		{
-			_data[_size]=ch;
+			this->_data[this->_size]=ch;
 		}
-		_data[s]=0;
+		this->_data[s]=0;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::reserve(typename string_base<T,CharT,Alloc>::size_type s)
 	{
-		if(_capacity>s&&_data!=nullptr)
+		if(this->_capacity>s&&this->_data!=nullptr)
 		{
 			return;
 		}
-		reallocate(s);
+		this->reallocate(s);
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::push_back(T cr)
 	{
-		if(_size>=_capacity)
+		if(this->_size>=this->_capacity)
 		{
-			reallocate(2*_size+1);
+			this->reallocate(2*this->_size+1);
 		}
-		_data[_size]=cr;
-		++_size;
+		this->_data[this->_size]=cr;
+		++this->_size;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::pop_back()
 	{
-		_data[--_size]=0;
+		this->_data[--this->_size]=0;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::erase(typename string_base<T,CharT,Alloc>::size_type pos)
 	{
-		--_size;
-		while(pos<_size)
+		--this->_size;
+		while(pos<this->_size)
 		{
-			_data[pos]=_data[pos+1];
+			this->_data[pos]=this->_data[pos+1];
 			++pos;
 		}
-		_data[pos]=0;
+		this->_data[pos]=0;
 	}
 	template<typename T,typename CharT,typename Alloc>
 	string_base<T,CharT,Alloc>& string_base<T,CharT,Alloc>::append(typename string_base<T,CharT,Alloc>::size_type count,T ch)
 	{
-		resize(_size+count,ch);
+		this->resize(this->_size+count,ch);
 		return *this;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::erase(typename string_base<T,CharT,Alloc>::iterator pos)
 	{
-		erase(static_cast<typename string_base<T,CharT,Alloc>::size_type>(pos-begin()));
+		erase(static_cast<typename string_base<T,CharT,Alloc>::size_type>(pos-this->begin()));
 	}
 
 	template<typename T,typename CharT,typename Alloc>
@@ -523,8 +523,8 @@ namespace exlib {
 		typename string_base<T,CharT,Alloc>::iterator end)
 	{
 		typedef typename string_base<T,CharT,Alloc>::size_type st;
-		erase(static_cast<st>(begin-_data),
-			static_cast<st>(end-_data));
+		this->erase(static_cast<st>(begin-this->_data),
+			static_cast<st>(end-this->_data));
 	}
 
 	template<typename T,typename CharT,typename Alloc>
@@ -533,12 +533,12 @@ namespace exlib {
 		typename string_base<T,CharT,Alloc>::size_type end)
 	{
 		typename string_base<T,CharT,Alloc>::size_type i,j;
-		for(i=end,j=begin;i<_size;++i,++j)
+		for(i=end,j=begin;i<this->_size;++i,++j)
 		{
-			_data[j]=_data[i];
+			this->_data[j]=this->_data[i];
 		}
-		_data[j]=0;
-		_size=j;
+		this->_data[j]=0;
+		this->_size=j;
 	}
 
 	template<typename T,typename CharT,typename Alloc>
@@ -546,8 +546,8 @@ namespace exlib {
 	{
 		typedef typename string_base<T,CharT,Alloc>::size_type st;
 		string_base<T,CharT,Alloc> ret;
-		ret.reserve(size()+other.size());
-		for(;ret._size<size();++ret._size)
+		ret.reserve(this->size()+other.size());
+		for(;ret._size<this->size();++ret._size)
 		{
 			ret[ret._size]=(*this)[ret._size];
 		}
@@ -565,13 +565,13 @@ namespace exlib {
 	string_base<T,CharT,Alloc>& string_base<T,CharT,Alloc>::operator+=(String const& other)
 	{
 		typedef typename string_base<T,CharT,Alloc>::size_type st;
-		reserve(size()+other.size());
+		reserve(this->size()+other.size());
 		st limit=other.size();
-		for(st i=0;i<limit;++i,++_size)
+		for(st i=0;i<limit;++i,++this->_size)
 		{
-			_data[_size]=other[i];
+			this->_data[this->_size]=other[i];
 		}
-		_data[_size]=0;
+		this->_data[this->_size]=0;
 		return *this;
 	}
 
@@ -596,7 +596,7 @@ namespace exlib {
 		typename string_base<T,CharT,Alloc>::iterator end) const
 	{
 		typedef typename string_base<T,CharT,Alloc>::size_type st;
-		return substr(static_cast<st>(begin-_data),static_cast<st>(end-_data));
+		return substr(static_cast<st>(begin-this->_data),static_cast<st>(end-this->_data));
 	}
 
 	template<typename T,typename CharT>
@@ -623,13 +623,13 @@ namespace exlib {
 		typename string_base<T,CharT,Alloc>::size_type count)
 	{
 		typedef typename string_base<T,CharT,Alloc>::size_type st;
-		st new_size=count+_size;
-		reserve(new_size);
-		_data[new_size]=0;
+		st new_size=count+this->_size;
+		this->reserve(new_size);
+		this->_data[new_size]=0;
 		st i,j;
-		for(i=new_size-1,j=_size-1;;--i,--j)
+		for(i=new_size-1,j=this->_size-1;;--i,--j)
 		{
-			_data[i]=_data[j];
+			this->_data[i]=this->_data[j];
 			if(j==pos)
 			{
 				break;
@@ -638,7 +638,7 @@ namespace exlib {
 		i=pos+count;
 		for(;j<i;++j)
 		{
-			_data[j]=c;
+			this->_data[j]=c;
 		}
 	}
 
@@ -711,9 +711,9 @@ namespace exlib {
 	template<typename T,typename CharT,typename Alloc>
 	void string_base<T,CharT,Alloc>::release()
 	{
-		_data=nullptr;
-		_size=0;
-		_capacity=0;
+		this->_data=nullptr;
+		this->_size=0;
+		this->_capacity=0;
 	}
 
 	template<typename T,typename CharT>

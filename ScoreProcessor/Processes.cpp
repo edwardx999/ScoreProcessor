@@ -468,7 +468,7 @@ namespace ScoreProcessor {
 				{
 				case 0: //top
 					ret.top=0;
-					ret.bottom=img.height();
+					ret.bottom=true_height;
 					break;
 				case 1: //middle
 				{

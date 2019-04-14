@@ -81,6 +81,9 @@
 #include <exception>
 #include <algorithm>
 #include <memory>
+#include <string>
+#include <exception>
+#include "support.h"
 #include "lib\exstring\exfiles.h"
 // Detect/configure OS variables.
 //
@@ -61410,23 +61413,20 @@ res(x,y,z,c)=max_val;
 			cimg_save_plugin8(fn);
 #endif
 	  // Ascii formats
-			if(!cimg::strcasecmp(ext,"asc")) return save_ascii(fn);
-			if(!cimg::strcasecmp(ext,"dlm")||
-				!cimg::strcasecmp(ext,"txt")) return save_dlm(fn);
-			if(!cimg::strcasecmp(ext,"cpp")||
-				!cimg::strcasecmp(ext,"hpp")||
-				!cimg::strcasecmp(ext,"h")||
-				!cimg::strcasecmp(ext,"c")) return save_cpp(fn);
-
-	   // 2d binary formats
-			if(!cimg::strcasecmp(ext,"bmp")) return save_bmp(fn);
-			if(!cimg::strcasecmp(ext,"jpg")||
-				!cimg::strcasecmp(ext,"jpeg")||
-				!cimg::strcasecmp(ext,"jpe")||
-				!cimg::strcasecmp(ext,"jfif")||
-				!cimg::strcasecmp(ext,"jif")) return save_jpeg(fn);
-			if(!cimg::strcasecmp(ext,"png")) return save_png(fn);
-			throw std::invalid_argument(std::string("Unsupported save format ")+ext);
+			switch(supported(nfilename.data()))
+			{
+			case support_type::bmp:
+				return save_bmp(nfilename.data());
+			case support_type::jpeg:
+				return save_jpeg(nfilename.data());
+			case support_type::png:
+				return save_png(nfilename.data());
+			case support_type::tiff:
+				return save_tiff(nfilename.data(),1);
+			default:
+				throw std::invalid_argument(std::string("Unsupported save format ")+ext);
+			}
+			
 			/*
 			if(!cimg::strcasecmp(ext,"rgb")) return save_rgb(fn);
 			if(!cimg::strcasecmp(ext,"rgba")) return save_rgba(fn);

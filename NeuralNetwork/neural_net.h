@@ -293,7 +293,7 @@ namespace neural_net {
 		}
 	};
 
-	template<typename ActivationFunc=clipped_leaky_relu_t<>,typename Deriv=ActivationFunc::derivative>
+	template<typename ActivationFunc=clipped_leaky_relu_t<>,typename Deriv=typename ActivationFunc::derivative>
 	struct net:private ActivationFunc,private Deriv {
 	private:
 		std::vector<layer> _layers;
