@@ -9,7 +9,8 @@
 
 #include <stdio.h>
 #include <tchar.h>
-
+#include "CImg.h"
+#include <vector>
 
 
 // TODO: reference additional headers your program requires here
