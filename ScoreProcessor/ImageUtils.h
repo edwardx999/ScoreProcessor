@@ -186,12 +186,6 @@ namespace ImageUtils {
 	void split_horiz(Rectangle<T>* orig,Rectangle<T>* buffer,unsigned int numRects);
 	*/
 
-	/*
-		Converts rectangles that can be represented together as one rectangle into one rectangle.
-		Also sorts the container.
-	*/
-	template<typename T,typename alloc>
-	void compress_rectangles(::std::vector<Rectangle<T>,alloc>& container);
 	using RectangleUINT=Rectangle<unsigned int>;
 
 	struct ColorRGBA;
@@ -341,31 +335,63 @@ namespace ImageUtils {
 	{
 		return os<<"[("<<rect.left<<','<<rect.top<<"),("<<rect.right<<','<<rect.bottom<<")]";
 	}
+
 	template<typename U>
 	std::ostream& operator<<(::std::ostream& os,line<U> const& aline)
 	{
 		return os<<"[("<<aline.a.x<<','<<aline.a.y<<"),("<<aline.b.x<<','<<aline.b.y<<")]";
 	}
-	template<typename T,typename alloc>
-	void compress_rectangles(std::vector<Rectangle<T>,alloc>& container)
+
+	/*
+		Converts rectangles that can be represented together as one rectangle into one rectangle.
+		Also sorts the container.
+		Returns end of new range.
+	*/
+	template<typename Iter>
+	Iter compress_rectangles(Iter begin,Iter end)
 	{
-		sort(container.begin(),container.end());
-		for(auto it=container.begin()+1;it<container.end();)
-		{
-			Rectangle<T>& a=*it;
-			Rectangle<T>& b=*(it-1);
-			if(a.left==b.left&&
-				a.top==b.bottom&&
-				a.right==b.right)
+		std::sort(begin,end,[](auto const& rect1,auto const& rect2)
 			{
-				b.bottom=a.bottom;
-				container.erase(it);
+				if(rect1.left<rect2.left)
+				{
+					return true;
+				}
+				if(rect1.left>rect2.left)
+				{
+					return false;
+				}
+				return rect1.top<rect2.top;
+			});
+		auto write_head=begin;
+		auto read_head=std::next(write_head);
+		for(;read_head!=end;++read_head)
+		{
+			auto& parent=*write_head;
+			auto const& child=*read_head;
+			if(parent.left==child.left&&
+				parent.right==child.right&&
+				parent.bottom==child.top)
+			{
+				parent.bottom=child.bottom;
 			}
 			else
 			{
-				++it;
+				++write_head;
+				*write_head=std::move(*read_head);
 			}
 		}
+		return std::next(write_head);
+	}
+
+	/*
+		Converts rectangles that can be represented together as one rectangle into one rectangle.
+		Also sorts the container.
+	*/
+	template<typename Container>
+	void compress_rectangles(Container& container)
+	{
+		auto iter=compress_rectangles(container.begin(),container.end());
+		container.erase(iter,container.end());
 	}
 
 	inline ColorRGB::operator ColorHSV() const
