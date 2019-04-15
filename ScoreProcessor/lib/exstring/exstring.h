@@ -843,8 +843,8 @@ namespace exlib {
 		return a;
 	}
 
-	template<typename iter>
-	int strncmp_nocase(iter a,iter b)
+	template<typename iter,typename iter2>
+	int strncmp_nocase(iter a,iter2 b)
 	{
 		for(;;++a,++b)
 		{

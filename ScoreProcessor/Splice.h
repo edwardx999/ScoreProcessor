@@ -4,7 +4,7 @@
 #include <mutex>
 #include <vector>
 #include <string>
-#include "lib/threadpool/ThreadPool.h"
+#include "lib/threadpool/thread_pool.h"
 #include "lib/exstring/exmath.h"
 #include <array>
 namespace ScoreProcessor {
@@ -106,15 +106,15 @@ namespace ScoreProcessor {
 		public:
 			PageEval(Top t,Middle m,Bottom b):Top(t),Middle(m),Bottom(b)
 			{}
-			edge eval_top(cil::CImg<unsigned char> const& img)
+			edge eval_top(cil::CImg<unsigned char> const& img) const
 			{
 				return Top::operator()(img);
 			}
-			page_desc eval_middle(cil::CImg<unsigned char> const& top,cil::CImg<unsigned char> const& bottom)
+			page_desc eval_middle(cil::CImg<unsigned char> const& top,cil::CImg<unsigned char> const& bottom) const
 			{
 				return Middle::operator()(top,bottom);
 			}
-			edge eval_bottom(cil::CImg<unsigned char> const& img)
+			edge eval_bottom(cil::CImg<unsigned char> const& img) const
 			{
 				return Bottom::operator()(img);
 			}
@@ -198,139 +198,90 @@ namespace ScoreProcessor {
 		{
 			throw std::invalid_argument("Need multiple pages to splice");
 		}
-		std::string errors;
-		exlib::StringLogger err_log(errors);
+		std::string error_log;
+		std::mutex error_mutex;
 		std::vector<Splice::page_desc> page_descs(c);
-		exlib::ThreadPoolA<exlib::StringLogger*,void*> pool(num_threads);
-		class PageTask:public exlib::ThreadTaskA<exlib::StringLogger*,void*>,public EvalPage {
-		protected:
-			Splice::manager* work;
-			Splice::page_desc* output;
-		public:
-			PageTask(Splice::manager* work,Splice::page_desc* output,EvalPage ep):work(work),output(output),EvalPage(ep)
-			{}
-		};
-		class FirstTask:public PageTask {
-		public:
-			using PageTask::PageTask;
-			void execute(exlib::StringLogger* err_log,void* parent) override
+		exlib::thread_pool pool(num_threads);
+		using parent_ref=typename decltype(pool)::parent_ref;
+		auto send_error=[&error_mutex,&error_log](auto const& err,auto parent,auto filename)
+		{
 			{
-				try
-				{
-					work->load();
-					Splice::edge res=EvalPage::eval_top(work->img());
-					output->top=res;
-					work->finish();
-				}
-				catch(std::exception const& ex)
-				{
-					err_log->log(work->fname(),": ",ex.what(),"\n");
-					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
-				}
+				std::lock_guard lock{error_mutex};
+				error_log.append(filename).append(": ").append(err.what()).append("\n");
 			}
+			parent.stop();
 		};
-		class MiddleTask:public PageTask {
-		public:
-			using PageTask::PageTask;
-			void execute(exlib::StringLogger* err_log,void* parent) override
+		pool.push_back([work=files.data(),output=page_descs.data(),ep,send_error](parent_ref parent) noexcept{
+			try
 			{
-				auto do_load=[=](auto wpointer)
-				{
-					try
-					{
-						wpointer->load();
-						return 0;
-					}
-					catch(std::exception const& ex)
-					{
-						err_log->log(wpointer->fname(),": ",ex.what(),"\n");
-						reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
-						return 1;
-					}
-				};
-				if (do_load(work-1)) return;
-				if (do_load(work)) return;
-				Splice::page_desc res=EvalPage::eval_middle((work-1)->img(),work->img());
-				(output-1)->bottom=res.bottom;
-				(output)->top=res.top;
-				(work-1)->finish();
+				work->load();
+				Splice::edge res=ep.eval_top(work->img());
+				output->top=res;
 				work->finish();
 			}
-		};
-		class LastTask:public PageTask {
-		public:
-			using PageTask::PageTask;
-			void execute(exlib::StringLogger* err_log,void* parent) override
+			catch(std::exception const& ex)
 			{
+				send_error(ex,parent,work->fname());
+			}
+		});
+		for(size_t i=1;i<c;++i)
+		{
+			pool.push_back([work=files.data()+i,output=page_descs.data()+i,ep,send_error](parent_ref parent) noexcept
+			{
+				
+				try
+				{
+					(work-1)->load();
+				}
+				catch(std::exception const& err)
+				{
+					send_error(err,parent,(work-1)->fname());
+					return;
+				}
 				try
 				{
 					work->load();
-					Splice::edge res=EvalPage::eval_bottom(work->img());
-					output->bottom=res;
-					work->finish();
 				}
-				catch(std::exception const& ex)
+				catch(std::exception const& err)
 				{
-					err_log->log(work->fname(),": ",ex.what(),"\n");
-					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
+					send_error(err,parent,work->fname());
+					return;
 				}
-			}
-		};
-		pool.add_task<FirstTask>(files.data(),page_descs.data(),ep);
-		for(size_t i=1;i<c;++i)
-		{
-			pool.add_task<MiddleTask>(files.data()+i,page_descs.data()+i,ep);
-		}
-		pool.add_task<LastTask>(files.data()+c-1,page_descs.data()+c-1,ep);
-		pool.start(&err_log,&pool);
-		pool.wait();
-		if(!errors.empty())
-		{
-			throw std::logic_error(errors);
-		}
-
-		class SpliceTask:public exlib::ThreadTaskA<exlib::StringLogger*,void*> {
-			unsigned int num;
-			unsigned int num_digs;
-			char const* output;
-			Splice::manager const* fbegin;
-			Splice::page_desc const* ibegin;
-			size_t num_pages;
-			unsigned int padding;
-		public:
-			SpliceTask(
-				unsigned int n,
-				unsigned int nd,
-				char const* out,
-				Splice::manager const* b,
-				Splice::page_desc* ib,
-				size_t np,
-				unsigned int padding):
-				num(n),num_digs(nd),output(out),fbegin(b),ibegin(ib),num_pages(np),padding(padding)
-			{}
-			void execute(exlib::StringLogger* err_log,void* parent) override
-			{
 				try
 				{
-					std::vector<Splice::page> imgs(num_pages);
-					for(size_t i=0;i<num_pages;++i)
-					{
-						imgs[i].img.load(fbegin[i].fname());
-						imgs[i].top=ibegin[i].top.kerned;
-						imgs[i].bottom=ibegin[i].bottom.kerned;
-					}
-					imgs[0].top=ibegin[0].top.raw;
-					auto last=num_pages-1;
-					imgs[last].bottom=ibegin[last].bottom.raw;
-					splice_images(imgs.data(),num_pages,padding).save(output,num,num_digs);
+					Splice::page_desc res=ep.eval_middle((work-1)->img(),work->img());
+					(output-1)->bottom=res.bottom;
+					(output)->top=res.top;
+					(work-1)->finish();
+					work->finish();
 				}
-				catch(std::exception const& ex)
+				catch(std::exception const& err)
 				{
-					err_log->log(ex.what(),"\n");
-					reinterpret_cast<exlib::ThreadPoolA<exlib::StringLogger*,void*>*>(parent)->give_up();
+					std::string names=(work-1)->fname();
+					names+=" and ";
+					names+=work->fname();
+					send_error(err,parent,names.c_str());
 				}
+			});
+		}
+		pool.push_back([work=files.data()+c-1,output=page_descs.data()+c-1,ep,send_error](parent_ref parent)noexcept{
+			try
+			{
+				work->load();
+				Splice::edge res=ep.eval_bottom(work->img());
+				output->bottom=res;
+				work->finish();
 			}
-		};
+			catch(std::exception const& ex)
+			{
+				send_error(ex,parent,work->fname());
+			}
+		});
+		pool.wait();
+		if(!error_log.empty())
+		{
+			throw std::logic_error(error_log);
+		}
 
 		std::vector<Splice::page_break> breaks=nongreedy_break(page_descs.begin(),page_descs.end(),cl,cost);
 		unsigned int num_digs=exlib::num_digits(breaks.size()+starting_index);
@@ -342,11 +293,36 @@ namespace ScoreProcessor {
 			++num_imgs;
 			auto const end=breaks[i].index;
 			auto const s=end-start;
-			pool.add_task<SpliceTask>(
-				num_imgs,num_digs,
-				output,files.data()+start,
-				page_descs.data()+start,s,
-				breaks[i].padding);
+			pool.push_back(
+				[index=num_imgs,
+				num_digs,
+				output,
+				fbegin=files.data()+start,
+				ibegin=page_descs.data()+start,
+				num_pages=s,
+				padding=breaks[i].padding,
+				send_error](parent_ref parent) noexcept{
+				try
+				{
+					std::vector<Splice::page> imgs(num_pages);
+					for(size_t i=0;i<num_pages;++i)
+					{
+						imgs[i].img.load(fbegin[i].fname());
+						imgs[i].top=ibegin[i].top.kerned;
+						imgs[i].bottom=ibegin[i].bottom.kerned;
+					}
+					imgs[0].top=ibegin[0].top.raw;
+					auto const last=num_pages-1;
+					imgs[last].bottom=ibegin[last].bottom.raw;
+					splice_images(imgs.data(),num_pages,padding).save(output,index,num_digs);
+				}
+				catch(std::exception const& ex)
+				{
+					std::string names{fbegin[0].fname()};
+					names.append(" to ").append(fbegin[num_pages-1].fname());
+					send_error(ex,parent,names.data());
+				}
+			});
 			if(i==0)
 			{
 				break;
@@ -354,11 +330,10 @@ namespace ScoreProcessor {
 			--i;
 			start=end;
 		}
-		pool.start(&err_log,&pool);
-		pool.wait();
-		if(!errors.empty())
+		pool.join();
+		if(!error_log.empty())
 		{
-			throw std::logic_error(errors);
+			throw std::logic_error(error_log);
 		}
 		return num_imgs;
 	}

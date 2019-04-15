@@ -31,7 +31,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "lib/exstring/exmath.h"
 #include <atomic>
 #include <mutex>
-#include "lib/threadpool/ThreadPool.h"
+#include "lib/threadpool/thread_pool.h"
 using namespace std;
 using namespace ImageUtils;
 using namespace cimg_library;

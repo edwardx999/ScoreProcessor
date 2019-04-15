@@ -2600,7 +2600,7 @@ namespace cimg_library_suffixed {
 	struct CImgIOException: public CImgException {
 		CImgIOException(const char *const format,...)
 		{
-			_cimg_exception_err("CImgIOException",true);
+			_cimg_exception_err("CImgIOException",false);
 		}
 	};
 
@@ -61413,7 +61413,7 @@ res(x,y,z,c)=max_val;
 			cimg_save_plugin8(fn);
 #endif
 	  // Ascii formats
-			switch(supported(nfilename.data()))
+			switch(supported(ext))
 			{
 			case support_type::bmp:
 				return save_bmp(nfilename.data());
@@ -62750,10 +62750,14 @@ res(x,y,z,c)=max_val;
 				cimg_forZ(*this,z) _save_tiff(tif,z,z,compression_type,voxel_size,description);
 				TIFFClose(tif);
 			}
-			else throw CImgIOException(_cimg_instance
+			else
+			{
+				throw std::runtime_error(std::string{"Failed to save tiff: "}+filename);
+			}
+			/*else throw CImgIOException(_cimg_instance
 				"save_tiff(): Failed to open file '%s' for writing.",
 				cimg_instance,
-				filename);
+				filename);*/
 			return *this;
 #else
 			cimg::unused(compression_type,voxel_size,description,use_bigtiff);

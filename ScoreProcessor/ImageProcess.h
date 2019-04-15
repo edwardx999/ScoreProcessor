@@ -21,7 +21,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include <utility>
 #include <string>
-#include "lib\threadpool\ThreadPool.h"
+#include "lib\threadpool\thread_pool.h"
 #include "lib\exstring\exstring.h"
 #include <stdexcept>
 #include <regex>
@@ -223,7 +223,7 @@ namespace ScoreProcessor {
 			Adds a process to the list.
 		*/
 		template<typename U,typename... Args>
-		void add_process(Args&&... args);
+		void add_process(Args&& ... args);
 
 		void process_unsafe(cimg_library::CImg<T>& img,char const* output) const;
 		void process_unsafe(char const* input,char const* output,bool move,int quality) const;
@@ -291,7 +291,7 @@ namespace ScoreProcessor {
 
 	template<typename T>
 	template<typename U,typename... Args>
-	void ProcessList<T>::add_process(Args&&... args)
+	void ProcessList<T>::add_process(Args&& ... args)
 	{
 		emplace_back(std::make_unique<U>(std::forward<Args>(args)...));
 	}
@@ -430,38 +430,38 @@ namespace ScoreProcessor {
 				dst<<src.rdbuf();
 			}
 		};
-		auto load_s=[fname](cil::CImg<T>& img,auto s)
+		auto load_s=[fname](cil::CImg<T>&img,auto s)
 		{
 			switch(s.first)
 			{
-				case support_type::bmp:
-					img.load_bmp(fname);
-					break;
-				case support_type::jpeg:
-					img.load_jpeg(fname);
-					break;
-				case support_type::png:
-					img.load_png(fname);
-					break;
-				case support_type::tiff:
-					img.load_tiff(fname,0,0);
+			case support_type::bmp:
+				img.load_bmp(fname);
+				break;
+			case support_type::jpeg:
+				img.load_jpeg(fname);
+				break;
+			case support_type::png:
+				img.load_png(fname);
+				break;
+			case support_type::tiff:
+				img.load_tiff(fname,0,0);
 			}
 		};
-		auto save_s=[output,quality](cil::CImg<T>& img,auto s)
+		auto save_s=[output,quality](cil::CImg<T>&img,auto s)
 		{
 			switch(s.second)
 			{
-				case support_type::bmp:
-					img.save_bmp(output);
-					break;
-				case support_type::jpeg:
-					img.save_jpeg(output,quality);
-					break;
-				case support_type::png:
-					img.save_png(output);
-					break;
-				case support_type::tiff:
-					img.save_tiff(output,1);
+			case support_type::bmp:
+				img.save_bmp(output);
+				break;
+			case support_type::jpeg:
+				img.save_jpeg(output,quality);
+				break;
+			case support_type::png:
+				img.save_png(output);
+				break;
+			case support_type::tiff:
+				img.save_tiff(output,1);
 			}
 		};
 		if(this->empty())
@@ -601,9 +601,13 @@ namespace ScoreProcessor {
 		bool move,
 		int quality) const
 	{
-		exlib::ThreadPool tp(num_threads);
+		exlib::thread_pool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
 		{
+			tp.push_back([]()
+				{
+
+				});
 			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i],this,psr,i+starting_index,move,quality);
 		}
 		tp.start();
@@ -628,29 +632,18 @@ namespace ScoreProcessor {
 		}
 		else
 		{
-			exlib::ThreadPool tp(num_threads);
+			exlib::thread_pool tp(num_threads);
 			for(size_t i=0;i<imgs.size();++i)
 			{
-				tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i].data(),this,psr,i+starting_index,move,quality);
+				tp.push_back([name=imgs[i].data(),psr,index=i+starting_index,move,quality,this]() noexcept
+				{
+					process(name,psr,index,move,quality);
+				});
 			}
 			tp.start();
 		}
 	}
 
-	template<typename T>
-	void ProcessList<T>::process(
-		std::vector<cimg_library::CImg<T>>& imgs,
-		SaveRules const* psr,
-		unsigned int const num_threads,
-		unsigned int const starting_index) const
-	{
-		exlib::ThreadPool tp(num_threads);
-		for(size_t i=0;i<imgs.size();++i)
-		{
-			tp.add_task<typename ProcessList<T>::ProcessTaskImg>(imgs[i],this,psr,i+starting_index);
-		}
-		tp.start();
-	}
 
 	template<typename String>
 	SaveRules::SaveRules(String const& tmplt)
@@ -697,31 +690,31 @@ namespace ScoreProcessor {
 				{
 					switch(letter)
 					{
-						case 'x':
-							put_string();
-							repl.emplace_back(template_symbol::x);
-							break;
-						case 'f':
-							put_string();
-							repl.emplace_back(template_symbol::f);
-							break;
-						case 'p':
-							put_string();
-							repl.emplace_back(template_symbol::p);
-							break;
-						case 'c':
-							put_string();
-							repl.emplace_back(template_symbol::c);
-							break;
-						case 'w':
-							put_string();
-							repl.emplace_back(template_symbol::w);
-							break;
-						case '%':
-							str.push_back('%');
-							break;
-						default:
-							throw std::invalid_argument("Invalid escape character");
+					case 'x':
+						put_string();
+						repl.emplace_back(template_symbol::x);
+						break;
+					case 'f':
+						put_string();
+						repl.emplace_back(template_symbol::f);
+						break;
+					case 'p':
+						put_string();
+						repl.emplace_back(template_symbol::p);
+						break;
+					case 'c':
+						put_string();
+						repl.emplace_back(template_symbol::c);
+						break;
+					case 'w':
+						put_string();
+						repl.emplace_back(template_symbol::w);
+						break;
+					case '%':
+						str.push_back('%');
+						break;
+					default:
+						throw std::invalid_argument("Invalid escape character");
 					}
 				}
 			}
@@ -833,32 +826,32 @@ namespace ScoreProcessor {
 				{
 					switch(p.info.tmplt)
 					{
-						case SaveRules::template_symbol::x:
-							check_ext();
-							out.append(ext.data,ext.size);
-							break;
-						case SaveRules::template_symbol::f:
-							check_filename();
-							out.append(filename.data,filename.size);
-							break;
-						case SaveRules::template_symbol::p:
-							check_path();
-							if(path.size==0)
-							{
-								out.append(".");
-							}
-							else
-							{
-								out.append(path.data,path.size);
-							}
-							break;
-						case SaveRules::template_symbol::w:
-							check_filename();
-							out.append(whole.data,whole.size);
-							break;
-						case SaveRules::template_symbol::c:
-							out.append(input.data(),input.size());
-							break;
+					case SaveRules::template_symbol::x:
+						check_ext();
+						out.append(ext.data,ext.size);
+						break;
+					case SaveRules::template_symbol::f:
+						check_filename();
+						out.append(filename.data,filename.size);
+						break;
+					case SaveRules::template_symbol::p:
+						check_path();
+						if(path.size==0)
+						{
+							out.append(".");
+						}
+						else
+						{
+							out.append(path.data,path.size);
+						}
+						break;
+					case SaveRules::template_symbol::w:
+						check_filename();
+						out.append(whole.data,whole.size);
+						break;
+					case SaveRules::template_symbol::c:
+						out.append(input.data(),input.size());
+						break;
 					}
 				}
 			}

@@ -1,6 +1,6 @@
 #include "neural_scaler.h"
 #include <assert.h>
-#include "../ScoreProcessor/lib/threadpool/ThreadPool.h"
+#include "../ScoreProcessor/lib/threadpool/thread_pool.h"
 namespace ScoreProcessor {
 	cil::CImg<unsigned char> neural_scaler::get_smart_scale(cil::CImg<unsigned char> const& img,float scale,unsigned int num_threads) const
 	{
@@ -36,12 +36,10 @@ namespace ScoreProcessor {
 		unsigned int desired_width=static_cast<unsigned int>(std::round(img._width*scale));
 		unsigned int desired_height=static_cast<unsigned int>(std::round(img._height*scale));
 
-		exlib::ThreadPoolA<Img*,Img const*,neural_scaler const*,info const*> pool(num_threads);
 		while(true)
 		{
 			Img upscaled(orig._width*s,orig._height*s);
-			using Task=exlib::ThreadTaskA<Img*,Img const*,neural_scaler const*,info const*>;
-			struct Scaler:Task {
+			struct Scaler {
 			protected:
 				unsigned int output_x;
 			public:
@@ -102,7 +100,7 @@ namespace ScoreProcessor {
 						}
 					}
 				}
-				void scale(Img& out,Img const& in,neural_scaler const& ns,info const& inf)
+				void scale(Img& out,Img const& in,neural_scaler const& ns,info const& inf) const
 				{
 					//begin and end are boundaries of box to take values from
 					//start and finish are valid values to take values from
@@ -192,16 +190,18 @@ namespace ScoreProcessor {
 					}
 				}
 			public:
-				void execute(Img* out,Img const* in,neural_scaler const* ns,info const* inf) override
+				void execute(Img* out,Img const* in,neural_scaler const* ns,info const* inf) const
 				{
 					scale(*out,*in,*ns,*inf);
 				}
 			};
+			exlib::thread_pool_a<Img*,Img const*,neural_scaler const*,info const*> pool(num_threads,&upscaled,&orig,this,&inf);
 			for(unsigned int x=0;x<upscaled._width;x+=inf.output_dim)
 			{
-				pool.add_task<Scaler>(x);
+				pool.push_back([task=Scaler{x}](Img*out,Img const* in,neural_scaler const* ns,info const* inf) noexcept{
+					task.execute(out,in,ns,inf);
+				});;
 			}
-			pool.start(&upscaled,&orig,this,&inf);
 			pool.join();
 			if(upscaled._width>=desired_width)
 			{

@@ -215,7 +215,7 @@ void list_files(std::vector<std::string> const& files)
 }
 
 //finds each command key between arg_start and end, and calls the appropriate commands to change del
-void parse_commands(CommandMaker::delivery& del,InputIter arg_start,InputIter end)
+void parse_commands(CommandMaker::delivery&del,InputIter arg_start,InputIter end)
 {
 	if(arg_start!=end)
 	{
@@ -257,7 +257,7 @@ void parse_commands(CommandMaker::delivery& del,InputIter arg_start,InputIter en
 }
 
 //removes files based on the regexes and boundaries given by del
-void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery const& del)
+void filter_out_files(std::vector<std::string>&files,CommandMaker::delivery const& del)
 {
 	if(!del.selections.empty())
 	{
@@ -302,9 +302,9 @@ void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery con
 	{
 		files.erase(std::remove_if(files.begin(),files.end(),
 			[&rgx](auto const& a)
-		{
-			return std::regex_match(a,rgx.rgx)!=rgx.keep_match;
-		}),files.end());
+			{
+				return std::regex_match(a,rgx.rgx)!=rgx.keep_match;
+			}),files.end());
 	}
 }
 
@@ -410,7 +410,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 		float horiz_weight;
 		Log* log;
 	};
-	class CutProcess:public exlib::ThreadTaskA<cut_args const*> {
+	class CutProcess {
 	private:
 		std::string const* input;
 		unsigned int index;
@@ -419,7 +419,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 			input(input),
 			index(index)
 		{}
-		void execute(cut_args const* ca) override
+		void execute(cut_args const* ca) const
 		{
 			try
 			{
@@ -474,22 +474,23 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 			}
 		}
 	};
-	exlib::ThreadPoolA<cut_args const*> tp(del.num_threads);
+	cut_args ca{
+	&del.sr,
+	del.pl.get_verbosity(),
+	del.cut_args.background,
+	del.cut_args.min_width,
+	del.cut_args.min_height,
+	del.cut_args.min_vert_space,
+	del.cut_args.horiz_weight,
+	del.pl.get_log()
+	};
+	exlib::thread_pool_a<cut_args const*> tp(del.num_threads,&ca);
 	for(size_t i=0;i<files.size();++i)
 	{
-		tp.add_task<CutProcess>(&files[i],i+del.starting_index,del);
+		tp.push_back([process=CutProcess{&files[i],static_cast<unsigned int>(i+del.starting_index),del}](cut_args const* ca) noexcept {
+			process.execute(ca);
+		});
 	}
-	cut_args ca{
-		&del.sr,
-		del.pl.get_verbosity(),
-		del.cut_args.background,
-		del.cut_args.min_width,
-		del.cut_args.min_height,
-		del.cut_args.min_vert_space,
-		del.cut_args.horiz_weight,
-		del.pl.get_log()
-	};
-	tp.start(&ca);
 }
 
 //applies the splice process
@@ -570,40 +571,40 @@ int main(int argc,InputIter argv)
 	Loggers::CoutLog cl;
 	switch(del.lt)
 	{
-		case del.unassigned_log:
-		case del.count:
-			al.emplace(files.size());
-			del.pl.set_log(&*al);
-			del.pl.set_verbosity(del.pl.loud);
-			break;
-		case del.errors_only:
-			del.pl.set_log(&cl);
-			del.pl.set_verbosity(del.pl.errors_only);
-			break;
-		case del.quiet:
-			del.pl.set_log(&cl);
-			del.pl.set_verbosity(del.pl.silent);
-			break;
-		case del.full_message:
-			del.pl.set_log(&cl);
-			del.pl.set_verbosity(del.pl.loud);
+	case del.unassigned_log:
+	case del.count:
+		al.emplace(files.size());
+		del.pl.set_log(&*al);
+		del.pl.set_verbosity(del.pl.loud);
+		break;
+	case del.errors_only:
+		del.pl.set_log(&cl);
+		del.pl.set_verbosity(del.pl.errors_only);
+		break;
+	case del.quiet:
+		del.pl.set_log(&cl);
+		del.pl.set_verbosity(del.pl.silent);
+		break;
+	case del.full_message:
+		del.pl.set_log(&cl);
+		del.pl.set_verbosity(del.pl.loud);
 	}
 	switch(del.flag)
 	{
-		case del.do_absolutely_nothing:
-			std::cout<<"No commands given\n";
-			break;
-		case del.do_nothing:
-			[[fallthrough]];
-		case del.do_single:
-			do_single(del,files);
-			break;
-		case del.do_cut:
-			do_cut(del,files);
-			break;
-		case del.do_splice:
-			do_splice(del,files);
-			break;
+	case del.do_absolutely_nothing:
+		std::cout<<"No commands given\n";
+		break;
+	case del.do_nothing:
+		[[fallthrough]] ;
+	case del.do_single:
+		do_single(del,files);
+		break;
+	case del.do_cut:
+		do_cut(del,files);
+		break;
+	case del.do_splice:
+		do_splice(del,files);
+		break;
 	}
 	return 0;
 }
