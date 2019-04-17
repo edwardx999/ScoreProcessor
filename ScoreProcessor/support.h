@@ -45,7 +45,11 @@ support_type validate_extension(Extension ext)
 	if(iter==CTMap.end())
 	{
 		auto const strlen=exlib::strlen(ext);
-		throw std::invalid_argument{std::string{"Unsupported file type: "}.append(ext,ext+strlen)};
+		if(strlen)
+		{
+			throw std::invalid_argument{std::string{"Unsupported file type: "}.append(ext,ext+strlen)};
+		}
+		throw std::invalid_argument{"Unsupported file type: (no extension)"};
 	}
 	return iter->value();
 }

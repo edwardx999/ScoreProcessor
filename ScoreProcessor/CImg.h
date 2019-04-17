@@ -56351,13 +56351,23 @@ res(x,y,z,c)=max_val;
 		!cimg::strcasecmp(ext,"txt")) load_dlm(filename);
 		*/
 // 2d binary formats
-			/*else */if(!cimg::strcasecmp(ext,"bmp")) load_bmp(filename);
-			else if(!cimg::strcasecmp(ext,"jpg")||
-				!cimg::strcasecmp(ext,"jpeg")||
-				!cimg::strcasecmp(ext,"jpe")||
-				!cimg::strcasecmp(ext,"jfif")||
-				!cimg::strcasecmp(ext,"jif")) load_jpeg(filename);
-			else if(!cimg::strcasecmp(ext,"png")) load_png(filename);
+			/*else */
+			auto const support=validate_extension(ext);
+			switch(support)
+			{
+			case support_type::bmp:
+				load_bmp(filename);
+				break;
+			case support_type::jpeg:
+				load_jpeg(filename);
+				break;
+			case support_type::png:
+				load_png(filename);
+				break;
+			case support_type::tiff:
+				load_tiff(filename);
+				break;
+			}
 			/*else if(!cimg::strcasecmp(ext,"ppm")||
 				!cimg::strcasecmp(ext,"pgm")||
 				!cimg::strcasecmp(ext,"pnm")||
@@ -56392,7 +56402,6 @@ res(x,y,z,c)=max_val;
 			else if(!cimg::strcasecmp(ext,"cimg")||
 				!cimg::strcasecmp(ext,"cimgz")||
 				!*ext)  return load_cimg(filename);*/
-			else throw std::invalid_argument(std::string("Unsupported file format ")+ext);
 			/*
 	   // Archive files
 			else if(!cimg::strcasecmp(ext,"gz")) load_gzip_external(filename);
@@ -61417,7 +61426,7 @@ res(x,y,z,c)=max_val;
 			cimg_save_plugin8(fn);
 #endif
 	  // Ascii formats
-			switch(supported(ext))
+			switch(validate_extension(ext))
 			{
 			case support_type::bmp:
 				return save_bmp(nfilename.data());
@@ -61427,8 +61436,6 @@ res(x,y,z,c)=max_val;
 				return save_png(nfilename.data());
 			case support_type::tiff:
 				return save_tiff(nfilename.data(),1);
-			default:
-				throw std::invalid_argument(std::string("Unsupported save format ")+ext);
 			}
 			
 			/*

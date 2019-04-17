@@ -200,10 +200,7 @@ namespace ScoreProcessor {
 			throw std::invalid_argument("Need multiple pages to splice");
 		}
 		auto const extension=exlib::find_extension(output,output+std::strlen(output));
-		if(supported(extension)==support_type::no)
-		{
-			throw std::invalid_argument{std::string{"Unsupported file type: "}+extension};
-		}
+		validate_extension(extension);
 		std::string error_log;
 		std::mutex error_mutex;
 		std::vector<Splice::page_desc> page_descs(c);

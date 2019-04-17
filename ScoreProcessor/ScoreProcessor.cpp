@@ -433,18 +433,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 				}
 				auto out=ca->output->make_filename(*input,index);
 				auto ext=exlib::find_extension(out.begin(),out.end());
-				auto s=supported(&*ext);
-				if(s==support_type::no)
-				{
-					if(ca->verbosity>ProcessList<>::verbosity::silent)
-					{
-						std::string err("Error processing ");
-						err.append(*input).append(": Unsupported file type ");
-						err.append(&*ext,out.end()-ext).append(1,'\n');
-						ca->log->log_error(err.c_str(),index);
-					}
-					return;
-				}
+				auto const s=validate_extension(ext);
 				cil::CImg<unsigned char> in(input->c_str());
 				cut_heuristics cut_args;
 				cut_args.background=ca->background;
@@ -502,11 +491,7 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 	{
 		auto save=del.sr.make_filename(files[0],del.starting_index);
 		auto ext=exlib::find_extension(save.begin(),save.end());
-		if(supported(&*ext)==support_type::no)
-		{
-			std::cout<<std::string("Unsupported file type ")<<&*ext<<'\n';
-			return;
-		}
+		validate_extension(ext);
 		Splice::standard_heuristics sh;
 		auto num=splice_pages_parallel(files,save.c_str(),del.starting_index,del.num_threads,del.splice_args,del.quality);
 		std::cout<<"Created "<<num<<(num==1?" page\n":" pages\n");

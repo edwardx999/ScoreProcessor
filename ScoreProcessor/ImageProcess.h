@@ -386,16 +386,8 @@ namespace ScoreProcessor {
 				}
 				return ext;
 			};
-			auto sout=supported(&*out_ext);
-			auto sin=supported(&*in_ext);
-			if(sout==support_type::no)
-			{
-				throw std::invalid_argument(std::string("Unsupported file type ")+make_ext_string(out_ext,out_end));
-			}
-			if(sin==support_type::no)
-			{
-				throw std::invalid_argument(std::string("Unsupported file type ")+make_ext_string(in_ext,in_end));
-			}
+			auto sout=validate_extension(&*out_ext);
+			auto sin=validate_extension(&*in_ext);
 			return std::make_pair(sin,sout);
 		};
 		auto copy_or_move=[do_move,&in,&out,fname,output]()

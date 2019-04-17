@@ -47,14 +47,14 @@ namespace exlib {
 		}
 	}
 
-	template<typename T>
-	constexpr size_t strlen(T const* p)
+	template<typename Iter>
+	constexpr size_t strlen(Iter p)
 	{
-		assert(p!=nullptr);
 		size_t i=0;
-		while(p[i]!=0)
+		while(*p!=0)
 		{
 			++i;
+			++p;
 		}
 		return i;
 	}
