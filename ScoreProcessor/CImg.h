@@ -71307,20 +71307,8 @@ res(x,y,z,c)=max_val;
 		}
 
 		  // End of cimg_library:: namespace
-
-		template<typename T>
-		void vsave_image(CImg<T> const& img,char const* output,support_type support,va_list arp)
+		inline auto temporary_file_name(char const* base)
 		{
-			switch(support)
-			{
-			case support_type::bmp:
-			case support_type::jpeg:
-			case support_type::png:
-			case support_type::tiff:
-				break;
-			default:
-				throw std::invalid_argument{"Unsupported"};
-			}
 			thread_local std::random_device rd;
 			thread_local std::mt19937_64 mt{rd()};
 			thread_local auto const path_base=[]()
@@ -71332,7 +71320,7 @@ res(x,y,z,c)=max_val;
 			}();
 			auto path{path_base};
 			path/="";
-			for(auto str=output;*str;++str)
+			for(auto str=base;*str;++str)
 			{
 				if(*str=='\\'||*str=='/')
 				{
@@ -71348,6 +71336,23 @@ res(x,y,z,c)=max_val;
 				}
 			}
 			path+=std::to_string(mt());
+			return path;
+		}
+
+		template<typename T>
+		void vsave_image(CImg<T> const& img,char const* output,support_type support,va_list arp)
+		{
+			switch(support)
+			{
+			case support_type::bmp:
+			case support_type::jpeg:
+			case support_type::png:
+			case support_type::tiff:
+				break;
+			default:
+				throw std::invalid_argument{"Unsupported"};
+			}
+			auto const path=temporary_file_name(output);
 			auto const& path_string=path.string();
 			auto const c_str=path_string.c_str();
 			switch(support)
@@ -71364,7 +71369,17 @@ res(x,y,z,c)=max_val;
 			case support_type::tiff:
 				img.save_tiff(c_str,1);
 			}
-			std::filesystem::rename(path,output);
+			try
+			{
+				std::filesystem::rename(path,output);
+			}
+			catch(...)
+			{
+				std::string msg{"Failed to save to "};
+				msg.append(output);
+				msg.append(". Temporary file saved to ").append(path.string());
+				throw std::runtime_error{msg};
+			}
 		}
 		template<typename T>
 		void save_image(CImg<T> const& img,char const* output,support_type support,...)

@@ -363,7 +363,7 @@ namespace ScoreProcessor {
 	template<typename T>
 	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move,int quality) const
 	{
-		using namespace std::experimental::filesystem;
+		using namespace std::filesystem;
 		path in(fname),out(output);
 		if(!exists(in))
 		{
@@ -392,7 +392,7 @@ namespace ScoreProcessor {
 		};
 		auto copy_or_move=[do_move,&in,&out,fname,output]()
 		{
-			if(std::experimental::filesystem::equivalent(in,out))
+			if(std::filesystem::exists(out)&&std::filesystem::equivalent(in,out))
 			{
 				return;
 			}
@@ -414,12 +414,25 @@ namespace ScoreProcessor {
 				{
 					throw std::runtime_error(std::string("Failed to open ").append(fname,in.native().size()));
 				}
-				std::ofstream dst(output,std::ios::binary);
+				auto const temp_file=cil::temporary_file_name(output);
+				std::ofstream dst(temp_file,std::ios::binary);
 				if(!dst)
 				{
 					throw std::runtime_error(std::string("Failed to copy to ").append(output,out.native().size()));
 				}
 				dst<<src.rdbuf();
+				dst.close();
+				try
+				{
+					std::filesystem::rename(temp_file,output);
+				}
+				catch(...)
+				{
+					std::string msg{"Failed to copy to "};
+					msg.append(output);
+					msg.append(". Temporary file saved to ").append(temp_file.string());
+					throw std::runtime_error{msg};
+				}
 			}
 		};
 		auto load_s=[fname](cil::CImg<T>&img,auto s)
@@ -461,7 +474,7 @@ namespace ScoreProcessor {
 					cil::CImg<T> img;
 					load_s(img,s);
 					save_s(img,s);
-					if(do_move&&!std::experimental::filesystem::equivalent(in,out))
+					if(do_move&&!std::filesystem::equivalent(in,out))
 					{
 						remove(in);
 					}
@@ -486,7 +499,7 @@ namespace ScoreProcessor {
 				if(edited)
 				{
 					save_s(img,s);
-					if(do_move&&!std::experimental::filesystem::equivalent(in,out))
+					if(do_move&&!std::filesystem::equivalent(in,out))
 					{
 						remove(in);
 					}
