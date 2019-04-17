@@ -1,5 +1,6 @@
 Program useful for editing batches of images, specializing in score images  
-Useful side feature is mass renaming/copying files.
+Useful side feature is mass renaming/copying files.  
+Give no arguments to get readme
 <pre>
 Version: Apr 11 2019 23:36:26 Copyright 2017-2019 Edward Xie
 Syntax: filename_or_folder... command params... ...
