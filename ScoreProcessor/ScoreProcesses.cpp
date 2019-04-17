@@ -818,8 +818,9 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch)
+	unsigned int cut_page(CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch,int quality)
 	{
+		auto const support=validate_path(filename);
 		/*
 		bool isRGB;
 		switch(image._spectrum)
@@ -887,7 +888,7 @@ namespace ScoreProcessor {
 		}
 		if(paths.size()==0)
 		{
-			image.save(filename,1,3U);
+			cil::save_image(image,filename,support,quality);
 			return 1;
 		}
 		/*std::sort(paths.begin(),paths.end(),[](auto const& a,auto const& b)
@@ -970,7 +971,8 @@ namespace ScoreProcessor {
 					}
 				}
 			}
-			new_image.save(filename,++num_images,3U);
+			auto const save_name=cil::number_filename(filename,++num_images,3U);
+			cil::save_image(new_image,save_name.c_str(),support,quality);
 			bottom_of_old=highest_in_path;
 		}
 		CImg<unsigned char> new_image(image._width,image._height-bottom_of_old);
@@ -988,7 +990,8 @@ namespace ScoreProcessor {
 				new_image(x,y)=image(x,y+bottom_of_old);
 			}
 		}
-		new_image.save(filename,++num_images,3U);
+		auto const save_name=cil::number_filename(filename,++num_images,3U);
+		cil::save_image(new_image,save_name.c_str(),support,quality);
 		return num_images;
 	}
 

@@ -205,7 +205,8 @@ namespace ScoreProcessor {
 		char const* output,
 		unsigned int starting_index,
 		unsigned int num_threads,
-		Splice::standard_heuristics const& sh)
+		Splice::standard_heuristics const& sh,
+		int quality)
 	{
 		if(filenames.size()<2)
 		{
@@ -374,6 +375,6 @@ namespace ScoreProcessor {
 			padding_cost=padding_cost*padding_cost*padding_cost;
 			return height_cost+padding_cost;
 		};
-		return splice_pages_parallel(managers,output,starting_index,num_threads,pe,create_layout,cost);
+		return splice_pages_parallel(managers,output,starting_index,num_threads,pe,create_layout,cost,quality);
 	}
 }

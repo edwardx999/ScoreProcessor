@@ -402,7 +402,7 @@ namespace ScoreProcessor {
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch={1000,80,20,0,128});
+	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch={1000,80,20,0,128},int quality=100);
 
 	/*
 		Finds the line that is the top of the score image

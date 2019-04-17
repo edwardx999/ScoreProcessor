@@ -416,7 +416,7 @@ namespace exlib {
 		using Data::data;
 
 		template<typename... Args>
-		constexpr ct_map(Args&&... rest):Data{{std::forward<Args>(rest)...}}
+		constexpr ct_map(Args&&... rest):Data{{{std::forward<Args>(rest)}...}}
 		{
 			static_assert(sizeof...(Args)==entries,"Wrong number of entries");
 			qsort(begin(),end(),lt_comp<key_compare>());
@@ -424,7 +424,7 @@ namespace exlib {
 
 	private:
 		template<size_t... Is>
-		constexpr ct_map(std::array<value_type,entries> const& in,std::index_sequence<Is...>):Data{{in[I]...}}
+		constexpr ct_map(std::array<value_type,entries> const& in,std::index_sequence<Is...>):Data{{in[Is]...}}
 		{}
 	public:
 		constexpr ct_map(std::array<value_type,entries> const& in):ct_map(in,std::make_index_sequence<entries>())
@@ -445,26 +445,27 @@ namespace exlib {
 	template<typename Comp,typename First,typename... Rest>
 	constexpr auto make_ct_map(First&& f,Rest&&... r)
 	{
-		return ct_map<First::key_type,First::mapped_type,1+sizeof...(r),Comp>(std::forward<First>(f),std::forward<Rest>(r)...);
+		return ct_map<typename First::key_type,typename First::mapped_type,1+sizeof...(r),Comp>
+			(std::forward<First>(f),std::forward<Rest>(r)...);
 	}
 
 	//inputs should be of type map_pair<Key,Value>
 	template<typename First,typename... T>
 	constexpr auto make_ct_map(First&& k,T&&... rest)
 	{
-		return make_ct_map<compare<First::key_type>>(std::forward<First>(k),std::forward<T>(rest)...);
+		return make_ct_map<compare<typename First::key_type>>(std::forward<First>(k),std::forward<T>(rest)...);
 	}
 
 	template<typename Comp,typename T,size_t N>
 	constexpr auto make_ct_map(std::array<T,N> const& in)
 	{
-		return ct_map<T::key_type,T::mapped_type,N,Comp>(in);
+		return ct_map<typename T::key_type,typename T::mapped_type,N,Comp>(in);
 	}
 
 	template<typename T,size_t N>
 	constexpr auto make_ct_map(std::array<T,N> const& in)
 	{
-		return make_ct_map<comp<First::key_type>>(in);
+		return make_ct_map<exlib::compare<T>>(in);
 	}
 
 	template<typename Type,typename... Args>

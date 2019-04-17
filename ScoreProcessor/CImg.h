@@ -80,11 +80,15 @@
 #include <ctime>
 #include <exception>
 #include <algorithm>
+#include <utility>
 #include <memory>
 #include <string>
 #include <exception>
+#include <varargs.h>
 #include "support.h"
+#include <random>
 #include "lib\exstring\exfiles.h"
+#include <filesystem>
 // Detect/configure OS variables.
 //
 // Define 'cimg_OS' to: '0' for an unknown OS (will try to minize library dependencies).
@@ -71296,6 +71300,81 @@ res(x,y,z,c)=max_val;
 		}
 
 		  // End of cimg_library:: namespace
+
+		template<typename T>
+		void vsave_image(CImg<T> const& img,char const* output,support_type support,va_list arp)
+		{
+			switch(support)
+			{
+			case support_type::bmp:
+			case support_type::jpeg:
+			case support_type::png:
+			case support_type::tiff:
+				break;
+			default:
+				throw std::invalid_argument{"Unsupported"};
+			}
+			thread_local std::random_device rd;
+			thread_local std::mt19937_64 mt{rd()};
+			thread_local auto const path_base=[]()
+			{
+				auto path=std::filesystem::temp_directory_path();
+				path/="sproc";
+				std::filesystem::create_directories(path);
+				return path;
+			}();
+			auto path{path_base};
+			path/="";
+			for(auto str=output;*str;++str)
+			{
+				if(*str=='\\'||*str=='/')
+				{
+					path+="@d@";
+				}
+				else if(*str==':')
+				{ 
+					path+="@c@";
+				}
+				else
+				{
+					path+=*str;
+				}
+			}
+			path+=std::to_string(mt());
+			auto const& path_string=path.string();
+			auto const c_str=path_string.c_str();
+			switch(support)
+			{
+			case support_type::bmp:
+				img.save_bmp(c_str);
+				break;
+			case support_type::jpeg:
+				img.save_jpeg(c_str,va_arg(arp,int));
+				break;
+			case support_type::png:
+				img.save_png(c_str);
+				break;
+			case support_type::tiff:
+				img.save_tiff(c_str,1);
+			}
+			std::filesystem::rename(path,output);
+		}
+		template<typename T>
+		void save_image(CImg<T> const& img,char const* output,support_type support,...)
+		{
+			va_list args;
+			va_start(args,support);
+			vsave_image(img,output,support,args);
+		}
+		
+		inline std::string number_filename(std::string filename,unsigned int number,unsigned int num_digs=0)
+		{
+			auto const extension=exlib::find_extension(filename.begin(),filename.end());
+			auto const offset_ext=extension==filename.end()?extension:extension-1;
+			auto const num_string=std::string{"_"}+exlib::front_padded_string(std::to_string(number),num_digs,'0');
+			filename.insert(offset_ext,num_string.begin(),num_string.end());
+			return std::move(filename);
+		}
 	}
 
 	//! Short alias name.

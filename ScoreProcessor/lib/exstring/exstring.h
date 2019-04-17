@@ -822,29 +822,18 @@ namespace exlib {
 	}
 
 	template<typename T>
-	T lowercase(T);
-
-	inline char lowercase(char a)
+	constexpr T lowercase(T a)
 	{
+		constexpr auto diff='A'-'a';
 		if(a>='A'&&a<='Z')
 		{
-			return a+32;
-		}
-		return a;
-	}
-
-	inline wchar_t lowercase(wchar_t a)
-	{
-		constexpr wchar_t const dif='a'-'A';
-		if(a>=L'A'&&a<=L'Z')
-		{
-			return a+dif;
+			return a+diff;
 		}
 		return a;
 	}
 
 	template<typename iter,typename iter2>
-	int strncmp_nocase(iter a,iter2 b)
+	constexpr int strncmp_nocase(iter a,iter2 b)
 	{
 		for(;;++a,++b)
 		{
@@ -869,13 +858,13 @@ namespace exlib {
 
 
 	template<typename T>
-	bool is_digit(T ch)
+	constexpr bool is_digit(T ch)
 	{
 		return ch>='0'&&ch<='9';
 	}
 
 	template<typename T>
-	int strncmp_num(T const* a_start,T const* a_end,T const* b_start,T const* b_end)
+	constexpr int strncmp_num(T const* a_start,T const* a_end,T const* b_start,T const* b_end)
 	{
 		assert(a_start<=a_end);
 		assert(b_start<=b_end);
@@ -898,7 +887,7 @@ namespace exlib {
 
 	//comparison similar to windows sorting
 	template<typename T>
-	int strncmp_wind(T const* a,T const* b)
+	constexpr int strncmp_wind(T const* a,T const* b)
 	{
 		for(;;)
 		{

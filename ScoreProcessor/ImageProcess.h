@@ -449,20 +449,7 @@ namespace ScoreProcessor {
 		};
 		auto save_s=[output,quality](cil::CImg<T>&img,auto s)
 		{
-			switch(s.second)
-			{
-			case support_type::bmp:
-				img.save_bmp(output);
-				break;
-			case support_type::jpeg:
-				img.save_jpeg(output,quality);
-				break;
-			case support_type::png:
-				img.save_png(output);
-				break;
-			case support_type::tiff:
-				img.save_tiff(output,1);
-			}
+			cil::save_image(img,output,s.second,quality);
 		};
 		if(this->empty())
 		{

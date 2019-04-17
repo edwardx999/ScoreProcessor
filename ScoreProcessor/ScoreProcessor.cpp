@@ -409,6 +409,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 		pv min_vert_space;
 		float horiz_weight;
 		Log* log;
+		int quality;
 	};
 	class CutProcess {
 	private:
@@ -452,7 +453,7 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 				cut_args.min_height=(ca->min_height)(bases);
 				cut_args.min_width=ca->min_width(bases);
 				cut_args.minimum_vertical_space=ca->min_vert_space(bases);
-				auto num_pages=ScoreProcessor::cut_page(in,out.c_str(),cut_args);
+				auto num_pages=ScoreProcessor::cut_page(in,out.c_str(),cut_args,ca->quality);
 				if(ca->verbosity>ProcessList<>::verbosity::errors_only)
 				{
 					std::string coutput("Finished ");
@@ -482,7 +483,8 @@ void do_cut(CommandMaker::delivery const& del,std::vector<std::string> const& fi
 	del.cut_args.min_height,
 	del.cut_args.min_vert_space,
 	del.cut_args.horiz_weight,
-	del.pl.get_log()
+	del.pl.get_log(),
+	del.quality
 	};
 	exlib::thread_pool_a<cut_args const*> tp(del.num_threads,&ca);
 	for(size_t i=0;i<files.size();++i)
@@ -506,7 +508,7 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 			return;
 		}
 		Splice::standard_heuristics sh;
-		auto num=splice_pages_parallel(files,save.c_str(),del.starting_index,del.num_threads,del.splice_args);
+		auto num=splice_pages_parallel(files,save.c_str(),del.starting_index,del.num_threads,del.splice_args,del.quality);
 		std::cout<<"Created "<<num<<(num==1?" page\n":" pages\n");
 	}
 	catch(std::exception const& ex)

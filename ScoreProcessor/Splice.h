@@ -191,12 +191,18 @@ namespace ScoreProcessor {
 		unsigned int num_threads,
 		EvalPage ep,
 		CreateLayout cl,
-		Cost cost)
+		Cost cost,
+		int quality)
 	{
 		auto const c=files.size();
 		if(c<2)
 		{
 			throw std::invalid_argument("Need multiple pages to splice");
+		}
+		auto const extension=exlib::find_extension(output,output+std::strlen(output));
+		if(supported(extension)==support_type::no)
+		{
+			throw std::invalid_argument{std::string{"Unsupported file type: "}+extension};
 		}
 		std::string error_log;
 		std::mutex error_mutex;
@@ -301,7 +307,8 @@ namespace ScoreProcessor {
 				ibegin=page_descs.data()+start,
 				num_pages=s,
 				padding=breaks[i].padding,
-				send_error](parent_ref parent) noexcept{
+				send_error,
+				quality](parent_ref parent) noexcept{
 				try
 				{
 					std::vector<Splice::page> imgs(num_pages);
@@ -314,7 +321,9 @@ namespace ScoreProcessor {
 					imgs[0].top=ibegin[0].top.raw;
 					auto const last=num_pages-1;
 					imgs[last].bottom=ibegin[last].bottom.raw;
-					splice_images(imgs.data(),num_pages,padding).save(output,index,num_digs);
+					auto const support=supported_path(output);
+					auto const filename=cil::number_filename(output,index,num_digs);
+					cil::save_image(splice_images(imgs.data(),num_pages,padding),filename.c_str(),support,quality);
 				}
 				catch(std::exception const& ex)
 				{
@@ -346,14 +355,15 @@ namespace ScoreProcessor {
 		unsigned int num_threads,
 		EvalPage ep,
 		CreateLayout cl,
-		Cost c)
+		Cost c,
+		int quality)
 	{
 		std::vector<Splice::manager> managers(filenames.size());
 		for(size_t i=0;i<filenames.size();++i)
 		{
 			managers[i].fname(filenames[i].c_str());
 		}
-		return splice_pages_parallel(managers,output,starting_index,num_threads,ep,cl,c);
+		return splice_pages_parallel(managers,output,starting_index,num_threads,ep,cl,c,quality);
 	}
 
 	template<typename EvalPage,typename CreateLayout,typename Cost>
@@ -395,7 +405,8 @@ namespace ScoreProcessor {
 		char const* output,
 		unsigned int starting_index,
 		unsigned int num_threads,
-		Splice::standard_heuristics const&);
+		Splice::standard_heuristics const&,
+		int quality);
 
 }
 #endif
