@@ -116,7 +116,7 @@ namespace ScoreProcessor {
 				}
 				if(quality==-1)
 				{
-					quality==100;
+					quality=100;
 				}
 			}
 		};
