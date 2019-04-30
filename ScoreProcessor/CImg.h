@@ -71309,17 +71309,17 @@ res(x,y,z,c)=max_val;
 		  // End of cimg_library:: namespace
 		inline auto temporary_file_name(char const* base)
 		{
-			thread_local std::random_device rd;
-			thread_local std::mt19937_64 mt{rd()};
-			thread_local auto const path_base=[]()
+			static auto const path_base = []()
 			{
-				auto path=std::filesystem::temp_directory_path();
-				path/="sproc";
+				auto path = std::filesystem::temp_directory_path();
+				path /= "sproc";
 				std::filesystem::create_directories(path);
+				path /= "";
 				return path;
 			}();
+			thread_local std::random_device rd;
+			thread_local std::mt19937_64 mt{rd()};
 			auto path{path_base};
-			path/="";
 			for(auto str=base;*str;++str)
 			{
 				if(*str=='\\'||*str=='/')
