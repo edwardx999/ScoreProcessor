@@ -402,36 +402,20 @@ namespace ScoreProcessor {
 				{
 					rename(in,out);
 				}
-				catch(std::exception const&)
+				catch(std::exception const& err)
 				{
-					throw std::runtime_error(std::string(std::string("Failed to move to ").append(output,out.native().size())));
+					throw std::runtime_error(std::string("Failed to move to ").append(output).append(": ").append(err.what()));
 				}
 			}
 			else
 			{
-				std::ifstream src(fname,std::ios::binary);
-				if(!src)
-				{
-					throw std::runtime_error(std::string("Failed to open ").append(fname,in.native().size()));
-				}
-				auto const temp_file=cil::temporary_file_name(output);
-				std::ofstream dst(temp_file,std::ios::binary);
-				if(!dst)
-				{
-					throw std::runtime_error(std::string("Failed to copy to ").append(output,out.native().size()));
-				}
-				dst<<src.rdbuf();
-				dst.close();
 				try
 				{
-					std::filesystem::rename(temp_file,output);
+					std::filesystem::copy(in, out);
 				}
-				catch(...)
+				catch (std::exception const& err)
 				{
-					std::string msg{"Failed to copy to "};
-					msg.append(output);
-					msg.append(". Temporary file saved to ").append(temp_file.string());
-					throw std::runtime_error{msg};
+					throw std::runtime_error(std::string("Failed to copy to ").append(output).append(": ").append(err.what()));
 				}
 			}
 		};
