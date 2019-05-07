@@ -71317,8 +71317,7 @@ res(x,y,z,c)=max_val;
 				path /= "";
 				return path;
 			}();
-			thread_local std::random_device rd;
-			thread_local std::mt19937_64 mt{rd()};
+			thread_local std::mt19937_64 mt{std::random_device{}()};
 			auto path{path_base};
 			for(auto str=base;*str;++str)
 			{
@@ -71335,6 +71334,7 @@ res(x,y,z,c)=max_val;
 					path+=*str;
 				}
 			}
+			path+="_";
 			path+=std::to_string(mt());
 			return path;
 		}
