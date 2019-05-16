@@ -348,6 +348,7 @@ namespace ScoreProcessor {
 		bool did_something=false;
 		auto const size=size_t{height}*width;
 		auto const spectrum=img._spectrum;
+		auto copy{img};
 		for(unsigned int y=0;y<hm1;++y) //scan for horizontal edge
 		{
 			T* const row=img.data()+y*width;
@@ -355,7 +356,7 @@ namespace ScoreProcessor {
 			edge_t edge=find_edge(row,next_row,0,width,contrast_threshold);
 			for(;edge.begin!=-1;edge=find_edge(row,next_row,edge.end,width,contrast_threshold))
 			{
-				auto do_blend=[row,width,gamma,spectrum,size](double x_start,double y_start,double x_end,double y_end)
+				auto do_blend=[row=copy.data()+y*width,width,gamma,spectrum,size](double x_start,double y_start,double x_end,double y_end)
 				{
 					for(unsigned int i=0;i<spectrum;++i)
 					{
@@ -400,12 +401,12 @@ namespace ScoreProcessor {
 			edge_t edge=find_edge(column,next_column,0,height,contrast_threshold);
 			for(;edge.begin!=-1;edge=find_edge(column,next_column,edge.end,height,contrast_threshold))
 			{
-				auto do_blend=[&img,x,gamma,spectrum,size](double x_start,double y_start,double x_end,double y_end)
+				auto do_blend=[&copy,x,gamma,spectrum,size](double x_start,double y_start,double x_end,double y_end)
 				{
 					for(unsigned int i=0;i<spectrum;++i)
 					{
-						vertical_iterator column{img,x,i};
-						vertical_iterator next{img,x+1,i};
+						vertical_iterator column{copy,x,i};
+						vertical_iterator next{copy,x+1,i};
 						mlaa_det::blend(column,next,x_start,y_start,x_end,y_end,gamma);
 					}
 				};
@@ -439,6 +440,7 @@ namespace ScoreProcessor {
 				}
 			}
 		}
+		img=std::move(copy);
 		return did_something;
 	}
 
