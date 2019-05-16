@@ -366,32 +366,32 @@ namespace ScoreProcessor {
 		return true;
 	}
 
-	bool Rotate::process(Img&img) const
+	bool Rotate::process(Img& img) const
 	{
 		img.rotate(-angle,mode,1);
 		return true;
 	}
 
-	bool Gamma::process(Img&img) const
+	bool Gamma::process(Img& img) const
 	{
 		apply_gamma(img,gamma);
 		return true;
 	}
 
-	bool HorizontalShift::process(Img&img) const
+	bool HorizontalShift::process(Img& img) const
 	{
 		horizontal_shift(img,side,direction,background_threshold);
 		return true;
 	}
 
-	bool VerticalShift::process(Img&img) const
+	bool VerticalShift::process(Img& img) const
 	{
 		vertical_shift(img,side,direction,background_threshold);
 		return true;
 	}
 
 
-	bool RescaleAbsolute::process(Img&img) const
+	bool RescaleAbsolute::process(Img& img) const
 	{
 		constexpr unsigned int interpolate=-1;
 		unsigned int true_width,true_height;
@@ -439,7 +439,7 @@ namespace ScoreProcessor {
 		return false;
 	}
 
-	bool ChangeCanvasSize::process(Img&img) const
+	bool ChangeCanvasSize::process(Img& img) const
 	{
 		auto const true_width=width==-1?img.width():width;
 		auto const true_height=height==-1?img.height():height;
@@ -493,9 +493,15 @@ namespace ScoreProcessor {
 		}
 	}
 
-	bool NeuralScale::process(Img&img) const
+	bool MLAA::process(Img& img) const
+	{
+		return mlaa(img,contrast_threshold,gamma);
+	}
+
+	bool NeuralScale::process(Img& img) const
 	{
 		scaler.smart_scale(img,ratio,ThreadOverride::num_threads());
 		return true;
 	}
+
 }

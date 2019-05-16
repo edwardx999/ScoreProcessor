@@ -300,6 +300,14 @@ namespace ScoreProcessor {
 		bool process(Img&) const override;
 	};
 
+	class MLAA:public ImageProcess<> {
+		double gamma;
+		unsigned char contrast_threshold;
+	public:
+		MLAA(double gamma,unsigned char contrast_threshold):gamma{gamma},contrast_threshold{contrast_threshold}{}
+		bool process(Img&) const override;
+	};
+
 	class NeuralScale:public ThreadOverride {
 		ScoreProcessor::neural_scaler scaler;
 		float ratio;

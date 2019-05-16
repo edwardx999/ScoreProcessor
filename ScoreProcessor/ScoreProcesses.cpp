@@ -37,6 +37,36 @@ using namespace ImageUtils;
 using namespace cimg_library;
 using namespace misc_alg;
 namespace ScoreProcessor {
+
+	struct guarded_pool {
+		exlib::thread_pool pool;
+		std::mutex lock;
+		explicit guarded_pool(unsigned int nt):pool{std::max(1U,nt)}{}
+	};
+
+	auto& init_exclusive_pool(unsigned int num_threads)
+	{
+		static guarded_pool pool{std::max(1U,num_threads)};
+		return pool;
+	}
+
+	ExclusiveThreadPool::ExclusiveThreadPool(unsigned int num_threads)
+	{
+		init_exclusive_pool(num_threads).lock.lock();
+	}
+
+	exlib::thread_pool& ExclusiveThreadPool::pool() const
+	{
+		return init_exclusive_pool(0).pool;
+	}
+
+	ExclusiveThreadPool::~ExclusiveThreadPool()
+	{
+		init_exclusive_pool(0).lock.unlock();
+	}
+
+
+
 	void binarize(CImg<unsigned char>& image,ColorRGB const middleColor,ColorRGB const lowColor,ColorRGB const highColor)
 	{
 		assert(image._spectrum==3);
@@ -1811,7 +1841,7 @@ namespace ScoreProcessor {
 				for(unsigned int y_f=img._height;y_f>y;)
 				{
 					--y_f;
-					shifts[y_f]=-x;
+					shifts[y_f]=--x;
 				}
 				for(unsigned int y_f=y;y_f>0;)
 				{
@@ -1820,7 +1850,7 @@ namespace ScoreProcessor {
 					{
 						++x;
 					}
-					shifts[y_f]=-x;
+					shifts[y_f]=--x;
 				}
 			}
 			else
@@ -1839,7 +1869,7 @@ namespace ScoreProcessor {
 			end_loop4:
 				for(unsigned int y_f=0;y_f<=y;++y_f)
 				{
-					shifts[y_f]=-x;
+					shifts[y_f]=--x;
 				}
 				for(unsigned int y_f=y+1;y_f<img._height;++y_f)
 				{

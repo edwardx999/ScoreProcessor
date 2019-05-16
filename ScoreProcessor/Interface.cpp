@@ -334,4 +334,14 @@ namespace ScoreProcessor {
 			"width=preserve height=preserve origin=tl"
 		};
 	}
+
+	namespace MlaaMaker {
+		decltype(maker) maker{
+			"Morphological Anti-Aliasing\n"
+			"contrast_threshold: threshold considered an edge; tags: c, ct\n"
+			"gamma: gamma correction when blending; see -rs rescale for tags",
+			"Morphological Anti-Aliasing",
+			"contrast_threshold=128 gamma=2"
+		};
+	}
 }

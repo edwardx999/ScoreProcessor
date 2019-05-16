@@ -257,7 +257,7 @@ void parse_commands(CommandMaker::delivery&del,InputIter arg_start,InputIter end
 }
 
 //removes files based on the regexes and boundaries given by del
-void filter_out_files(std::vector<std::string>&files,CommandMaker::delivery const& del)
+void filter_out_files(std::vector<std::string>& files,CommandMaker::delivery const& del)
 {
 	if(!del.selections.empty())
 	{
@@ -509,6 +509,7 @@ int main(int argc,InputIter argv)
 		make_readme(argv[1]);
 	return 0;
 #endif
+	std::ios::sync_with_stdio(false);
 	if(argc==1)
 	{
 		info_output();

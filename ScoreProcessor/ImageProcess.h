@@ -219,11 +219,15 @@ namespace ScoreProcessor {
 		{
 			this->vb=vb;
 		}
+
 		/*
 			Adds a process to the list.
 		*/
 		template<typename U,typename... Args>
-		void add_process(Args&& ... args);
+		auto add_process(Args&&... args) -> decltype(U(std::forward<Args>(args)...),void())
+		{
+			emplace_back(std::make_unique<U>(std::forward<Args>(args)...));
+		}
 
 		void process_unsafe(cimg_library::CImg<T>& img,char const* output) const;
 		void process_unsafe(char const* input,char const* output,bool move,int quality) const;
@@ -288,13 +292,6 @@ namespace ScoreProcessor {
 			bool move,int quality) const;
 	};
 	typedef ProcessList<unsigned char> IPList;
-
-	template<typename T>
-	template<typename U,typename... Args>
-	void ProcessList<T>::add_process(Args&& ... args)
-	{
-		emplace_back(std::make_unique<U>(std::forward<Args>(args)...));
-	}
 
 	template<typename T>
 	void ProcessList<T>::process(cimg_library::CImg<T>& img) const

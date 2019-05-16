@@ -480,7 +480,7 @@ namespace exlib {
 	template<typename F,typename... Args>
 	constexpr auto make_array(F&& arg,Args&&... args)
 	{
-		return std::array<std::remove_cv_t<std::remove_reference_t<F>>,sizeof...(args)+1> {
+		return std::array<std::decay_t<F>,sizeof...(args)+1> {
 			{
 				std::forward<F>(arg),std::forward<Args>(args)...
 			}};

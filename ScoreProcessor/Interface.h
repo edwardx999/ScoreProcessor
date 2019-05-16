@@ -1106,11 +1106,14 @@ namespace ScoreProcessor {
 				del.pl.add_process<Straighten>(p,mn,mx,a,b,g);
 			}
 		};
+
+		using GammaParser=FloatParser<Gamma,no_negatives>;
+
 		extern
 			SingMaker<UseTuple,
 			DoubleParser<MinAngle,no_check>,DoubleParser<MaxAngle,no_check>,
 			DoubleParser<AnglePrec>,DoubleParser<PixelPrec>,
-			IntegerParser<unsigned char,Boundary>,FloatParser<Gamma>>
+			IntegerParser<unsigned char,Boundary>,GammaParser>
 			maker;
 	}
 
@@ -1438,11 +1441,6 @@ namespace ScoreProcessor {
 				return FloatParser<RadName,no_check>().parse(sv)*RAD_DEG;
 			}
 		};
-		struct GammaP {
-			cnnm("gamma");
-			clbl("g","gam");
-			cndf(float(2))
-		};
 
 		struct Mode {
 			PMINLINE static Rotate::interp_mode parse(char const* sv)
@@ -1490,7 +1488,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		using GammaParser=FloatParser<GammaP,no_negatives>;
+		using GammaParser=StrMaker::GammaParser;
 
 		extern
 			SingMaker<UseTuple,Degrees,Mode,GammaParser> maker;
@@ -1568,10 +1566,23 @@ namespace ScoreProcessor {
 				}
 			}
 		};
-		extern
-			SingMaker<UseTuple,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser>
-			maker;
+		extern SingMaker<UseTuple,FloatParser<Factor,no_negatives>,Mode,RotMaker::GammaParser> maker;
 	}
+
+	namespace MlaaMaker {
+		struct Contrast {
+			cnnm("contrast threshold");
+			clbl("ct","c");
+			cndf(unsigned char(128))
+		};
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del,unsigned char threshold,double gamma)
+			{
+				del.pl.add_process<MLAA>(gamma,threshold);
+			}
+		};
+		extern SingMaker<UseTuple,IntegerParser<unsigned char,Contrast>,RotMaker::GammaParser> maker;
+	};
 
 	namespace FGMaker {
 		struct Min {
@@ -2810,7 +2821,8 @@ namespace ScoreProcessor {
 			compair("ss",&SmartScale::maker),
 			compair("crp",&Cropper::maker),
 			compair("rsa",&RescaleAbsoluteMaker::maker),
-			compair("ccs",&CCSMaker::maker));
+			compair("ccs",&CCSMaker::maker),
+			compair("mlaa",&MlaaMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),

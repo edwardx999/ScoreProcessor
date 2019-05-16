@@ -24,8 +24,423 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <assert.h>
 #include <functional>
 #include <array>
+#include <mutex>
+#include "lib/threadpool/thread_pool.h"
 #include "../NeuralNetwork/neural_net.h"
 namespace ScoreProcessor {
+
+	template<typename T>
+	class vertical_iterator {
+		T* _top;
+		size_t _width;
+	public:
+		vertical_iterator(cil::CImg<T> const& img,unsigned int column,unsigned int spectrum=0) noexcept:_top{img.data()+column+size_t{spectrum}*img._width*img._height},_width{img._width}{}
+		vertical_iterator(cil::CImg<T>& img,unsigned int column,unsigned int spectrum=0) noexcept:_top{img.data()+column+size_t{spectrum}*img._width*img._height},_width{img._width}{}
+		vertical_iterator(T* top,unsigned int width) noexcept:_top{top}, _width{width}{}
+		T& operator[](size_t s) const noexcept
+		{
+			return *(_top+s*_width);
+		}
+		T& operator*() const noexcept
+		{
+			return *_top;
+		}
+		T* operator->() const noexcept
+		{
+			return &**this;
+		}
+		vertical_iterator& operator++() noexcept
+		{
+			_top+=_width;
+			return *this;
+		}
+		vertical_iterator& operator--() noexcept
+		{
+			_top-=_width;
+			return *this;
+		}		
+		vertical_iterator operator++(int) noexcept
+		{
+			auto copy{*this};
+			++(*this);
+			return copy;
+		}
+		vertical_iterator operator--(int) noexcept
+		{
+			auto copy{*this};
+			--(*this);
+			return copy;
+		}
+		vertical_iterator& operator+=(std::ptrdiff_t d) noexcept
+		{
+			_top+=d*_width;
+			return *this;
+		}
+		vertical_iterator& operator-=(std::ptrdiff_t d) noexcept
+		{
+			_top-=d*_width;
+			return *this;
+		}
+		friend vertical_iterator operator+(vertical_iterator v,std::ptrdiff_t t) noexcept
+		{
+			v+=t;
+			return v;
+		}
+		friend vertical_iterator operator+(std::ptrdiff_t t,vertical_iterator v) noexcept
+		{
+			v+=t;
+			return v;
+		}
+		friend vertical_iterator operator-(vertical_iterator v,std::ptrdiff_t t) noexcept
+		{
+			v-=t;
+			return v;
+		}
+		friend std::ptrdiff_t operator-(vertical_iterator const& v,vertical_iterator const& v2) noexcept
+		{
+			assert(v._width==v2._width);
+			return (v._top-v2._top)/v._width;
+		}
+	};
+
+	template<typename T>
+	vertical_iterator(cil::CImg<T> const& img,unsigned int column) -> vertical_iterator<T const>;
+
+	template<typename T>
+	vertical_iterator(cil::CImg<T>& img,unsigned int column) -> vertical_iterator<T>;
+
+	class ExclusiveThreadPool {
+	public:
+		exlib::thread_pool& pool() const;
+		ExclusiveThreadPool(unsigned int num_threads=std::thread::hardware_concurrency());
+		~ExclusiveThreadPool();
+	};
+
+	/*
+		Fast approximate anti-aliasing
+	*/
+	template<typename T>
+	bool fxaa(cil::CImg<T>& img, std::common_type_t<T,short> contrast_threshold,std::common_type_t<float,T> gamma,std::common_type_t<float,T> subpixel_blending=1)
+	{
+		if(img.width()<3||img.height()<3||img.spectrum()<1||img.depth()<1)
+		{
+			return false;
+		}
+		cil::CImg<T> copy{img._width,img._height,img._depth,img._spectrum};
+		//cheap using first layer as luminance
+		auto const width = img._width;
+		auto const height=img._height;
+		using p=decltype(contrast_threshold);
+		for(unsigned int y=0;y<width;++y)
+		{
+			for(unsigned int x=0;x<height;++x)
+			{
+				p nw=img._atXY(x-1,y-1);
+				p n=img._atXY(x,y-1);
+				p ne=img._atXY(x+1,y-1);
+				p w=img._atXY(x-1,y);
+				p m=img(x,y);
+				p e=img._atXY(x+1,y);
+				p sw=img._atXY(x-1,y+1);
+				p s=img._atXY(x,y+1);
+				p se=img._atXY(x,y+1);
+				auto minmax=std::minmax({n,s,e,w});
+				p contrast=p{minmax.second}-p{minmax.first};
+				if(contrast>contrast_threshold) //found an edge 
+				{
+					using f=std::common_type_t<float,p>;
+					constexpr f weight=1.41421356237;
+					f blend=(weight*(n+e+s+w)+nw+ne+sw+se)/(4*weight+4);
+					f filter=std::clamp<f>(std::abs(blend-m)/contrast,0,1);
+					filter=filter*filter*(3-2*x);
+					f hcontrast=weight*std::abs(n+s-2*m)+std::abs(ne+se-2*e)+std::abs(nw+sw-2*w);
+					f vcontrast=weight*std::abs(e+w-2*m)+std::abs(ne+nw-2*n)+std::abs(se+sw-2*s);
+					bool horizontal=hcontrast>=vcontrast;
+					auto [pgradient,ngradient]=horizontal?std::make_tuple(f{s}-m,f{n}-m):std::make_tuple(f{e}-m,f{w}-m);
+					auto blend_factor=blend*blend*subpixel_blending;
+					if(pgradient>ngradient)
+					{
+						auto gradient_threshold=pgradient*0.5;
+						if(horizontal) //only need to look to left if horizontal
+						{
+							auto edge_luminance=f{s}+m;
+							unsigned int x_s=x;
+							for(;x_s<width;++x_s)
+							{
+								if(img(x_s,y)-edge_luminance>=gradient_threshold) break;
+							}
+						}
+						else
+						{
+							auto edge_luminance=f{e}+m;
+						}
+					}
+					else
+					{
+						auto gradient_threshold=ngradient*0.5;
+						if(horizontal)
+						{
+							auto edge_luminance=f{n}+m;
+						}
+						else
+						{
+							auto edge_luminance=f{w}+m;
+						}
+					}
+				}
+			}
+		}
+		img=std::move(copy);
+		return true;
+	}
+
+	namespace mlaa_det {
+		enum class orientation:char {
+			up=1,flat=2,down=3
+		};
+		template<typename T>
+		auto operator*(orientation o,T val) noexcept
+		{
+			return static_cast<char>(o)*val;
+		}
+		template<typename T>
+		auto operator*(T val,orientation o) noexcept
+		{
+			return static_cast<char>(o)*val;
+		}
+		struct edge_t {
+			unsigned int begin;
+			unsigned int end;
+			orientation begin_orientation;
+			orientation end_orientation;
+		};
+		template<typename Iter,typename U>
+		edge_t find_edge(Iter row,Iter next_row,unsigned int start,unsigned int end,U contrast_threshold) noexcept
+		{
+			auto detect_orientation=[row,next_row,contrast_threshold](unsigned int x,orientation& orient)
+			{
+				auto const upper=std::abs(U{row[x]}-U(row[x-1]));
+				auto const lower=std::abs(U{next_row[x]}-U(next_row[x-1]));
+				if(upper>contrast_threshold||lower>contrast_threshold)
+				{
+					if(upper>lower)
+					{
+						orient=orientation::up;
+					}
+					else
+					{
+						orient=orientation::down;
+					}
+				}
+				else
+				{
+					orient=orientation::flat;
+				}
+			};
+			for(;start<end;++start)
+			{
+				if(std::abs(U{row[start]}-U{next_row[start]})>contrast_threshold)
+				{
+					edge_t edge;
+					edge.begin=start;
+					++start;
+					for(;start<end;++start)
+					{
+						if(std::abs(U{row[start]}-U{next_row[start]})<=contrast_threshold)
+						{
+							edge.end=start;
+							if(start+1<end)
+							{
+								detect_orientation(start,edge.end_orientation);
+							}
+							else
+							{
+								edge.end_orientation=orientation::flat;
+							}
+							break;
+						}
+					}
+					if(start>=end)
+					{
+						edge.end_orientation=orientation::flat;
+						edge.end=end;
+					}
+					if(edge.begin>0)
+					{
+						detect_orientation(edge.begin,edge.begin_orientation);
+					}
+					else
+					{
+						edge.begin_orientation=orientation::flat;
+					}
+					return edge;
+				}
+			}
+			return {-1U,-1U};
+		}
+
+		template<typename Iter>
+		void blend(Iter row,Iter next_row,double const x_start,double const y_start,double const x_end,double const y_end,double const gamma) noexcept
+		{
+			auto m=(y_end-y_start)/(x_end-x_start);
+			if(y_start==1)
+			{
+				m=std::abs(m);
+			}
+			else
+			{
+				m=-std::abs(m);
+			}
+			bool const upper=y_start<1||y_end<1;
+			auto const area_adjustment=y_start==1?0:0.5;
+			auto write_row=upper?row:next_row;
+			auto read_row=upper?next_row:row;
+			auto x=x_start;
+			auto mix=[gamma](auto a,auto b,auto area)
+			{
+				return std::round(std::pow(area*std::pow(a,gamma)+(1-area)*std::pow(b,gamma),1/gamma));
+			};
+			if(std::floor(x)==x)
+			{
+				for(;x<x_end-0.5;++x) //half integers should be exact
+				{
+					auto area=m*(x-x_start+0.5)+area_adjustment;
+					size_t x_coord=x;
+					write_row[x_coord]=mix(read_row[x_coord],write_row[x_coord],area);
+				}
+				if(x<x_end)
+				{
+					auto area=(area_adjustment+m*(x-x_start))/4;
+					size_t x_coord=x;
+					write_row[x_coord]=mix(read_row[x_coord],write_row[x_coord],area);
+				}
+			}
+			else
+			{
+				auto area=(area_adjustment+m*0.5)/2;
+				size_t x_coord=x;
+				write_row[x_coord]=mix(read_row[x_coord],write_row[x_coord],area);
+				x+=0.5;
+				for(;x<x_end;++x) //half integers should be exact
+				{
+					auto area=m*(x-x_start+0.5)+area_adjustment;
+					if(area>0.5) area=1-area;
+					size_t x_coord=x;
+					write_row[x_coord]=mix(read_row[x_coord],write_row[x_coord],area);
+				}
+			}
+		}
+	}
+
+	/*
+		Morphological Antialiasing
+	*/
+	template<typename T>
+	bool mlaa(cil::CImg<T>& img,std::common_type_t<T,short> contrast_threshold,double gamma)
+	{
+		auto const height=img._height;
+		auto const width=img._width;
+		if(height==0||width==0) return false;
+		auto const hm1=height-1;
+		auto const wm1=width-1;
+		using p=decltype(contrast_threshold);
+		using namespace mlaa_det;
+		bool did_something=false;
+		auto const size=size_t{height}*width;
+		auto const spectrum=img._spectrum;
+		for(unsigned int y=0;y<hm1;++y) //scan for horizontal edge
+		{
+			T* const row=img.data()+y*width;
+			T* const next_row=row+width;
+			edge_t edge=find_edge(row,next_row,0,width,contrast_threshold);
+			for(;edge.begin!=-1;edge=find_edge(row,next_row,edge.end,width,contrast_threshold))
+			{
+				auto do_blend=[row,width,gamma,spectrum,size](double x_start,double y_start,double x_end,double y_end)
+				{
+					for(unsigned int i=0;i<spectrum;++i)
+					{
+						auto const layer_row=row+i*size;
+						mlaa_det::blend(layer_row,layer_row+width,x_start,y_start,x_end,y_end,gamma);
+					}
+				};
+				if(edge.end-edge.begin==1||(edge.begin_orientation==orientation::flat&&edge.end_orientation==orientation::flat))
+				{
+					continue;
+				}
+				did_something=true;
+				switch(edge.begin_orientation)
+				{
+				case orientation::flat:
+					do_blend(edge.begin,1,edge.end,0.5*edge.end_orientation);
+					break;
+				case orientation::down:
+				case orientation::up:
+					switch(edge.end_orientation)
+					{
+					case orientation::down:
+					case orientation::up:
+					{
+						auto const mid_dist=(double(edge.end)-edge.begin)/2;
+						auto const mid=edge.begin+mid_dist;
+						do_blend(edge.begin,0.5*edge.begin_orientation,mid,1);
+						do_blend(mid,1,edge.end,0.5*edge.end_orientation);
+					}					
+					break;
+					case orientation::flat:
+						do_blend(edge.begin,0.5*edge.begin_orientation,edge.end,1);
+					}
+					break;
+				}
+			}
+		}
+		for(unsigned int x=0;x<wm1;++x) //scan for vertical edge
+		{
+			vertical_iterator column{img,x};
+			vertical_iterator next_column{img,x+1};
+			edge_t edge=find_edge(column,next_column,0,height,contrast_threshold);
+			for(;edge.begin!=-1;edge=find_edge(column,next_column,edge.end,height,contrast_threshold))
+			{
+				auto do_blend=[&img,x,gamma,spectrum,size](double x_start,double y_start,double x_end,double y_end)
+				{
+					for(unsigned int i=0;i<spectrum;++i)
+					{
+						vertical_iterator column{img,x,i};
+						vertical_iterator next{img,x+1,i};
+						mlaa_det::blend(column,next,x_start,y_start,x_end,y_end,gamma);
+					}
+				};
+				if(edge.begin_orientation==orientation::flat&&edge.end_orientation==orientation::flat)
+				{
+					continue;
+				}
+				did_something=true;
+				switch(edge.begin_orientation)
+				{
+				case orientation::flat:
+					do_blend(edge.begin,1,edge.end,0.5*edge.end_orientation);
+					break;
+				case orientation::down:
+				case orientation::up:
+					switch(edge.end_orientation)
+					{
+					case orientation::down:
+					case orientation::up:
+					{
+						auto const mid_dist=(double(edge.end)-edge.begin)/2;
+						auto const mid=edge.begin+mid_dist;
+						do_blend(edge.begin,0.5*edge.begin_orientation,mid,1);
+						do_blend(mid,1,edge.end,0.5*edge.end_orientation);
+					}					
+					break;
+					case orientation::flat:
+						do_blend(edge.begin,0.5*edge.begin_orientation,edge.end,1);
+					}
+					break;
+				}
+			}
+		}
+		return did_something;
+	}
 
 	//BackgroundFinder:: returns true if a pixel is NOT part of the background
 	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
