@@ -408,7 +408,7 @@ namespace ScoreProcessor {
 			{
 				try
 				{
-					std::filesystem::copy(in, out);
+					copy(in,out,std::filesystem::copy_options::overwrite_existing);
 				}
 				catch (std::exception const& err)
 				{
