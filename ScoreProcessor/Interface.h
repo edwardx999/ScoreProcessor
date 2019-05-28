@@ -2818,7 +2818,6 @@ namespace ScoreProcessor {
 			compair("ct",&CTMaker::maker),
 			compair("rb",&RBMaker::maker),
 			compair("rs",&RsMaker::maker),
-			compair("ss",&SmartScale::maker),
 			compair("crp",&Cropper::maker),
 			compair("rsa",&RescaleAbsoluteMaker::maker),
 			compair("ccs",&CCSMaker::maker),
@@ -2842,6 +2841,7 @@ namespace ScoreProcessor {
 			compair("rotate",&RotMaker::maker),
 			compair("ccga",&CCGMaker::maker),
 			compair("splice",&SpliceMaker::maker),
+			compair("ss",&SmartScale::maker),
 			compair("hs",&HSMaker::maker),
 			compair("vs",&VSMaker::maker));
 

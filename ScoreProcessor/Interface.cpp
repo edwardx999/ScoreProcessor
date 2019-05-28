@@ -340,7 +340,7 @@ namespace ScoreProcessor {
 			"Morphological Anti-Aliasing\n"
 			"contrast_threshold: threshold considered an edge; tags: c, ct\n"
 			"gamma: gamma correction when blending; see -rs rescale for tags",
-			"Morphological Anti-Aliasing",
+			"Morphological AA",
 			"contrast_threshold=128 gamma=2"
 		};
 	}
