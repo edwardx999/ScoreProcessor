@@ -65,7 +65,11 @@ namespace ScoreProcessor {
 		init_exclusive_pool(0).lock.unlock();
 	}
 
-
+	void ExclusiveThreadPool::set_thread_count(unsigned int nt)
+	{
+		assert(nt!=0);
+		init_exclusive_pool(0).pool.num_threads(nt);
+	}
 
 	void binarize(CImg<unsigned char>& image,ColorRGB const middleColor,ColorRGB const lowColor,ColorRGB const highColor)
 	{
