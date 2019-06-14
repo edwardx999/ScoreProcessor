@@ -71389,7 +71389,18 @@ res(x,y,z,c)=max_val;
 			vsave_image(img,output,support,args);
 		}
 		
-		inline std::string number_filename(std::string filename,unsigned int number,unsigned int num_digs=0)
+		inline std::string number_filename(std::string const& filename,unsigned int number,unsigned int num_digs=0)
+		{
+			auto const extension=exlib::find_extension(filename.begin(),filename.end());
+			auto const offset_ext=extension==filename.end()?extension:extension-1;
+			auto const num_string=std::string{"_"}+exlib::front_padded_string(std::to_string(number),num_digs,'0');
+			std::string ret(filename.begin(),offset_ext);
+			ret.append(num_string);
+			ret.append(offset_ext,filename.end());
+			return ret;
+		}
+
+		inline std::string number_filename(std::string&& filename,unsigned int number,unsigned int num_digs=0)
 		{
 			auto const extension=exlib::find_extension(filename.begin(),filename.end());
 			auto const offset_ext=extension==filename.end()?extension:extension-1;

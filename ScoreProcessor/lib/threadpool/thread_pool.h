@@ -290,7 +290,7 @@ namespace exlib {
 			std::condition_variable _signal_start;
 			std::condition_variable _jobs_done;
 			std::vector<joining_thread> _workers;
-			std::size_t _active_thread_count;
+			std::atomic<std::size_t> _active_thread_count;
 			//whether threads are running
 			std::atomic<bool> _running;
 			//whether threads are actively looking for jobs
