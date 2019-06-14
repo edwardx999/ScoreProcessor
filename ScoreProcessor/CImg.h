@@ -71340,7 +71340,7 @@ res(x,y,z,c)=max_val;
 		}
 
 		template<typename T>
-		void vsave_image(CImg<T> const& img,char const* output,support_type support,va_list arp)
+		void save_image(CImg<T> const& img,char const* output,support_type support,int quality=100)
 		{
 			switch(support)
 			{
@@ -71361,7 +71361,7 @@ res(x,y,z,c)=max_val;
 				img.save_bmp(c_str);
 				break;
 			case support_type::jpeg:
-				img.save_jpeg(c_str,va_arg(arp,int));
+				img.save_jpeg(c_str,quality);
 				break;
 			case support_type::png:
 				img.save_png(c_str);
@@ -71380,13 +71380,6 @@ res(x,y,z,c)=max_val;
 				msg.append(". Temporary file saved to ").append(path.string());
 				throw std::runtime_error{msg};
 			}
-		}
-		template<typename T>
-		void save_image(CImg<T> const& img,char const* output,support_type support,...)
-		{
-			va_list args;
-			va_start(args,support);
-			vsave_image(img,output,support,args);
 		}
 		
 		inline std::string number_filename(std::string const& filename,unsigned int number,unsigned int num_digs=0)

@@ -101,17 +101,32 @@ namespace ScoreProcessor {
 			assert(v._width==v2._width);
 			return (v._top-v2._top)/v._width;
 		}
+#define vertical_operator_comp_op(op)\
+		template<typename T, typename U>\
+		friend bool operator op(vertical_iterator<T> const& a,vertical_iterator<U> const& b) noexcept\
+		{\
+			assert(a._width==b._width);\
+			return a._top op b._top;\
+		}
+		vertical_operator_comp_op(==)
+			vertical_operator_comp_op(<)
+			vertical_operator_comp_op(>)
+			vertical_operator_comp_op(<=)
+			vertical_operator_comp_op(>=)
+			vertical_operator_comp_op(!=)
+#undef vertical_operator_comp_op
 	};
 
 	template<typename T>
-	vertical_iterator(cil::CImg<T> const& img,unsigned int column) -> vertical_iterator<T const>;
+	vertical_iterator(cil::CImg<T> const&,unsigned int,unsigned int) -> vertical_iterator<T const>;
 
 	template<typename T>
-	vertical_iterator(cil::CImg<T>& img,unsigned int column) -> vertical_iterator<T>;
+	vertical_iterator(cil::CImg<T>&,unsigned int,unsigned int) -> vertical_iterator<T>;
 
 	class ExclusiveThreadPool {
 	public:
 		exlib::thread_pool& pool() const;
+		void set_thread_count(unsigned int nt);
 		ExclusiveThreadPool(unsigned int num_threads=std::thread::hardware_concurrency());
 		~ExclusiveThreadPool();
 	};
@@ -209,6 +224,7 @@ namespace ScoreProcessor {
 			return static_cast<char>(o)*val;
 		}
 		struct edge_t {
+			using orientation=mlaa_det::orientation;
 			unsigned int begin;
 			unsigned int end;
 			orientation begin_orientation;
@@ -340,7 +356,7 @@ namespace ScoreProcessor {
 	{
 		auto const height=img._height;
 		auto const width=img._width;
-		if(height==0||width==0) return false;
+		if(height<2||width<2) return false;
 		auto const hm1=height-1;
 		auto const wm1=width-1;
 		using p=decltype(contrast_threshold);
