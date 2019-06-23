@@ -300,11 +300,11 @@ namespace ScoreProcessor {
 	}
 
 	namespace Cropper {
-		SingMaker<UseTuple,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker(
+		decltype(maker) maker(
 			"Crops the image\n"
-			"tags: l, t, r, b",
+			"tags: l; t; r, w; b, h",
 			"Crop",
-			"left top right bottom");
+			"left top horizontal vertical");
 	}
 
 	namespace Quality {

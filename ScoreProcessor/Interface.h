@@ -1342,6 +1342,40 @@ namespace ScoreProcessor {
 			}
 		};
 
+		inline ImageUtils::Rectangle<int> coords_to_rect(int left,int top,flagged right,flagged bottom)
+		{
+			if(!right.flag)
+			{
+				if(right.value<=left)
+					throw std::invalid_argument("Right coord must be greater than left coord");
+			}
+			else
+			{
+				if(right.value<0)
+				{
+					throw std::invalid_argument("Width cannot be negative");
+				}
+			}
+			if(!bottom.flag)
+			{
+				if(bottom.value<=top)
+					throw std::invalid_argument("Bottom coord must be greater than top coord");
+			}
+			else
+			{
+				if(bottom.value<0)
+				{
+					throw std::invalid_argument("Height cannot be negative");
+				}
+			}
+			ImageUtils::Rectangle<int> rect;
+			rect.left=left;
+			rect.top=top;
+			rect.right=right.flag?left+right.value:right.value;
+			rect.bottom=bottom.flag?top+bottom.value:bottom.value;
+			return rect;
+		}
+
 		struct UseTuple {
 			PMINLINE static void use_tuple(CommandMaker::delivery& del,std::tuple<int,int,flagged,flagged,color,FillRectangle::origin_reference> const& args)
 			{
@@ -1349,35 +1383,7 @@ namespace ScoreProcessor {
 				auto const& top=std::get<1>(args);
 				auto const& right=std::get<2>(args);
 				auto const& bottom=std::get<3>(args);
-				if(!right.flag)
-				{
-					if(right.value<=left)
-						throw std::invalid_argument("Right coord must be greater than left coord");
-				}
-				else
-				{
-					if(right.value<0)
-					{
-						throw std::invalid_argument("Width cannot be negative");
-					}
-				}
-				if(!bottom.flag)
-				{
-					if(bottom.value<=top)
-						throw std::invalid_argument("Bottom coord must be greater than top coord");
-				}
-				else
-				{
-					if(bottom.value<0)
-					{
-						throw std::invalid_argument("Height cannot be negative");
-					}
-				}
-				ImageUtils::Rectangle<int> rect;
-				rect.left=std::get<0>(args);
-				rect.top=std::get<1>(args);
-				rect.right=right.flag?left+right.value:right.value;
-				rect.bottom=bottom.flag?top+bottom.value:bottom.value;
+				auto const rect=coords_to_rect(left,top,right,bottom);
 				del.pl.add_process<FillRectangle>(rect,std::get<4>(args).data,std::get<4>(args).num_layers,std::get<5>(args));
 			}
 		};
@@ -2638,39 +2644,28 @@ namespace ScoreProcessor {
 	}
 
 	namespace Cropper {
-		struct Left {
-			cnnm("left");
-			clbl("l","left");
-		};
-		struct Top {
-			cnnm("top");
-			clbl("t","top");
-		};
-		struct Right {
-			cnnm("right");
-			clbl("r","right");
-		};
-		struct Bottom {
-			cnnm("bottom");
-			clbl("b","bot","bottom");
-		};
+
+		using FRMaker::Left;
+
+		using FRMaker::Top;
+
+		using FRMaker::Bottom;
+
+		using FRMaker::Right;
+
+		using FRMaker::flagged;
+
+		using FRMaker::coords_to_rect;
 
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,int l,int t,int r,int b)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,int l,int t,flagged r,flagged b)
 			{
-				if(l>=r)
-				{
-					throw std::invalid_argument("Left must be less than right");
-				}
-				if(t>=b)
-				{
-					throw std::invalid_argument("Top must be less than bottom");
-				}
-				del.pl.add_process<Crop>(l,t,r,b);
+				auto rect=coords_to_rect(l,t,r,b);
+				del.pl.add_process<Crop>(rect.left,rect.top,rect.right,rect.bottom);
 			}
 		};
 
-		extern SingMaker<UseTuple,IntParser<Left>,IntParser<Top>,IntParser<Right>,IntParser<Bottom>> maker;
+		extern SingMaker<UseTuple,IntParser<Left>,IntParser<Top>,Right,Bottom> maker;
 	}
 
 	namespace Quality {
