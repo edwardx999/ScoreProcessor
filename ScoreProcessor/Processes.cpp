@@ -515,7 +515,7 @@ namespace ScoreProcessor {
 	bool SlidingTemplateMatchEraseExact::process(Img& img) const
 	{
 		auto downsized=img.get_crop(0,0,round_up(img._width,downscaling)-1,round_up(img._height,downscaling)-1);
-		downsized.resize(downsized._width/downscaling,downsized._height/downscaling);
+		downsized.resize(downsized.width()/downscaling,downsized.height()/downscaling,downsized.depth(),downsized.spectrum(),2);
 		using Gray=std::array<unsigned char,1>;
 		auto counts=sliding_template_match<1,float>(downsized,downsized_tmplt,[](Gray t,Gray i)
 			{

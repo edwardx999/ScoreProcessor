@@ -345,7 +345,7 @@ namespace ScoreProcessor {
 				round_up(tmplt._width,downscaling),
 				round_up(tmplt._height,downscaling)))
 		{
-			downsized_tmplt.resize(tmplt._width/downscaling,tmplt._height/downscaling);
+			downsized_tmplt.resize(tmplt.width()/downscaling,tmplt.height()/downscaling,tmplt.depth(),tmplt.spectrum(),2);
 			delete[] tmplt._data;
 			tmplt._data=0;
 		}
