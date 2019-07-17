@@ -32,11 +32,129 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <atomic>
 #include <mutex>
 #include "lib/threadpool/thread_pool.h"
+#include "opencv2/imgproc.hpp"
 using namespace std;
 using namespace ImageUtils;
 using namespace cimg_library;
 using namespace misc_alg;
 namespace ScoreProcessor {
+
+	template<typename CountType>
+	unsigned int sliding_template_match_erase_exact_help(cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,float threshold,std::array<unsigned char,4> color)
+	{
+		if(img._width<tmplt._width||img._height<tmplt._height)
+		{
+			throw std::invalid_argument("Template smaller than image");
+		}
+		cil::CImg<CountType> counts(img._width,img._height);
+		CountType converted_threshold=tmplt._height*tmplt._width*threshold;
+		for(unsigned int y=0;y<counts._height;++y)
+		{
+			auto const y_max=std::min(img._height,y+tmplt._height)-y;
+			for(unsigned int x=0;x<counts._width;++x)
+			{
+				auto const x_max=std::min(img._width,x+tmplt._width)-x;
+				auto& pixel=(counts(x,y)=0);
+				for(unsigned int y1=0;y1<y_max;++y1)
+				{
+					for(unsigned int x1=0;x1<x_max;++x1)
+					{
+						pixel+=img(x+x1,y+y1)==tmplt(x1,y1);
+					}
+				}
+			}
+		}
+		auto const y_last=counts._height-1;
+		auto const x_last=counts._width-1;
+		unsigned int erase_count=0;
+		for(unsigned int y=1;y<y_last;++y)
+		{
+			for(unsigned int x=1;x<x_last;++x)
+			{
+				auto const count=counts(x,y);
+				if(count>=converted_threshold&&
+					count>=counts(x-1,y)&&
+					count>=counts(x+1,y)&&
+					count>=counts(x,y-1)&&
+					count>=counts(x,y+1))
+				{
+					++erase_count;
+					ImageUtils::RectangleUINT to_erase{x,std::min(counts._width,x+tmplt._width),y,std::min(counts._height,y+tmplt._height)};
+					fill_selection(img,to_erase,color);
+				}
+			}
+		}
+		return erase_count;
+	}
+
+	unsigned int sliding_template_match_erase_exact(cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,float threshold,std::array<unsigned char,4> color)
+	{
+		if(img._width<tmplt._width||img._height<tmplt._height)
+		{
+			throw std::invalid_argument("Template smaller than image");
+		}
+		if(tmplt._width*tmplt._height<=std::numeric_limits<unsigned short>::max())
+		{
+			return sliding_template_match_erase_exact_help<unsigned short>(img,tmplt,threshold,color);
+		}
+		else
+		{
+			return sliding_template_match_erase_exact_help<unsigned int>(img,tmplt,threshold,color);
+		}
+	}
+
+	unsigned int cluster_template_match_erase(cil::CImg<unsigned char>& img,std::vector<ScoreProcessor::Cluster> const& clusters,cil::CImg<unsigned char> const& tmplt,float match_threshold)
+	{
+		auto const total_size=float(tmplt._width)*tmplt._height;
+		unsigned int count=0;
+		auto const inverted_threshold=(1-match_threshold)*total_size;
+		for(auto& cluster:clusters)
+		{
+			auto const bb=cluster.bounding_box();
+			auto const ltx=bb.left;
+			auto const lty=bb.top;
+			//std::cout<<ltx<<' '<<lty<<'\n';
+			float match=0;
+			auto const y_max=std::min(img._height,lty+tmplt._height);
+			auto const x_max=std::min(img._width,ltx+tmplt._width);
+			auto const y_end=y_max-lty;
+			auto const x_end=x_max-ltx;
+			for(unsigned int y=0;y<y_end;++y)
+			{
+				for(unsigned int x=0;x<x_end;++x)
+				{
+					//std::cout<<int(img(ltx+x,lty+y))<<' '<<int(tmplt(x,y))<<'\n';
+					match+=ImageUtils::Grayscale::color_diff(&img(ltx+x,lty+y),&tmplt(x,y));
+				}
+			}
+			//std::cout<<match<<'\n';
+			if(match<inverted_threshold)
+			{
+				for(auto& erase:clusters)
+				{
+					bool contains=false;
+					for(auto& rect:erase.get_ranges())
+					{
+						if(rect.intersects({ltx,ltx+tmplt._width,lty,lty+tmplt._height}))
+						{
+							contains=true;
+							++count;
+							break;
+						}
+					}
+					if(contains)
+					{
+						unsigned char white_buffer[]={255,255,255,255};
+						for(auto& rect:erase.get_ranges())
+						{
+							fill_selection(img,rect,white_buffer);
+						}
+					}
+				}
+			}
+		}
+		return count;
+	}
 
 	struct guarded_pool {
 		exlib::thread_pool pool;

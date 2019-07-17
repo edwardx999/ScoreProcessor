@@ -503,5 +503,55 @@ namespace ScoreProcessor {
 		scaler.smart_scale(img,ratio,ThreadOverride::num_threads());
 		return true;
 	}
-
+	bool TemplateMatchErase::process(Img& img) const
+	{
+		auto rects=global_select<1>(img,[](std::array<unsigned char,1> val)
+			{
+				return val[0]!=255;
+			});
+		auto clusters=Cluster::cluster_ranges(rects);
+		return cluster_template_match_erase(img,clusters,this->tmplt,this->threshold);
+	}
+	bool SlidingTemplateMatchEraseExact::process(Img& img) const
+	{
+		auto downsized=img.get_crop(0,0,round_up(img._width,downscaling)-1,round_up(img._height,downscaling)-1);
+		downsized.resize(downsized._width/downscaling,downsized._height/downscaling);
+		using Gray=std::array<unsigned char,1>;
+		auto counts=sliding_template_match<1,float>(downsized,downsized_tmplt,[](Gray t,Gray i)
+			{
+				return 1.0f-ImageUtils::gray_diff({t[0]},{i[0]});
+			});
+		auto const real_threshold=threshold*downsized_tmplt._width*downsized_tmplt._height;
+		auto const hm1=counts._height-1;
+		auto const wm1=counts._width-1;
+		unsigned char white[]={255,255,255,255};
+		bool found=false;
+		//counts.display();
+		for(unsigned int y=1;y<hm1;++y)
+		{
+			for(unsigned int x=1;x<wm1;++x)
+			{
+				auto const val=counts(x,y);
+				if(val>=real_threshold&&
+					val>=counts(x-1,y)&&
+					val>=counts(x+1,y)&&
+					val>=counts(x,y-1)&&
+					val>=counts(x,y+1)&&
+					val>=counts(x-1,y+1)&&
+					val>=counts(x-1,y-1)&&
+					val>=counts(x+1,y+1)&&
+					val>=counts(x+1,y-1))
+				{
+					found=true;
+					auto point=downscaling*ImageUtils::PointUINT{x,y};
+					fill_selection(
+						img,
+						{point.x,std::min(img._width,point.x+tmplt._width),
+						point.y,std::min(img._height,point.y+tmplt._height)},
+						white);
+				}
+			}
+		}
+		return found;
+	}
 }

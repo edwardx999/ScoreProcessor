@@ -213,7 +213,7 @@ namespace ScoreProcessor {
 			"  tags: tol, tph, tpw\n"
 			"background_threshold: see tolerance; tags: bg",
 			"Vertical Padding",
-			"top bottom=l tolerance=0.005 background_threshold=128"
+			"top bottom=t tolerance=0.005 background_threshold=128"
 		);
 	}
 
@@ -342,6 +342,28 @@ namespace ScoreProcessor {
 			"gamma: gamma correction when blending; see -rs rescale for tags",
 			"Morphological AA",
 			"contrast_threshold=128 gamma=2"
+		};
+	}
+
+	namespace TemplateClearMaker {
+		decltype(maker) maker{
+			"Cluster Template Match Erase\n"
+			"finds clusters in an image, compares them to template to erase matches\n"
+			"template: what to match\n"
+			"threshold: correspondence threshold to erase",
+			"Cluster Match Erase",
+			"template_file_name threshold=0.95"
+		};
+	}
+	namespace SlidingTemplateClearMaker {
+		decltype(maker) maker{
+			"Sliding Match Erase Down\n"
+			"slides a template across a downscaled version of the image to erase matches\n"
+			"template: what to match\n"
+			"downscale: the downscale ratio of the image used to compare the templates\n"
+			"threshold: correspondence threshold to erase",
+			"Sliding Erase Downscale Match",
+			"template_file_name downscale threshold=0.95"
 		};
 	}
 }

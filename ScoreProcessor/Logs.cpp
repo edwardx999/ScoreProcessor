@@ -68,4 +68,8 @@ namespace Loggers {
 			std::cout.write(buffer.get(),len);
 		}
 	}
+	AmountLog::~AmountLog()
+	{
+		std::cout<<'\n';
+	}
 }

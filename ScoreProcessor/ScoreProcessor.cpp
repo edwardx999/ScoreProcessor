@@ -81,7 +81,7 @@ void info_output()
 		"Available commands:\n"
 		"  Single Page Operations:\n";
 	constexpr char const* space_buffer=":                                      ";
-	constexpr size_t padding=24;
+	constexpr size_t padding=31;
 	auto write_command=[=](auto const& it)
 	{
 		std::cout<<"    ";

@@ -62,9 +62,9 @@ namespace ScoreProcessor {
 	ImageUtils::Point<unsigned int> point={xdef,ydef}; \
 	for(auto const& rect:ranges) \
 	{ \
-		if(rect. ## xterm ## xcomp ## point.x&&rect. ## yterm ## ycomp ## point.y) \
+		if(rect. xterm xcomp point.x&&rect. yterm ycomp point.y) \
 		{ \
-			point={rect. ## xterm ##,rect. ## yterm}; \
+			point={rect. xterm,rect. yterm}; \
 		} \
 	} \
 	return point

@@ -61,6 +61,7 @@ namespace Loggers {
 		}
 		void log(char const*,size_t,size_t) override;
 		void log_error(char const*,size_t,size_t) override;
+		~AmountLog() override;
 	};
 }
 #endif

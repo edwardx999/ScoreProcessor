@@ -2776,6 +2776,55 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple,Width,Height,Origin> maker;
 	}
 
+	namespace TemplateClearMaker {
+
+		struct Name {
+			cnnm("template name");
+			static char const* parse(InputType in)
+			{
+				return in;
+			}
+		};
+		struct Threshold {
+			cnnm("threshold");
+			static float parse(InputType in)
+			{
+				auto res=FloatParser<empty,no_check>().parse(in);
+				if(res<0||res>1) throw std::invalid_argument("Range [0,1] required");
+				return res;
+			}
+			cndf(0.95f)
+		};
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* name,float threshold)
+			{
+				del.pl.add_process<TemplateMatchErase>(name,threshold);
+			}
+		};
+		extern SingMaker<UseTuple,Name,Threshold> maker;
+	}
+	namespace SlidingTemplateClearMaker {
+		struct Downscale {
+			cnnm("downscale_factor");
+			static unsigned int parse(InputType in)
+			{
+				auto res=IntegerParser<unsigned int,empty>().parse(in);
+				if(res==0)
+				{
+					throw std::invalid_argument("Value must be greater than 0");
+				}
+				return res;
+			}
+		};
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* name,unsigned int downscale,float threshold)
+			{
+				del.pl.add_process<SlidingTemplateMatchEraseExact>(name,downscale,threshold);
+			}
+		};
+		extern SingMaker<UseTuple,TemplateClearMaker::Name,Downscale,TemplateClearMaker::Threshold> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -2816,7 +2865,9 @@ namespace ScoreProcessor {
 			compair("crp",&Cropper::maker),
 			compair("rsa",&RescaleAbsoluteMaker::maker),
 			compair("ccs",&CCSMaker::maker),
-			compair("mlaa",&MlaaMaker::maker));
+			compair("mlaa",&MlaaMaker::maker),
+			compair("tme",&TemplateClearMaker::maker),
+			compair("stme",&SlidingTemplateClearMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),

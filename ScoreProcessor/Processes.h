@@ -316,5 +316,40 @@ namespace ScoreProcessor {
 		{}
 		bool process(Img&) const override;
 	};
+
+	class TemplateMatchErase:public ImageProcess<> {
+		cil::CImg<unsigned char> tmplt;
+		float threshold;
+	public:
+		TemplateMatchErase(char const* filename,float threshold):tmplt(filename),threshold{threshold}{}
+		bool process(Img&) const override;
+	};
+	template<typename T>
+	T round_up(T val,T r) noexcept
+	{
+		auto const mod=val%r;
+		if(mod==0) return val;
+		return val-mod+r;
+	}
+	class SlidingTemplateMatchEraseExact:public ImageProcess<> {
+		cil::CImg<unsigned char> tmplt;
+		unsigned int downscaling;
+		float threshold;
+		cil::CImg<unsigned char> downsized_tmplt;
+	public:
+		SlidingTemplateMatchEraseExact(char const* filename,unsigned int downscaling,float threshold):
+			tmplt(filename),
+			downscaling{downscaling},
+			threshold{threshold},
+			downsized_tmplt(tmplt.get_crop(0,0,
+				round_up(tmplt._width,downscaling),
+				round_up(tmplt._height,downscaling)))
+		{
+			downsized_tmplt.resize(tmplt._width/downscaling,tmplt._height/downscaling);
+			delete[] tmplt._data;
+			tmplt._data=0;
+		}
+		bool process(Img&) const override;
+	};
 }
 #endif

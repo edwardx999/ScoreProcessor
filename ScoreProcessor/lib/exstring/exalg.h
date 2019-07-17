@@ -164,7 +164,7 @@ namespace exlib {
 			constexpr size_t N=array_size<A>::value;
 			constexpr size_t M=array_size<B>::value;
 			constexpr size_t Nf=N==0?0:N-1;
-			constexpr size_t Mf=M==0?0:M-1;
+			constexpr size_t Mf=M;
 			return concat(a,b,std::make_index_sequence<Nf>(),std::make_index_sequence<Mf>());
 		}
 		template<typename A,typename B,typename... C>
@@ -194,7 +194,7 @@ namespace exlib {
 	template<typename A,typename B,typename... C>
 	constexpr auto str_concat(A const& a,B const& b,C const&... c)
 	{
-		return concat(detail::str_concat(a,b,c...),"");
+		return detail::str_concat(a,b,c...);
 	}
 
 	template<typename T>

@@ -29,6 +29,57 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "../NeuralNetwork/neural_net.h"
 namespace ScoreProcessor {
 
+	namespace detail {
+		template<typename CountType,typename InputType,typename ComparisonFunc,std::size_t... Layers>
+		void template_match(cil::CImg<CountType>& counts,cil::CImg<InputType> const& img,cil::CImg<InputType> const& tmplt,ImageUtils::PointUINT const point,ComparisonFunc comp,CountType initial_count,std::index_sequence<Layers...>)
+		{
+			auto const theight=tmplt._height;
+			auto const twidth=tmplt._width;
+			auto const layer_depth=std::size_t{img._width}*img._height;
+			auto const tlayer_depth=std::size_t{theight}*twidth;
+			auto const y_max=std::min(counts._height,point.y+theight)-point.y;
+			auto const x_max=std::min(counts._width,point.x+twidth)-point.x;
+			auto& pixel=(counts(point.x,point.y)=initial_count);
+			for(unsigned int y1=0;y1<y_max;++y1)
+			{
+				for(unsigned int x1=0;x1<x_max;++x1)
+				{
+					std::array<InputType,sizeof...(Layers)> const i{*(&img(point.x+x1,point.y+y1)+Layers*layer_depth)...};
+					decltype(i) t{*(&tmplt(x1,y1)+Layers*tlayer_depth)...};
+					pixel+=comp(i,t);
+				}
+			}
+		}
+	}
+
+	template<std::size_t Layers,typename CountType,typename InputType,typename ComparisonFunc>
+	void template_match(cil::CImg<CountType>& counts,cil::CImg<InputType> const& img,cil::CImg<InputType> const& tmplt,ImageUtils::PointUINT const point,ComparisonFunc comp,CountType initial=0)
+	{
+		return detail::template_match(counts,img,tmplt,point,comp,initial,std::make_index_sequence<Layers>{});
+	}
+
+	template<std::size_t Layers,typename CountType,typename InputType,typename ComparisonFunc>
+	cil::CImg<CountType> sliding_template_match(cil::CImg<InputType> const& img,cil::CImg<InputType> const& tmplt,ComparisonFunc comp,CountType initial=0)
+	{
+		cil::CImg<CountType> counts(img._width,img._height,1,Layers);
+		auto const theight=tmplt._height;
+		auto const twidth=tmplt._width;
+		for(unsigned int y=0;y<counts._height;++y)
+		{
+			for(unsigned int x=0;x<counts._width;++x)
+			{
+				template_match<Layers>(counts,img,tmplt,{x,y},comp,initial);
+			}
+		}
+		return counts;
+	}
+
+	unsigned int sliding_template_match_erase_exact(cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,float threshold,std::array<unsigned char,4> color);
+
+	unsigned int sliding_template_match_erase_scale_compare(cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,float threshold,float scale,std::array<unsigned char,4> color);
+
+	unsigned int cluster_template_match_erase(cil::CImg<unsigned char>& img,std::vector<ScoreProcessor::Cluster> const& rects,cil::CImg<unsigned char> const& tmplt,float match_threshold);
+
 	template<typename T>
 	class vertical_iterator {
 		T* _top;

@@ -75,15 +75,44 @@ namespace ImageUtils {
 	template<typename T=unsigned int>
 	struct vec2_t {
 		T x,y;
-		/*template<typename U>
-		vec2_t(vec2_t<U> const& other);
 		template<typename U>
-		vec2_t<T>& operator=(vec2_t<U> const& other);*/
-		vec2_t<T> operator+(vec2_t<T> const& other);
-		vec2_t<T> operator-(vec2_t<T> const& other);
-		vec2_t<T>& operator+=(vec2_t<T> const& other);
-		vec2_t<T>& operator-=(vec2_t<T> const& other);
+		vec2_t<T>& operator+=(vec2_t<U> const& other) noexcept
+		{
+			x+=other.x;
+			y+=other.y;
+		}
+		template<typename U>
+		vec2_t<T>& operator-=(vec2_t<U> const& other) noexcept
+		{
+			x-=other.x;
+			y-=other.y;
+		}
 	};
+	template<typename U,typename T>
+	auto operator*(U val,vec2_t<T> const& other) -> vec2_t<decltype(val*other.x)>
+	{
+		return {val*other.x,val*other.y};
+	}
+	template<typename T,typename U>
+	auto operator*(vec2_t<T> const& other,U val) -> vec2_t<decltype(val*other.x)>
+	{
+		return {val*other.x,val*other.y};
+	}
+	template<typename T,typename U>
+	auto operator+(vec2_t<T> const& a,vec2_t<U> const& b) -> vec2_t<decltype(a.x+b.x)>
+	{
+		return {a.x+b.x,a.y+b.y};
+	}
+	template<typename T,typename U>
+	auto operator-(vec2_t<T> const& a,vec2_t<U> const& b) -> vec2_t<decltype(a.x-b.x)>
+	{
+		return {a.x-b.x,a.y-b.y};
+	}
+	template<typename T>
+	vec2_t<T> operator-(vec2_t<T> const& a)
+	{
+		return {-a.x,-a.y};
+	}
 	template<typename T>
 	using Point=vec2_t<T>;
 	using PointUINT=Point<unsigned int>;
@@ -457,30 +486,6 @@ namespace ImageUtils {
 	return *this;
 	}
 	*/
-	template<typename T>
-	vec2_t<T> vec2_t<T>::operator+(vec2_t<T> const& other)
-	{
-		return {x+other.x,y+other.y};
-	}
-	template<typename T>
-	vec2_t<T> vec2_t<T>::operator-(vec2_t<T> const& other)
-	{
-		return {x-other.x,y-other.y};
-	}
-	template<typename T>
-	vec2_t<T>& vec2_t<T>::operator+=(vec2_t<T> const& other)
-	{
-		x+=other.x;
-		y+=other.y;
-		return *this;
-	}
-	template<typename T>
-	vec2_t<T>& vec2_t<T>::operator-=(vec2_t<T> const& other)
-	{
-		x-=other.y;
-		y-=other.y;
-		return *this;
-	}
 	/*
 	template<typename T>
 	void split_horiz(Rectangle<T>* orig,Rectangle<T>* buffer,unsigned int numRects)
