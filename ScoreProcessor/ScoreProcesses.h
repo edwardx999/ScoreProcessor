@@ -50,6 +50,34 @@ namespace ScoreProcessor {
 				}
 			}
 		}
+		template<typename CountType,typename InputType,typename ComparisonFunc,std::size_t... Layers>
+		void sliding_template_match(cil::CImg<CountType>& counts,cil::CImg<InputType> const& img,cil::CImg<InputType> const& tmplt,ComparisonFunc comp,std::index_sequence<Layers...>)
+		{
+			auto const cwidth=counts._width;
+			auto const cheight=counts._height;
+			auto const theight=tmplt._height;
+			auto const twidth=tmplt._width;
+			auto const ilayer_depth=std::size_t{img._width}*img._height;
+			auto const tlayer_depth=std::size_t{theight}*twidth;
+			for(unsigned int ty=0;ty<theight;++ty)
+			{
+				for(unsigned int cy=0;cy<cheight;++cy)
+				{
+					for(unsigned int cx=0;cx<cwidth;++cx)
+					{
+						auto& cpixel=counts(cx,cy);
+						auto const istart=&img(cx,cy+ty);
+						auto const tstart=&tmplt(0,ty);
+						for(unsigned int x=0;x<twidth;++x)
+						{
+							std::array<InputType,sizeof...(Layers)> const i{*(istart+x+Layers*ilayer_depth)...};
+							decltype(i) t{*(tstart+x+Layers*tlayer_depth)...};
+							cpixel+=comp(i,t);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	template<std::size_t Layers,typename CountType,typename InputType,typename ComparisonFunc>
@@ -61,16 +89,13 @@ namespace ScoreProcessor {
 	template<std::size_t Layers,typename CountType,typename InputType,typename ComparisonFunc>
 	cil::CImg<CountType> sliding_template_match(cil::CImg<InputType> const& img,cil::CImg<InputType> const& tmplt,ComparisonFunc comp,CountType initial=0)
 	{
-		cil::CImg<CountType> counts(img._width,img._height,1,Layers);
-		auto const theight=tmplt._height;
-		auto const twidth=tmplt._width;
-		for(unsigned int y=0;y<counts._height;++y)
+		if(img._width<tmplt._width||img._height<tmplt._height)
 		{
-			for(unsigned int x=0;x<counts._width;++x)
-			{
-				template_match<Layers>(counts,img,tmplt,{x,y},comp,initial);
-			}
+			throw std::invalid_argument("Image smaller than template");
 		}
+		cil::CImg<CountType> counts(img._width-tmplt._width,img._height-tmplt._height,1,Layers);
+		counts.fill(initial);
+		detail::sliding_template_match(counts,img,tmplt,comp,std::make_index_sequence<Layers>{});
 		return counts;
 	}
 
