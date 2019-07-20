@@ -171,7 +171,7 @@ namespace ScoreProcessor {
 		{
 			return [this,&img,func](Cluster const& c)
 			{
-				auto size=c.size();
+				auto const size=c.size();
 				if(size>=min_size&&size<=max_size)
 				{
 					return true;
@@ -211,7 +211,7 @@ namespace ScoreProcessor {
 			}
 			return brightness>=rmn&&brightness<=rmx;
 		});
-		if(eight)
+		if(!eight)
 		{
 			if(img._spectrum<3)
 			{

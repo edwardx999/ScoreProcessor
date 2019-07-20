@@ -23,9 +23,9 @@ namespace ScoreProcessor {
 	unsigned int Cluster::size() const
 	{
 		unsigned int size=0;
-		for(unsigned int i=0;i<ranges.size();++i)
+		for(auto const& rect:ranges)
 		{
-			size+=ranges[i].area();
+			size+=rect.area();
 		}
 		return size;
 	}
