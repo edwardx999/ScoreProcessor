@@ -329,15 +329,21 @@ namespace ScoreProcessor {
 		unsigned int downscaling;
 		float threshold;
 		cil::CImg<unsigned char> downsized_tmplt;
+		static cil::CImg<unsigned char> get_downscale(cil::CImg<unsigned char>& img,unsigned int scale)
+		{
+			if(scale==1) return cil::CImg(img,true);
+			auto downscaled=integral_downscale(img,scale);
+			delete[] img._data;
+			img._data=0;
+			return downscaled;
+		}
 	public:
 		SlidingTemplateMatchEraseExact(char const* filename,unsigned int downscaling,float threshold):
 			tmplt(filename),
 			downscaling{downscaling},
 			threshold{threshold},
-			downsized_tmplt(integral_downscale(tmplt,downscaling))
+			downsized_tmplt(get_downscale(tmplt,downscaling))
 		{
-			delete[] tmplt._data;
-			tmplt._data=0;
 		}
 		bool process(Img&) const override;
 	};
