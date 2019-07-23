@@ -32,6 +32,10 @@ namespace ScoreProcessor {
 	template<typename T>
 	cil::CImg<T> integral_downscale(cil::CImg<T> const& image,unsigned int downscale,T boundary_fill=std::numeric_limits<T>::max())
 	{
+		if(downscale==1)
+		{
+			return image;
+		}
 		auto const fwidth=ImageUtils::round_up(image._width,downscale);
 		auto const fheight=ImageUtils::round_up(image._height,downscale);
 		if(fheight==0||fwidth==0) return {};
