@@ -93,7 +93,7 @@ namespace ScoreProcessor {
 		{
 			throw std::invalid_argument("Image smaller than template");
 		}
-		cil::CImg<CountType> counts(img._width-tmplt._width,img._height-tmplt._height,1,Layers);
+		cil::CImg<CountType> counts(img._width-tmplt._width+1,img._height-tmplt._height+1,1,Layers);
 		counts.fill(initial);
 		detail::sliding_template_match(counts,img,tmplt,comp,std::make_index_sequence<Layers>{});
 		return counts;
