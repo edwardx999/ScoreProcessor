@@ -514,14 +514,13 @@ namespace ScoreProcessor {
 	}
 	bool SlidingTemplateMatchEraseExact::process(Img& img) const
 	{
-		auto downsized=img.get_crop(0,0,round_up(img._width,downscaling)-1,round_up(img._height,downscaling)-1);
-		downsized.resize(downsized.width()/downscaling,downsized.height()/downscaling,downsized.depth(),downsized.spectrum(),2);
+		auto const downsized=integral_downscale(img,downscaling);
 		using Gray=std::array<unsigned char,1>;
 		auto counts=sliding_template_match<1,float>(downsized,downsized_tmplt,[](Gray t,Gray i)
 			{
-				return 1.0f-ImageUtils::gray_diff({t[0]},{i[0]});
+				return ImageUtils::gray_diff({t[0]},{i[0]});
 			});
-		auto const real_threshold=threshold*downsized_tmplt._width*downsized_tmplt._height;
+		auto const real_threshold=(1-threshold)*downsized_tmplt._width*downsized_tmplt._height;
 		auto const hm1=counts._height-1;
 		auto const wm1=counts._width-1;
 		unsigned char white[]={255,255,255,255};
@@ -532,15 +531,15 @@ namespace ScoreProcessor {
 			for(unsigned int x=1;x<wm1;++x)
 			{
 				auto const val=counts(x,y);
-				if(val>=real_threshold&&
-					val>=counts(x-1,y)&&
-					val>=counts(x+1,y)&&
-					val>=counts(x,y-1)&&
-					val>=counts(x,y+1)&&
-					val>=counts(x-1,y+1)&&
-					val>=counts(x-1,y-1)&&
-					val>=counts(x+1,y+1)&&
-					val>=counts(x+1,y-1))
+				if(val<real_threshold&&
+					val<=counts(x-1,y)&&
+					val<=counts(x+1,y)&&
+					val<=counts(x,y-1)&&
+					val<=counts(x,y+1)&&
+					val<=counts(x-1,y+1)&&
+					val<=counts(x-1,y-1)&&
+					val<=counts(x+1,y+1)&&
+					val<=counts(x+1,y-1))
 				{
 					found=true;
 					auto point=downscaling*ImageUtils::PointUINT{x,y};

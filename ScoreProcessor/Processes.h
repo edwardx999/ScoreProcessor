@@ -324,13 +324,6 @@ namespace ScoreProcessor {
 		TemplateMatchErase(char const* filename,float threshold):tmplt(filename),threshold{threshold}{}
 		bool process(Img&) const override;
 	};
-	template<typename T>
-	T round_up(T val,T r) noexcept
-	{
-		auto const mod=val%r;
-		if(mod==0) return val;
-		return val-mod+r;
-	}
 	class SlidingTemplateMatchEraseExact:public ImageProcess<> {
 		cil::CImg<unsigned char> tmplt;
 		unsigned int downscaling;
@@ -341,11 +334,8 @@ namespace ScoreProcessor {
 			tmplt(filename),
 			downscaling{downscaling},
 			threshold{threshold},
-			downsized_tmplt(tmplt.get_crop(0,0,
-				round_up(tmplt._width,downscaling),
-				round_up(tmplt._height,downscaling)))
+			downsized_tmplt(integral_downscale(tmplt,downscaling))
 		{
-			downsized_tmplt.resize(tmplt.width()/downscaling,tmplt.height()/downscaling,tmplt.depth(),tmplt.spectrum(),2);
 			delete[] tmplt._data;
 			tmplt._data=0;
 		}

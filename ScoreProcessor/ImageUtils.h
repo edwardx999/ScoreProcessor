@@ -22,6 +22,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <type_traits>
 namespace ImageUtils {
+
+	template<typename T>
+	constexpr T round_up(T val,T r) noexcept
+	{
+		auto const mod=val%r;
+		if(mod==0) return val;
+		return val-mod+r;
+	}
+
 	struct perc_or_val {
 		bool is_perc;
 		union {

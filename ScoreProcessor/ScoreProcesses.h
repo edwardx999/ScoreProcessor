@@ -29,6 +29,46 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include "../NeuralNetwork/neural_net.h"
 namespace ScoreProcessor {
 
+	template<typename T>
+	cil::CImg<T> integral_downscale(cil::CImg<T> const& image,unsigned int downscale,T boundary_fill=std::numeric_limits<T>::max())
+	{
+		auto const fwidth=ImageUtils::round_up(image._width,downscale);
+		auto const fheight=ImageUtils::round_up(image._height,downscale);
+		if(fheight==0||fwidth==0) return {};
+		cil::CImg<T> ret(fwidth/downscale,fheight/downscale,image._depth,image._spectrum);
+		auto const factor=downscale*downscale;
+		for(unsigned int d=0;d<ret._depth;++d)
+		{
+			for(unsigned int s=0;s<ret._spectrum;++s)
+			{
+				auto const layer_start=&ret(0,0,d,s);
+				auto const ilayer_start=&image(0,0,d,s);
+				for(unsigned int y=0;y<ret._height;++y)
+				{
+					auto const row=layer_start+y*ret._width;
+					for(unsigned int x=0;x<ret._width;++x)
+					{
+						auto const ix_start=x*downscale;
+						auto const iy_start=y*downscale;
+						auto const idata=ilayer_start+iy_start*image._width+ix_start;
+						auto const y_to_go=std::min(image._height,iy_start+downscale)-iy_start;
+						auto const x_to_go=std::min(image._width,ix_start+downscale)-ix_start;
+						std::common_type_t<T,unsigned long long> sum=(factor-(x_to_go*y_to_go))*boundary_fill;
+						for(unsigned int iy=0;iy<y_to_go;++iy)
+						{
+							auto const irow=idata+iy*image._width;
+							for(unsigned int ix=0;ix<x_to_go;++ix)
+							{
+								sum+=irow[ix];
+							}
+						}
+						row[x]=sum/factor;
+					}
+				}
+			}
+		}
+		return ret;
+	}
 	namespace detail {
 		template<typename CountType,typename InputType,typename ComparisonFunc,std::size_t... Layers>
 		void template_match(cil::CImg<CountType>& counts,cil::CImg<InputType> const& img,cil::CImg<InputType> const& tmplt,ImageUtils::PointUINT const point,ComparisonFunc comp,CountType initial_count,std::index_sequence<Layers...>)
