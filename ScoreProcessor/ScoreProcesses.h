@@ -30,6 +30,44 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 namespace ScoreProcessor {
 
 	template<typename T>
+	cil::CImg<T> to_rgb(cil::CImg<T> const& img)
+	{
+		cil::CImg<T> ret(img._width,img._height,1,3);
+		auto const layer_size=std::size_t(img._width)*img._height;
+		switch(img._spectrum)
+		{
+		case 1:
+		case 2:
+			std::memcpy(ret.data(),img.data(),layer_size*sizeof(T));
+			for(int i=1;i<3;++i)
+			{
+				std::memcpy(ret.data()+i*layer_size,ret.data(),layer_size*sizeof(T));
+			}
+			break;
+		case 3:
+		case 4:
+			std::memcpy(ret.data(),img.data(),layer_size*sizeof(T)*3);
+			break;
+		default:
+			throw std::invalid_argument("Invalid spectrum");
+		}
+		return ret;
+	}
+
+	template<typename T>
+	cil::CImg<T> to_rgb(cil::CImg<T>&& img)
+	{
+		switch(img._spectrum)
+		{
+		case 4:
+			img._spectrum=3;
+		case 3:
+			return std::move(img);
+		}
+		return to_rgb(img);
+	}
+
+	template<typename T>
 	cil::CImg<T> integral_downscale(cil::CImg<T> const& image,unsigned int downscale,T boundary_fill=std::numeric_limits<T>::max())
 	{
 		if(downscale==1)
@@ -73,6 +111,17 @@ namespace ScoreProcessor {
 		}
 		return ret;
 	}
+
+	template<typename T>
+	cil::CImg<T> integral_downscale(cil::CImg<T>&& image,unsigned int downscale,T boundary_fill=std::numeric_limits<T>::max())
+	{
+		if(downscale==1)
+		{
+			return std::move(image);
+		}
+		return integral_downscale(std::as_const(image),downscale,boundary_fill);
+	}
+
 	namespace detail {
 		template<typename CountType,typename InputType,typename ComparisonFunc,std::size_t... Layers>
 		void template_match(cil::CImg<CountType>& counts,cil::CImg<InputType> const& img,cil::CImg<InputType> const& tmplt,ImageUtils::PointUINT const point,ComparisonFunc comp,CountType initial_count,std::index_sequence<Layers...>)
@@ -156,7 +205,7 @@ namespace ScoreProcessor {
 	public:
 		vertical_iterator(cil::CImg<T> const& img,unsigned int column,unsigned int spectrum=0) noexcept:_top{img.data()+column+size_t{spectrum}*img._width*img._height},_width{img._width}{}
 		vertical_iterator(cil::CImg<T>& img,unsigned int column,unsigned int spectrum=0) noexcept:_top{img.data()+column+size_t{spectrum}*img._width*img._height},_width{img._width}{}
-		vertical_iterator(T* top,unsigned int width) noexcept:_top{top}, _width{width}{}
+		vertical_iterator(T* top,unsigned int width) noexcept:_top{top},_width{width}{}
 		T& operator[](size_t s) const noexcept
 		{
 			return *(_top+s*_width);
@@ -178,7 +227,7 @@ namespace ScoreProcessor {
 		{
 			_top-=_width;
 			return *this;
-		}		
+		}
 		vertical_iterator operator++(int) noexcept
 		{
 			auto copy{*this};
@@ -238,10 +287,10 @@ namespace ScoreProcessor {
 	};
 
 	template<typename T>
-	vertical_iterator(cil::CImg<T> const&,unsigned int,unsigned int) -> vertical_iterator<T const>;
+	vertical_iterator(cil::CImg<T> const&,unsigned int,unsigned int)->vertical_iterator<T const>;
 
 	template<typename T>
-	vertical_iterator(cil::CImg<T>&,unsigned int,unsigned int) -> vertical_iterator<T>;
+	vertical_iterator(cil::CImg<T>&,unsigned int,unsigned int)->vertical_iterator<T>;
 
 	class ExclusiveThreadPool {
 	public:
@@ -255,7 +304,7 @@ namespace ScoreProcessor {
 		Fast approximate anti-aliasing
 	*/
 	template<typename T>
-	bool fxaa(cil::CImg<T>& img, std::common_type_t<T,short> contrast_threshold,std::common_type_t<float,T> gamma,std::common_type_t<float,T> subpixel_blending=1)
+	bool fxaa(cil::CImg<T>& img,std::common_type_t<T,short> contrast_threshold,std::common_type_t<float,T> gamma,std::common_type_t<float,T> subpixel_blending=1)
 	{
 		if(img.width()<3||img.height()<3||img.spectrum()<1||img.depth()<1)
 		{
@@ -263,7 +312,7 @@ namespace ScoreProcessor {
 		}
 		cil::CImg<T> copy{img._width,img._height,img._depth,img._spectrum};
 		//cheap using first layer as luminance
-		auto const width = img._width;
+		auto const width=img._width;
 		auto const height=img._height;
 		using p=decltype(contrast_threshold);
 		for(unsigned int y=0;y<width;++y)
@@ -521,7 +570,7 @@ namespace ScoreProcessor {
 						auto const mid=edge.begin+mid_dist;
 						do_blend(edge.begin,0.5*edge.begin_orientation,mid,1);
 						do_blend(mid,1,edge.end,0.5*edge.end_orientation);
-					}					
+					}
 					break;
 					case orientation::flat:
 						do_blend(edge.begin,0.5*edge.begin_orientation,edge.end,1);
@@ -567,7 +616,7 @@ namespace ScoreProcessor {
 						auto const mid=edge.begin+mid_dist;
 						do_blend(edge.begin,0.5*edge.begin_orientation,mid,1);
 						do_blend(mid,1,edge.end,0.5*edge.end_orientation);
-					}					
+					}
 					break;
 					case orientation::flat:
 						do_blend(edge.begin,0.5*edge.begin_orientation,edge.end,1);
@@ -772,12 +821,7 @@ namespace ScoreProcessor {
 	*/
 	bool replace_by_hsv(::cimg_library::CImg<unsigned char>& image,ImageUtils::ColorHSV startbound,ImageUtils::ColorHSV end,ImageUtils::ColorRGB replacer=ImageUtils::ColorRGB::WHITE);
 	bool replace_by_rgb(::cil::CImg<unsigned char>& image,ImageUtils::ColorRGB start,ImageUtils::ColorRGB end,ImageUtils::ColorRGB replacer);
-	/*
-		Copies a selection from the first image to the location of the second image
-		The two images should have the same number of channels
-	*/
-	template<typename T>
-	void copy_paste(::cimg_library::CImg<T> dest,::cimg_library::CImg<T> src,ImageUtils::Rectangle<unsigned int> selection,ImageUtils::Point<signed int> destloc);
+
 	/*
 		Shifts selection over while leaving rest unchanged
 		@param image
@@ -801,11 +845,11 @@ namespace ScoreProcessor {
 		@param gray, the gray the selection will be filled with
 	*/
 	void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::Grayscale const gray);
-/*
-		Automatically centers the image horizontally
-		@param image
-		@return 0 if successful shift, 1 if no shift, 2 if invalid image
-	*/
+	/*
+			Automatically centers the image horizontally
+			@param image
+			@return 0 if successful shift, 1 if no shift, 2 if invalid image
+		*/
 	bool auto_center_horiz(::cimg_library::CImg<unsigned char>& image);
 	/*
 		Finds the left side of the the image
@@ -1032,6 +1076,165 @@ namespace ScoreProcessor {
 		Does a flood fill.
 	*/
 	bool flood_fill(::cimg_library::CImg<unsigned char>& image,float const tolerance,ImageUtils::Grayscale const color,ImageUtils::Grayscale const replacer,ImageUtils::Point<unsigned int> start);
+
+	namespace detail {
+
+		struct scan_range {
+			unsigned int left,right,y;
+			int direction;
+		};
+
+		template<typename Img,typename Selector,typename DoWithLine>
+		void flood_operation(Img& img,ImageUtils::PointUINT start,Selector& selector,DoWithLine& dwl,std::vector<scan_range>& scan_ranges)
+		{
+			using point=ImageUtils::PointUINT;
+			using line=ImageUtils::horizontal_line<unsigned int>;
+			if(!selector(start))
+			{
+				return;
+			}
+			unsigned int left=start.x-1;
+			while(left<start.x&&selector(point{left,start.y}))
+			{
+				--left;
+			}
+			++left;
+			unsigned int right=start.x+1;
+			while(right<img._width&&selector(point{right,start.y}))
+			{
+				++right;
+			}
+			dwl(line{left,right,start.y});
+			scan_ranges.push_back({left,right,start.y,+1});
+			scan_ranges.push_back({left,right,start.y,-1});
+			while(!scan_ranges.empty())
+			{
+				auto const current_range=scan_ranges.back();
+				scan_ranges.pop_back();
+				//scan left
+				for(left=current_range.left-1;
+					left<img._width&&selector(point{left,current_range.y});
+					--left)
+				{
+				}
+				++left;
+
+				//scan right
+				for(right=current_range.right;
+					right<img._width&&selector({right,current_range.y});
+					++right)
+				{
+				}
+				dwl(line{left,right,current_range.y});
+
+				//scan in same direction vertically
+				bool range_found=false;
+				unsigned int range_start;
+				unsigned int newy=current_range.y+current_range.direction;
+				unsigned int sx=left;
+				if(newy<img._height)
+				{
+					while(sx<right)
+					{
+						for(;sx<right;++sx)
+						{
+							if(selector(point{sx,newy}))
+							{
+								range_found=true;
+								range_start=sx++;
+								break;
+							}
+						}
+						for(;sx<right;++sx)
+						{
+							if(!selector(point{sx,newy}))
+							{
+								break;
+							}
+						}
+						if(range_found)
+						{
+							range_found=false;
+							scan_ranges.push_back({range_start,sx,newy,current_range.direction});
+						}
+					}
+				}
+
+				//scan opposite direction vertically
+				newy=current_range.y-current_range.direction;
+				if(newy<img._height)
+				{
+					while(left<current_range.left)
+					{
+						for(;left<current_range.left;++left)
+						{
+							if(selector(point{left,newy}))
+							{
+								range_found=true;
+								range_start=left++;
+								break;
+							}
+						}
+						for(;left<current_range.left;++left)
+						{
+							if(!selector(point{left,newy}))
+								break;
+						}
+						if(range_found)
+						{
+							range_found=false;
+							scan_ranges.push_back({range_start,left,newy,-current_range.direction});
+						}
+					}
+					left=current_range.right;
+					while(left<right)
+					{
+						for(;left<right;++left)
+						{
+							if(selector(point{left,newy}))
+							{
+								range_found=true;
+								range_start=left++;
+								break;
+							}
+						}
+						for(;left<right;++left)
+						{
+							if(!selector(point{left,newy}))
+							{
+								break;
+							}
+						}
+						if(range_found)
+						{
+							range_found=false;
+							scan_ranges.push_back({range_start,left,newy,-current_range.direction});
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/*
+		Does a scanline flood operation from a seed (DOES NOT KEEP TRACK OF SELECTED PIXELS ITSELF)
+		img - img to flood op on
+		start - where flood starts from
+		selector - function that takes a PointUINT and returns whether it is a valid point, may do other stuff to
+		dwl - takes in a HorizontalLine
+	*/
+	template<typename Img,typename Selector,typename DoWithLine>
+	void flood_operation(Img& img,ImageUtils::PointUINT start,Selector& selector,DoWithLine& dwl)
+	{
+		std::vector<detail::scan_range> scan_ranges;
+		return detail::flood_operation(img,start,selector,dwl,scan_ranges);
+	}
+
+	/*
+		Does a flood fill one 1 layer, writing in place assuming the replacer is not a valid point of the selector
+	*/
+	bool flood_fill_distinct_1layer(::cimg_library::CImg<unsigned char>& image,float const tolerance,ImageUtils::Grayscale const color,ImageUtils::Grayscale const replacer,ImageUtils::Point<unsigned int> start);
+
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
@@ -1062,7 +1265,7 @@ namespace ScoreProcessor {
 	*/
 	bool vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
 	bool vert_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const top,unsigned int const bottom,unsigned int tolerance=5,unsigned char background=200);
-	
+
 	void compress(
 		::cimg_library::CImg<unsigned char>& image,
 		unsigned int const min_padding,
@@ -1300,39 +1503,115 @@ namespace ScoreProcessor {
 		}
 		return edited;
 	}
-}
 
-inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::ColorRGB const color)
-{
-	fill_selection(image,selection,std::array<unsigned char,3>({color.r,color.g,color.b}));
-}
-inline void ScoreProcessor::fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::Grayscale const gray)
-{
-	fill_selection(image,selection,std::array<unsigned char,1>({gray}));
-}
+	inline void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::ColorRGB const color)
+	{
+		fill_selection(image,selection,std::array<unsigned char,3>({color.r,color.g,color.b}));
+	}
+	inline void fill_selection(::cimg_library::CImg<unsigned char>& image,ImageUtils::Rectangle<unsigned int> const selection,ImageUtils::Grayscale const gray)
+	{
+		fill_selection(image,selection,std::array<unsigned char,1>({gray}));
+	}
 
-template<typename T>
-void ScoreProcessor::copy_paste(::cimg_library::CImg<T> dest,::cimg_library::CImg<T> src,ImageUtils::Rectangle<unsigned int> selection,ImageUtils::Point<signed int> destloc)
-{
-	if(destloc.x<0)
+	/*
+		Copies a selection from the first image to the location of the second image
+		Returns whether a copy-paste was done
+	*/
+	template<typename T>
+	bool copy_paste(::cimg_library::CImg<T>& dest,::cimg_library::CImg<T> const& src,ImageUtils::Rectangle<unsigned int> select,ImageUtils::Point<signed int> destloc)
 	{
-		select.left-=destloc.x;
-		destloc.x=0;
-	}
-	if(destloc.y<0)
-	{
-		select.top-=destloc.y;
-		destloc.y=0;
-	}
-	for(;destloc.x<dest._width&&select.left<select.right;++destloc.x,++select.left)
-	{
-		for(;destloc.y<dest._height&&select.top<select.bottom;++destloc.y,++select.top)
+		if(dest._spectrum<src._spectrum)
 		{
-			dest(destloc.x,destloc.y)=src(select.left,select.top);
+			throw std::invalid_argument("Cannot copy to lower channel image");
 		}
+		if(destloc.x<0)
+		{
+			select.left-=destloc.x;
+			destloc.x=0;
+		}
+		if(destloc.y<0)
+		{
+			select.top-=destloc.y;
+			destloc.y=0;
+		}
+		if(unsigned int(destloc.x)+select.width()>=dest._width)
+		{
+			select.right=dest._width;
+		}
+		if(unsigned int(destloc.y)+select.height()>=dest._height)
+		{
+			select.bottom=dest._height;
+		}
+		if(select.right<=select.left||select.bottom<=select.top)
+		{
+			return false;
+		}
+		std::size_t const sheight=select.height();
+		std::size_t const swidth=select.width();
+		std::size_t const dwidth=dest._width;
+		std::size_t const srcwidth=src._width;
+		if(src._spectrum==dest._spectrum)
+		{
+			for(unsigned int s=0;s<src._spectrum;++s)
+			{
+				auto const dhead=&dest(destloc.x,destloc.y,0,s);
+				auto const shead=&src(select.left,select.top,0,s);
+				for(std::size_t y=0;y<sheight;++y)
+				{
+					std::memcpy(dhead+y*dwidth,shead+y*srcwidth,swidth*sizeof(T));
+				}
+			}
+		}
+		switch(src._spectrum)
+		{
+		case 1:
+			switch(dest._spectrum)
+			{
+			case 4:
+			{
+				auto const dhead=&dest(destloc.x,destloc.y,0,3);
+				for(std::size_t y=0;y<sheight;++y)
+				{
+					std::fill_n(dhead+y*dwidth,swidth,std::numeric_limits<T>::max());
+				}
+			}
+			case 3:
+			{
+				auto const shead=&src(select.left,select.top);
+				for(unsigned int s=0;s<dest._spectrum;++s)
+				{
+					auto const dhead=&dest(destloc.x,destloc.y,0,s);
+					for(std::size_t y=0;y<sheight;++y)
+					{
+						std::memcpy(dhead+y*dwidth,shead+y*srcwidth,swidth*sizeof(T));
+					}
+				}
+				return true;
+			}
+			}
+		case 3:
+			if(dest._spectrum==4)
+			{
+				for(std::size_t s=0;s<3;++s)
+				{
+					auto const dhead=&dest(destloc.x,destloc.y,0,s);
+					auto const shead=&src(select.left,select.top,0,s);
+					for(std::size_t y=0;y<sheight;++y)
+					{
+						std::memcpy(dhead+y*dwidth,shead+y*srcwidth,swidth*sizeof(T));
+					}
+				}
+				auto const dhead=&dest(destloc.x,destloc.y,0,3);
+				for(std::size_t y=0;y<sheight;++y)
+				{
+					std::fill_n(dhead+y*dwidth,swidth,std::numeric_limits<T>::max());
+				}
+			}
+			return true;
+		}
+		throw std::invalid_argument("Unsupported spectrum conversion");
 	}
-}
-namespace ScoreProcessor {
+
 	template<unsigned int num_layers,typename T,typename Selector>
 	std::vector<ImageUtils::Rectangle<unsigned int>> global_select(
 		::cil::CImg<T> const& image,
@@ -1359,33 +1638,33 @@ namespace ScoreProcessor {
 				}
 				switch(range_found)
 				{
-					case 0:
+				case 0:
+				{
+					if(keep(color))
 					{
-						if(keep(color))
-						{
-							range_found=1;
-							range_start=x;
-						}
+						range_found=1;
+						range_start=x;
+					}
+					break;
+				}
+				case 1:
+				{
+					if(!keep(color))
+					{
+						range_found=2;
+						range_end=x;
+					}
+					else
+					{
 						break;
 					}
-					case 1:
-					{
-						if(!keep(color))
-						{
-							range_found=2;
-							range_end=x;
-						}
-						else
-						{
-							break;
-						}
-					}
-					case 2:
-					{
-						container.push_back(ImageUtils::Rectangle<unsigned int>{range_start,range_end,y,y+1});
-						range_found=0;
-						break;
-					}
+				}
+				case 2:
+				{
+					container.push_back(ImageUtils::Rectangle<unsigned int>{range_start,range_end,y,y+1});
+					range_found=0;
+					break;
+				}
 				}
 			}
 			if(1==range_found)
@@ -1452,8 +1731,8 @@ namespace ScoreProcessor {
 	//eval_side: left is false, true is right
 	//eval_direction: from top is false, true is from bottom
 	void horizontal_shift(cil::CImg<unsigned char>& img,bool eval_side,bool eval_direction,unsigned char background_threshold);
-	
-	void vertical_shift(cil::CImg<unsigned char>&img,bool eval_bottom,bool from_right,unsigned char background_threshold);	
-	
+
+	void vertical_shift(cil::CImg<unsigned char>& img,bool eval_bottom,bool from_right,unsigned char background_threshold);
+
 }
 #endif // !1

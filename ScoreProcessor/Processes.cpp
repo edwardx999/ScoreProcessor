@@ -503,6 +503,133 @@ namespace ScoreProcessor {
 		scaler.smart_scale(img,ratio,ThreadOverride::num_threads());
 		return true;
 	}
+	template<typename T,typename DoWhatWithPoint>
+	void find_local_min_below_thresh(cil::CImg<T> const& img,T thresh,DoWhatWithPoint const& f)
+	{
+		std::size_t const width=img._width;
+		std::size_t const height=img._height;
+		if(width==0||height==0) return;
+		auto const data=img._data;
+		if(width==1)
+		{
+			if(height==1)
+			{
+				if(data[0]<=thresh) f(0,0);
+			}
+			else
+			{
+				if(data[0]<=thresh&&
+					data[0]<=data[1]) f(0,0);
+				auto const last=height-1;
+				for(std::size_t y=1;y<last;++y)
+				{
+					if(data[y]<=thresh&&
+						data[y]<=data[y-1]&&
+						data[y]>=data[y+1])
+					{
+						f(0,y);
+					}
+				}
+				if(data[last]<=thresh&&
+					data[last]<=data[last-1]) f(0,last);
+			}
+		}
+		else //width>1
+		{
+			if(height==1)
+			{
+				if(data[0]<=thresh&&
+					data[0]<=data[1]) f(0,0);
+				auto const last=width-1;
+				for(std::size_t x=0;x<last;++x)
+				{
+					if(data[x]<=thresh&&
+						data[x]<=data[x-1]&&
+						data[x]<=data[x+1]) f(x,0);
+				}
+				if(data[last]<=thresh&&
+					data[last]<=data[last-1]) f(last,0);
+			}
+			else
+			{
+				auto const lastx=width-1;
+				auto const lasty=height-1;
+				{ //row 0
+					if(data[0]<=thresh&&
+						data[0]<=data[1]&&
+						data[0]<=data[width]&&
+						data[0]<=data[width+1]) f(0,0);
+					for(std::size_t x=1;x<lastx;++x)
+					{
+						if(data[x]<=thresh&&
+							data[x]<=data[x-1]&&
+							data[x]<=data[x+1]&&
+							data[x]<=data[x+width-1]&&
+							data[x]<=data[x+width]&&
+							data[x]<=data[x+width+1]) f(x,0);
+					}
+					if(data[lastx]<=thresh&&
+						data[lastx]<=data[lastx-1]&&
+						data[lastx]<=data[lastx+width-1]&&
+						data[lastx]<=data[lastx+width]
+						) f(lastx,0);
+				}
+				for(std::size_t y=1;y<lasty;++y)
+				{
+					auto const row=data+y*width;
+					auto const prow=row-width;
+					auto const nrow=row+width;
+					if(row[0]<=thresh&&
+						row[0]<=row[1]&&
+						row[0]<=prow[0]&&
+						row[0]<=prow[1]&&
+						row[0]<=nrow[0]&&
+						row[0]<=nrow[1]) f(0,y);
+					for(std::size_t x=1;x<lastx;++x)
+					{
+						if(row[x]<=thresh&&
+							row[x]<=row[x-1]&&
+							row[x]<=row[x+1]&&
+							row[x]<=prow[x-1]&&
+							row[x]<=prow[x]&&
+							row[x]<=prow[x+1]&&
+							row[x]<=nrow[x-1]&&
+							row[x]<=nrow[x]&&
+							row[x]<=nrow[x+1]) f(x,y);
+					}
+					if(row[lastx]<=thresh&&
+						row[lastx]<=row[lastx-1]&&
+						row[lastx]<=prow[lastx-1]&&
+						row[lastx]<=prow[lastx]&&
+						row[lastx]<=nrow[lastx-1]&&
+						row[lastx]<=nrow[lastx]
+						) f(lastx,y);
+				}
+				{
+					auto const row=data+lasty*width;
+					auto const prow=row-width;
+					if(row[0]<=thresh&&
+						row[0]<=row[1]&&
+						row[0]<=prow[0]&&
+						row[0]<=prow[1]) f(0,lasty);
+					for(std::size_t x=1;x<lastx;++x)
+					{
+						if(row[x]<=thresh&&
+							row[x]<=row[x-1]&&
+							row[x]<=row[x+1]&&
+							row[x]<=prow[x-1]&&
+							row[x]<=prow[x]&&
+							row[x]<=prow[x+1]) f(x,lasty);
+					}
+					if(row[lastx]<=thresh&&
+						row[lastx]<=row[lastx-1]&&
+						row[lastx]<=prow[lastx-1]&&
+						row[lastx]<=prow[lastx]
+						) f(lastx,lasty);
+				}
+			}
+		}
+	}
 	bool TemplateMatchErase::process(Img& img) const
 	{
 		auto rects=global_select<1>(img,[](std::array<unsigned char,1> val)
@@ -521,36 +648,45 @@ namespace ScoreProcessor {
 				return ImageUtils::gray_diff({t[0]},{i[0]});
 			});
 		auto const real_threshold=(1-threshold)*downsized_tmplt._width*downsized_tmplt._height;
-		auto const hm1=counts._height-1;
-		auto const wm1=counts._width-1;
-		unsigned char white[]={255,255,255,255};
+		//unsigned char white[]={255,255,255,255};
 		bool found=false;
 		//counts.display();
-		for(unsigned int y=1;y<hm1;++y)
-		{
-			for(unsigned int x=1;x<wm1;++x)
+		find_local_min_below_thresh(counts,real_threshold,[&](unsigned int x,unsigned int y)
 			{
-				auto const val=counts(x,y);
-				if(val<real_threshold&&
-					val<=counts(x-1,y)&&
-					val<=counts(x+1,y)&&
-					val<=counts(x,y-1)&&
-					val<=counts(x,y+1)&&
-					val<=counts(x-1,y+1)&&
-					val<=counts(x-1,y-1)&&
-					val<=counts(x+1,y+1)&&
-					val<=counts(x+1,y-1))
+				found=true;
+				auto point=downscaling*ImageUtils::PointUINT{x,y};
+				replacer(img,tmplt,point);
+			});
+		return found;
+	}
+
+	bool PyramidTemplateErase::process(Img& img) const
+	{
+		auto const smallest=get_downscale(img,scales[0]);
+		using Gray=std::array<unsigned char,1>;
+		std::vector<unsigned char> downscale_buffer;
+		std::vector<ImageUtils::PointUINT> valid_points;
+		decltype(valid_points) valid_points_buff;
+		for(size_t i=0;i<num_images;++i)
+		{
+			auto& smallest_template=tmplts[i*(scales.size()+1)];
+			auto counts=sliding_template_match<1,float>(smallest,tmplts[i*(scales.size()+1)],[](Gray t,Gray i)
 				{
-					found=true;
-					auto point=downscaling*ImageUtils::PointUINT{x,y};
-					fill_selection(
-						img,
-						{point.x,std::min(img._width,point.x+tmplt._width),
-						point.y,std::min(img._height,point.y+tmplt._height)},
-						white);
-				}
+					return ImageUtils::gray_diff({t[0]},{i[0]});
+				});
+			auto const real_threshold=(1-threshold)*smallest_template._width*smallest_template._height;
+			find_local_min_below_thresh(counts,real_threshold,[&](unsigned int x,unsigned int y)
+				{
+					valid_points.push_back({x,y});
+				});
+			for(size_t j=1;j<scales.size();++j)
+			{
+
+			}
+			for(auto const point:valid_points)
+			{
+				replacer(img,tmplts[(i+1)*(scales.size()+1)-1],point);
 			}
 		}
-		return found;
 	}
 }

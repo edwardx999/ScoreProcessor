@@ -76,7 +76,7 @@ namespace ImageUtils {
 	*/
 	template<typename T=unsigned int>
 	struct horizontal_line {
-		T y,left,right;
+		T left,right,y;
 	};
 	/*
 		A 2 dimensional vector.

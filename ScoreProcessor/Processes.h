@@ -329,21 +329,85 @@ namespace ScoreProcessor {
 		unsigned int downscaling;
 		float threshold;
 		cil::CImg<unsigned char> downsized_tmplt;
+		std::function<void(Img&,Img const&,ImageUtils::PointUINT)> replacer;
 		static cil::CImg<unsigned char> get_downscale(cil::CImg<unsigned char>& img,unsigned int scale)
 		{
 			if(scale==1) return cil::CImg(img,true);
 			auto downscaled=integral_downscale(img,scale);
-			delete[] img._data;
-			img._data=0;
 			return downscaled;
 		}
 	public:
-		SlidingTemplateMatchEraseExact(char const* filename,unsigned int downscaling,float threshold):
+		SlidingTemplateMatchEraseExact(char const* filename,unsigned int downscaling,float threshold,decltype(replacer) replacer):
 			tmplt(filename),
 			downscaling{downscaling},
 			threshold{threshold},
-			downsized_tmplt(get_downscale(tmplt,downscaling))
+			downsized_tmplt(get_downscale(tmplt,downscaling)),
+			replacer{std::move(replacer)}
 		{
+		}
+		bool process(Img&) const override;
+	};
+
+	class PyramidTemplateErase:public ImageProcess<> {
+		std::vector<cil::CImg<unsigned char>> tmplts;
+		std::size_t num_images;
+		std::vector<unsigned int> scales;
+		float threshold;
+		std::function<void(Img&,Img const&,ImageUtils::PointUINT)> replacer;
+		void verify_scales()
+		{
+			if(scales.size()==0)
+			{
+				throw std::invalid_argument("At least 1 scale required");
+			}
+			scales.erase(std::unique(scales.begin(),scales.end()),scales.end());
+			std::sort(scales.begin(),scales.end(),std::greater<>{});
+			for(auto const scale:scales)
+			{
+				if(scale==0)
+				{
+					throw std::invalid_argument("Scale cannot be zero");
+				}
+			}
+			for(std::size_t i=1;i<scales.size();++i)
+			{
+				if(scales[i-1]%scales[i])
+				{
+					throw std::invalid_argument("Scale must be multiple of next scale");
+				}
+			}
+		}
+		static cil::CImg<unsigned char> get_downscale(cil::CImg<unsigned char>& img,unsigned int downscale)
+		{
+			if(downscale==1)
+			{
+				return {img,true};
+			}
+			return integral_downscale(img,downscale);
+		}
+	public:
+		PyramidTemplateErase(std::string_view const* tmplt_names,std::size_t n,decltype(scales) scale_factors,float threshold,decltype(replacer) replacer):
+			scales(std::move(scale_factors)),num_images{n},threshold{threshold},replacer{std::move(replacer)}
+		{
+			verify_scales();
+			tmplts.reserve(n*scales.size());
+			std::unique_ptr<char[]> string_buffer(new char[std::max_element(tmplt_names,tmplt_names+n,[](auto a,auto b)
+				{
+					return a.size()<b.size();
+				})->size()+1]);
+			for(size_t i=0;i<n;++i)
+			{
+				auto const name=tmplt_names[i];
+				std::memcpy(string_buffer.get(),name.data(),name.size());
+				string_buffer[name.size()]=='\0';
+				cil::CImg<unsigned char> orig(string_buffer.get());
+				for(size_t j=0;j<scales.size();++j)
+				{
+					auto const scale=scales[j];
+					tmplts.emplace_back(get_downscale(orig,scale));
+				}
+				tmplts.emplace_back(std::move(orig));
+			}
 		}
 		bool process(Img&) const override;
 	};

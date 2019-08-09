@@ -1198,7 +1198,7 @@ namespace ScoreProcessor {
 				{
 					if(res.ec==std::errc::invalid_argument)
 					{
-						std::string err_msg("Invalid argument for");
+						std::string err_msg("Invalid argument for ");
 						err_msg.append(name);
 						throw std::invalid_argument(err_msg);
 					}
@@ -2780,6 +2780,7 @@ namespace ScoreProcessor {
 
 		struct Name {
 			cnnm("template name");
+			clbl("name","nm","tnm");
 			static char const* parse(InputType in)
 			{
 				return in;
@@ -2787,6 +2788,7 @@ namespace ScoreProcessor {
 		};
 		struct Threshold {
 			cnnm("threshold");
+			clbl("thresh","th","thr");
 			static float parse(InputType in)
 			{
 				auto res=FloatParser<empty,no_check>().parse(in);
@@ -2806,6 +2808,7 @@ namespace ScoreProcessor {
 	namespace SlidingTemplateClearMaker {
 		struct Downscale {
 			cnnm("downscale_factor");
+			clbl("dsf","fact","f");
 			static unsigned int parse(InputType in)
 			{
 				auto res=IntegerParser<unsigned int,empty>().parse(in);
@@ -2816,13 +2819,119 @@ namespace ScoreProcessor {
 				return res;
 			}
 		};
-		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* name,unsigned int downscale,float threshold)
+		struct Replacer {
+			cnnm("replacer");
+			clbl("mutualfloodfill","mff","fill","fll","replace","rpl"/*,"darken","drk","lighten","lgh"*/);
+			using Func=std::function<void(cil::CImg<unsigned char>&,cil::CImg<unsigned char> const&,ImageUtils::PointUINT)>;
+			static Func parse(InputType in,std::size_t prefix_len)
 			{
-				del.pl.add_process<SlidingTemplateMatchEraseExact>(name,downscale,threshold);
+				auto const real_start=in+prefix_len+1;
+				if(prefix_len==-1||in[0]=='f')
+				{
+					auto const color=FRMaker::Color::parse(real_start);
+					return [color](cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,ImageUtils::PointUINT point)
+					{
+						FillRectangle{
+							{int(point.x),int(point.x+tmplt.width()),int(point.y),int(point.y+tmplt.height())},
+						color.data,
+						color.num_layers,
+						FillRectangle::origin_reference::top_left}.process(img);
+					};
+				}
+				if(in[0]=='r')
+				{
+					return [](cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,ImageUtils::PointUINT point)
+					{
+						copy_paste(img,tmplt,{0,tmplt._width,0,tmplt._height},{int(point.x),int(point.y)});
+					};
+				}
+				if(in[0]=='m')
+				{
+					auto ul=IntegerParser<unsigned char,Replacer>().parse(real_start);
+					if(ul==255)
+					{
+						throw std::invalid_argument("This flood fill would be a no-op");
+					}
+					return [ul](cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,ImageUtils::PointUINT point)
+					{
+						using Point=decltype(point);
+						std::vector<detail::scan_range> buffer;
+						if(img._spectrum==1)
+						{
+							for(unsigned int y=0;y<tmplt._height;++y)
+							{
+								for(unsigned int x=0;x<tmplt._width;++x)
+								{
+									if(tmplt(x,y)<=ul)
+									{
+										detail::flood_operation(img,point+Point{x,y},[=,&img](Point p)
+											{
+												if(img(p.x,p.y)<=ul)
+												{
+													img(p.x,p.y)=255;
+													return true;
+												}
+												return false;
+											},[&](auto)
+											{},buffer);
+									}
+								}
+							}
+						}
+						else
+						{
+							std::vector<ImageUtils::horizontal_line<unsigned int>> rects;
+							for(unsigned int y=0;y<tmplt._height;++y)
+							{
+								for(unsigned int x=0;x<tmplt._width;++x)
+								{
+									if(tmplt(x,y)<=ul)
+									{
+										detail::flood_operation(img,point+Point{x,y},[=,&img](Point p)
+											{
+												if(img(p.x,p.y)<=ul)
+												{
+													img(p.x,p.y)=255;
+													return true;
+												}
+												return false;
+											},[&](ImageUtils::horizontal_line<unsigned int> line)
+											{
+												rects.push_back(line);
+											},buffer);
+									}
+								}
+							}
+							for(unsigned int s=1;s<img._spectrum;++s)
+							{
+								for(auto const rect:rects)
+								{
+									std::fill(&img(rect.left,rect.y,0,s),&img(rect.right,rect.y,0,s),180);
+								}
+							}
+						}
+					};
+				}
+			}
+			static Func def_val()
+			{
+				return [](cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,ImageUtils::PointUINT point)
+				{
+					FillRectangle{
+						{int(point.x),int(point.x+tmplt.width()),int(point.y),int(point.y+tmplt.height())},
+					{255,255,255,255},
+					1,
+					FillRectangle::origin_reference::top_left}.process(img);
+				};
 			}
 		};
-		extern SingMaker<UseTuple,TemplateClearMaker::Name,Downscale,TemplateClearMaker::Threshold> maker;
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* name,unsigned int downscale,float threshold,Replacer::Func replacer)
+			{
+				del.pl.add_process<SlidingTemplateMatchEraseExact>(name,downscale,threshold,replacer);
+			}
+		};
+		extern SingMaker<UseTuple,TemplateClearMaker::Name,Downscale,TemplateClearMaker::Threshold,Replacer> maker;
 	}
 
 	struct compair {
