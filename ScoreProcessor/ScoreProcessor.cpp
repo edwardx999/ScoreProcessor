@@ -493,7 +493,9 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 		auto ext=exlib::find_extension(save.begin(),save.end());
 		validate_extension(ext);
 		Splice::standard_heuristics sh;
-		auto num=splice_pages_parallel(files,save.c_str(),del.starting_index,del.num_threads,del.splice_args,del.quality);
+		auto num=del.splice_divider.data()?
+			splice_pages_parallel(files,save.c_str(),del.starting_index,del.num_threads,del.splice_args,del.splice_divider,del.quality):
+			splice_pages_parallel(files,save.c_str(),del.starting_index,del.num_threads,del.splice_args,del.quality);
 		std::cout<<"Created "<<num<<(num==1?" page\n":" pages\n");
 	}
 	catch(std::exception const& ex)

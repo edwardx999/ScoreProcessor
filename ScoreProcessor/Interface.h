@@ -55,6 +55,7 @@ namespace ScoreProcessor {
 			};
 			log_type lt;
 			Splice::standard_heuristics splice_args; //args for splicing
+			cil::CImg<unsigned char> splice_divider;
 			struct {
 				pv min_height,min_width,min_vert_space;
 				unsigned char background;
@@ -922,7 +923,7 @@ namespace ScoreProcessor {
 	namespace Output {
 
 		struct PatternParser {
-			PMINLINE constexpr InputType parse(InputType s)
+			static PMINLINE constexpr InputType parse(InputType s)
 			{
 				if(s[0]=='-'&&s[1]=='-')
 				{
@@ -2507,8 +2508,18 @@ namespace ScoreProcessor {
 			}
 		};
 
+		struct Divider {
+			using ccp=char const*;
+			cnnm("divider");
+			clbl("div");
+			cndf(ccp{nullptr});
+			static char const* parse(InputType in)
+			{
+				return Output::PatternParser::parse(in);
+			}
+		};
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv hp,pv op,pv mp,pv oh,float exc,float pw,unsigned char bg)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv hp,pv op,pv mp,pv oh,float exc,float pw,unsigned char bg,char const* divider)
 			{
 				del.splice_args.horiz_padding=hp;
 				del.splice_args.optimal_padding=op;
@@ -2517,6 +2528,10 @@ namespace ScoreProcessor {
 				del.splice_args.excess_weight=exc;
 				del.splice_args.padding_weight=pw;
 				del.splice_args.background_color=bg;
+				if(divider)
+				{
+					del.splice_divider.load(divider);
+				}
 			}
 		};
 		extern
@@ -2524,7 +2539,7 @@ namespace ScoreProcessor {
 			UseTuple,
 			MultiCommand<CommandMaker::delivery::do_state::do_splice>,
 			pv_parser<HP>,pv_parser<OP>,pv_parser<MP>,pv_parser<OH>,
-			FloatParser<EXC>,FloatParser<PW>,FloatParser<BG>> maker;
+			FloatParser<EXC>,FloatParser<PW>,FloatParser<BG>,Divider> maker;
 	}
 
 	namespace CutMaker {
@@ -2783,7 +2798,7 @@ namespace ScoreProcessor {
 			clbl("name","nm","tnm");
 			static char const* parse(InputType in)
 			{
-				return in;
+				return Output::PatternParser::parse(in);
 			}
 		};
 		struct Threshold {

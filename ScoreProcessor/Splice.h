@@ -159,10 +159,6 @@ namespace ScoreProcessor {
 					nodes[i].previous=j;
 					nodes[i].layout=layout;
 				}
-				else
-				{
-					break;
-				}
 				if(j==0)
 				{
 					break;
@@ -403,6 +399,17 @@ namespace ScoreProcessor {
 		unsigned int starting_index,
 		unsigned int num_threads,
 		Splice::standard_heuristics const&,
+		int quality);
+
+	//splices together images using the standard heuristics and dif^3 cost algorithm
+	//cost is 
+	unsigned int splice_pages_parallel(
+		std::vector<std::string> const& filenames,
+		char const* output,
+		unsigned int starting_index,
+		unsigned int num_threads,
+		Splice::standard_heuristics const&,
+		cil::CImg<unsigned char> const& divider,
 		int quality);
 
 }
