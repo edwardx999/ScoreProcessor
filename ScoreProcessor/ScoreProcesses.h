@@ -27,6 +27,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <mutex>
 #include "lib/threadpool/thread_pool.h"
 #include "../NeuralNetwork/neural_net.h"
+#ifdef _WIN64
+#define USE_CAFFE
+#endif
 namespace ScoreProcessor {
 
 	template<typename T>
@@ -1083,6 +1086,8 @@ namespace ScoreProcessor {
 	*/
 	::std::vector<ImageUtils::Rectangle<unsigned int>> flood_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,ImageUtils::Point<unsigned int> start);
 
+	::std::vector<ImageUtils::Rectangle<unsigned int>> flood_select(::cimg_library::CImg<unsigned char> const& image,float const tolerance,ImageUtils::Grayscale const gray,ImageUtils::Point<unsigned int> start,std::vector<bool>& buffer);
+
 	/*
 		Removes border of the image.
 	*/
@@ -1092,6 +1097,11 @@ namespace ScoreProcessor {
 		Does a flood fill.
 	*/
 	bool flood_fill(::cimg_library::CImg<unsigned char>& image,float const tolerance,ImageUtils::Grayscale const color,ImageUtils::Grayscale const replacer,ImageUtils::Point<unsigned int> start);
+
+	/*
+		Does a flood fill.
+	*/
+	bool flood_fill(::cimg_library::CImg<unsigned char>& image,float const tolerance,ImageUtils::Grayscale const color,ImageUtils::Grayscale const replacer,ImageUtils::Point<unsigned int> start,std::vector<bool>& buffer);
 
 	namespace detail {
 

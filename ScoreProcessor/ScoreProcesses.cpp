@@ -1293,150 +1293,27 @@ namespace ScoreProcessor {
 
 	std::vector<ImageUtils::Rectangle<unsigned int>> flood_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const color,Point<unsigned int> start)
 	{
+		std::vector<bool> checked(image._width*image._height,false);
+		return flood_select(image,tolerance,color,start,checked);
+	}
+	std::vector<ImageUtils::Rectangle<unsigned int>> flood_select(CImg<unsigned char> const& image,float const tolerance,Grayscale const color,Point<unsigned int> start,std::vector<bool>& checked)
+	{
 		assert(image._spectrum==1);
 		std::vector<ImageUtils::Rectangle<unsigned int>> result_container;
-		if(gray_diff(image(start.x,start.y),color)>tolerance)
-		{
-			return result_container;
-		}
-		CImg<char> unchecked(image._width,image._height,1,1);
-		unchecked.fill(true);
-		unsigned int left=start.x-1;
-		while(left<start.x&&gray_diff(color,image(left,start.y))<=tolerance)
-		{
-			unchecked(left,start.y)=false;
-			--left;
-		}
-		++left;
-		unsigned int right=start.x+1;
-		while(right<image._width&&gray_diff(color,image(right,start.y))<=tolerance)
-		{
-			unchecked(right,start.y)=false;
-			++right;
-		}
-
-		result_container.push_back(ImageUtils::Rectangle<unsigned int>{left,right,start.y,start.y+1});
-		struct scan_range {
-			unsigned int left,right,y;
-			char direction;
-		};
-		stack<scan_range> scan_ranges;
-		scan_ranges.push({left,right,start.y,+1});
-		scan_ranges.push({left,right,start.y,-1});
-		while(!scan_ranges.empty())
-		{
-			scan_range const current_range=scan_ranges.top();
-			scan_ranges.pop();
-			//scan left
-			for(left=current_range.left-1;
-				left<image._width&&unchecked(left,current_range.y)&&gray_diff(color,image(left,current_range.y))<=tolerance;
-				--left)
+		flood_operation(image,start,[&](PointUINT point)
 			{
-				unchecked(left,current_range.y)=false;
-			}
-			++left;
-
-			//scan right
-			for(right=current_range.right;
-				right<image._width&&unchecked(right,current_range.y)&&gray_diff(color,image(right,current_range.y))<=tolerance;
-				++right)
-			{
-				unchecked(right,current_range.y)=false;
-			}
-			result_container.push_back(ImageUtils::Rectangle<unsigned int>{left,right,current_range.y,current_range.y+1});
-
-			//scan in same direction vertically
-			bool range_found=false;
-			unsigned int range_start;
-			unsigned int newy=current_range.y+current_range.direction;
-			unsigned int sx=left;
-			if(newy<image._height)
-			{
-				while(sx<right)
+				auto const coord=point.y*image._width+point.x;
+				std::vector<bool>::reference ref=checked[coord];
+				if(ref)
 				{
-					for(;sx<right;++sx)
-					{
-						if(unchecked(sx,newy)&&gray_diff(color,image(sx,newy))<=tolerance)
-						{
-							unchecked(sx,newy)=false;
-							range_found=true;
-							range_start=sx++;
-							break;
-						}
-					}
-					for(;sx<right;++sx)
-					{
-						if(!unchecked(sx,newy)||gray_diff(color,image(sx,newy))>tolerance)
-						{
-							break;
-						}
-						unchecked(sx,newy)=false;
-					}
-					if(range_found)
-					{
-						range_found=false;
-						scan_ranges.push({range_start,sx,newy,current_range.direction});
-					}
+					return false;
 				}
-			}
-
-			//scan opposite direction vertically
-			newy=current_range.y-current_range.direction;
-			if(newy<image._height)
+				ref=true;
+				return gray_diff(image(point.x,point.y),color)<tolerance;
+			},[&](horizontal_line<> line)
 			{
-				while(left<current_range.left)
-				{
-					for(;left<current_range.left;++left)
-					{
-						if(unchecked(left,newy)&&gray_diff(color,image(left,newy))<=tolerance)
-						{
-							unchecked(left,newy)=false;
-							range_found=true;
-							range_start=left++;
-							break;
-						}
-					}
-					for(;left<current_range.left;++left)
-					{
-						if(!unchecked(left,newy)||gray_diff(color,image(left,newy))>tolerance)
-							break;
-						unchecked(left,newy)=false;
-					}
-					if(range_found)
-					{
-						range_found=false;
-						scan_ranges.push({range_start,left,newy,-current_range.direction});
-					}
-				}
-				left=current_range.right;
-				while(left<right)
-				{
-					for(;left<right;++left)
-					{
-						if(unchecked(left,newy)&&gray_diff(color,image(left,newy))<=tolerance)
-						{
-							unchecked(left,newy)=false;
-							range_found=true;
-							range_start=left++;
-							break;
-						}
-					}
-					for(;left<right;++left)
-					{
-						if(!unchecked(left,newy)||gray_diff(color,image(left,newy))>tolerance)
-						{
-							break;
-						}
-						unchecked(left,newy)=false;
-					}
-					if(range_found)
-					{
-						range_found=false;
-						scan_ranges.push({range_start,left,newy,-current_range.direction});
-					}
-				}
-			}
-		}
+				result_container.push_back({line.left,line.right,line.y,line.y+1});
+			});
 		return result_container;
 	}
 	bool auto_padding(CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const horizontal_padding_max,unsigned int const horizontal_padding_min,signed int horiz_offset,float optimal_ratio,unsigned int tolerance,unsigned char background)
@@ -1817,17 +1694,31 @@ namespace ScoreProcessor {
 		uint right=image._width-1;
 		uint bottom=image._height-1;
 		bool edited=false;
+		std::vector<bool> buffer(image._width*image._height,false);
 		for(uint x=0;x<=right;++x)
 		{
-			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{x,0});
-			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{x,bottom});
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{x,0},buffer);
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{x,bottom},buffer);
 		}
 		for(uint y=1;y<bottom;++y)
 		{
-			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{0,y});
-			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{right,y});
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{0,y},buffer);
+			edited|=flood_fill(image,tolerance,color,Grayscale::WHITE,{right,y},buffer);
 		}
 		return edited;
+	}
+	bool flood_fill(CImg<unsigned char>& image,float const tolerance,Grayscale const color,Grayscale const replacer,Point<unsigned int> point,std::vector<bool>& buffer)
+	{
+		auto rects=flood_select(image,tolerance,color,point,buffer);
+		if(rects.empty())
+		{
+			return false;
+		}
+		for(auto rect:rects)
+		{
+			fill_selection(image,rect,replacer);
+		}
+		return true;
 	}
 	bool flood_fill(CImg<unsigned char>& image,float const tolerance,Grayscale const color,Grayscale const replacer,Point<unsigned int> point)
 	{
