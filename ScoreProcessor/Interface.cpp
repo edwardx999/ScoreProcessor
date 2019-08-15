@@ -355,15 +355,16 @@ namespace ScoreProcessor {
 		decltype(maker) maker{
 			"Sliding Match Erase Down\n"
 			"slides a template across a downscaled version of the image to erase matches\n"
-			"template: what to match\n"
-			"downscale: the downscale ratio of the image used to compare the templates\n"
-			"threshold: correspondence threshold to erase\n"
-			"replacer: what to do with a match\n"
+			"template: what to match, separate multiple files with *; tags: name, nm, tnm\n"
+			"downscale: the downscale ratio of the image used to compare the templates; tags: dsf, fact, f\n"
+			"thresh: correspondence threshold to erase; tags: th, thr\n"
+			"replace: what to do with a match\n"
 			"  mff:upper_threshold, mutual flood fill, flood fills corresponding parts\n"
 			"  repl: , replace match with image\n"
-			"  fill:color, fill match with color",
+			"  fill:color, fill match with color\n"
+			"l,t,h,v: region to limit matching to; see -fr, fill rectangle",
 			"Sliding Erase Downscale Match",
-			"template_file_name downscale threshold=0.95 replacer=fill:255"
+			"template_file_names downscale thresh=0.95 replace=fill:255 l=-99999 t=-999999 h=99999 v=99999 o=tl"
 		};
 	}
 }

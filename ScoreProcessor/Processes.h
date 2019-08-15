@@ -325,24 +325,42 @@ namespace ScoreProcessor {
 		bool process(Img&) const override;
 	};
 	class SlidingTemplateMatchEraseExact:public ImageProcess<> {
-		cil::CImg<unsigned char> tmplt;
+		std::vector<cil::CImg<unsigned char>> tmplts;
 		unsigned int downscaling;
 		float threshold;
-		cil::CImg<unsigned char> downsized_tmplt;
+		decltype(tmplts) downsized_tmplts;
+		ImageUtils::Rectangle<signed int> offsets;
+		FillRectangle::origin_reference origin;
 		std::function<void(Img&,Img const&,ImageUtils::PointUINT)> replacer;
-		static cil::CImg<unsigned char> get_downscale(cil::CImg<unsigned char>& img,unsigned int scale)
+		static auto get_downsized(decltype(tmplts)& t,unsigned int scale)
 		{
-			if(scale==1) return cil::CImg(img,true);
-			auto downscaled=integral_downscale(img,scale);
-			return downscaled;
+			decltype(tmplts) down;
+			down.reserve(t.size());
+			if(scale==1)
+			{
+				for(auto& tmplt:t)
+				{
+					down.push_back({tmplt,true});
+				}
+			}
+			else
+			{
+				for(auto& tmplt:t)
+				{
+					down.push_back(integral_downscale(tmplt,scale));
+				}
+			}
+			return down;
 		}
 	public:
-		SlidingTemplateMatchEraseExact(char const* filename,unsigned int downscaling,float threshold,decltype(replacer) replacer):
-			tmplt(filename),
+		SlidingTemplateMatchEraseExact(decltype(tmplts) the_tmplts,unsigned int downscaling,float threshold,decltype(replacer) replacer,decltype(offsets) off,decltype(origin) or):
+			tmplts(std::move(the_tmplts)),
 			downscaling{downscaling},
 			threshold{threshold},
-			downsized_tmplt(get_downscale(tmplt,downscaling)),
-			replacer{std::move(replacer)}
+			downsized_tmplts(get_downsized(tmplts,downscaling)),
+			replacer{std::move(replacer)},
+			offsets{off},
+			origin{or}
 		{
 		}
 		bool process(Img&) const override;

@@ -212,11 +212,38 @@ namespace ImageUtils {
 			Returns the diagonal of this rectangle.
 		*/
 		line<T> diagonal();
+
+		Point<T> top_left() const
+		{
+			return {left,top};
+		}
+
+		Point<T> top_right() const
+		{
+			return {right,top};
+		}
+
+		Point<T> bottom_left() const
+		{
+			return {left,bottom};
+		}
+
+		Point<T> bottom_right() const
+		{
+			return {right,bottom};
+		}
+
 		/*
 			Console output
 		*/
 		template<typename U>
 		friend ::std::ostream& operator<<(::std::ostream& os,Rectangle<U> const& rect);
+
+		template<typename U>
+		operator Rectangle<U>() const
+		{
+			return {U(left),U(right),U(top),U(bottom)};
+		}
 	};
 
 	/*
@@ -316,12 +343,12 @@ namespace ImageUtils {
 	template<typename T> template<typename U>
 	U Rectangle<T>::area() const
 	{
-		return (right-left)*(bottom-top);
+		return U(right-left)*U(bottom-top);
 	}
 	template<typename T> template<typename U>
 	U Rectangle<T>::perimeter() const
 	{
-		return 2*(right-left+bottom-top);
+		return 2*U(right-left+bottom-top);
 	}
 	template<typename T> template<typename U>
 	U Rectangle<T>::height() const

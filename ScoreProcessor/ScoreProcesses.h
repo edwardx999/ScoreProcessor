@@ -68,14 +68,14 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	cil::CImg<T> integral_downscale(cil::CImg<T> const& image,unsigned int downscale,T boundary_fill=std::numeric_limits<T>::max())
+	cil::CImg<T> integral_downscale(cil::CImg<T> const& image,unsigned int downscale,ImageUtils::RectangleUINT region,T boundary_fill=std::numeric_limits<T>::max())
 	{
 		if(downscale==1)
 		{
-			return image;
+			return image.get_crop(region.left,region.top,region.right-1,region.bottom-1,4);
 		}
-		auto const fwidth=ImageUtils::round_up(image._width,downscale);
-		auto const fheight=ImageUtils::round_up(image._height,downscale);
+		auto const fwidth=ImageUtils::round_up(region.width(),downscale);
+		auto const fheight=ImageUtils::round_up(region.height(),downscale);
 		if(fheight==0||fwidth==0) return {};
 		cil::CImg<T> ret(fwidth/downscale,fheight/downscale,image._depth,image._spectrum);
 		auto const factor=downscale*downscale;
@@ -90,11 +90,11 @@ namespace ScoreProcessor {
 					auto const row=layer_start+y*ret._width;
 					for(unsigned int x=0;x<ret._width;++x)
 					{
-						auto const ix_start=x*downscale;
-						auto const iy_start=y*downscale;
+						auto const ix_start=x*downscale+region.left;
+						auto const iy_start=y*downscale+region.top;
 						auto const idata=ilayer_start+iy_start*image._width+ix_start;
-						auto const y_to_go=std::min(image._height,iy_start+downscale)-iy_start;
-						auto const x_to_go=std::min(image._width,ix_start+downscale)-ix_start;
+						auto const y_to_go=std::min(region.bottom,iy_start+downscale)-iy_start;
+						auto const x_to_go=std::min(region.right,ix_start+downscale)-ix_start;
 						std::common_type_t<T,unsigned long long> sum=(factor-(x_to_go*y_to_go))*boundary_fill;
 						for(unsigned int iy=0;iy<y_to_go;++iy)
 						{
@@ -113,6 +113,12 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
+	cil::CImg<T> integral_downscale(cil::CImg<T> const& image,unsigned int downscale,T boundary_fill=std::numeric_limits<T>::max())
+	{
+		return integral_downscale(image,downscale,{0,image._width,0,image._height},boundary_fill);
+	}
+
+	template<typename T>
 	cil::CImg<T> integral_downscale(cil::CImg<T>&& image,unsigned int downscale,T boundary_fill=std::numeric_limits<T>::max())
 	{
 		if(downscale==1)
@@ -120,6 +126,16 @@ namespace ScoreProcessor {
 			return std::move(image);
 		}
 		return integral_downscale(std::as_const(image),downscale,boundary_fill);
+	}
+
+	template<typename T>
+	cil::CImg<T> integral_downscale(cil::CImg<T>&& image,unsigned int downscale,ImageUtils::RectangleUINT region,T boundary_fill=std::numeric_limits<T>::max())
+	{
+		if(downscale==1&&region.left==0&&region.top==0&&region.right==image._width&&region.bottom==image._height)
+		{
+			return std::move(image);
+		}
+		return integral_downscale(std::as_const(image),downscale,region,boundary_fill);
 	}
 
 	namespace detail {
@@ -184,7 +200,7 @@ namespace ScoreProcessor {
 	{
 		if(img._width<tmplt._width||img._height<tmplt._height)
 		{
-			throw std::invalid_argument("Image smaller than template");
+			return {};
 		}
 		cil::CImg<CountType> counts(img._width-tmplt._width+1,img._height-tmplt._height+1,1,Layers);
 		counts.fill(initial);

@@ -278,10 +278,10 @@ namespace ScoreProcessor {
 		return porigin;
 	}
 
-	bool FillRectangle::process(Img& img) const
+	ImageUtils::RectangleUINT resolve_origin_rectangle(cil::CImg<unsigned char> const& img,ImageUtils::Rectangle<int> offsets,FillRectangle::origin_reference origin)
 	{
 		auto const porigin=get_origin(origin,img.width(),img.height());
-		ImageUtils::Rectangle<signed int> rect;
+		ImageUtils::Rectangle<int> rect;
 		rect.left=offsets.left+porigin.x;
 		rect.right=offsets.right+porigin.x;
 		rect.top=offsets.top+porigin.y;
@@ -302,6 +302,12 @@ namespace ScoreProcessor {
 		{
 			rect.bottom=img.height();
 		}
+		return rect;
+	}
+
+	bool FillRectangle::process(Img& img) const
+	{
+		auto rect=resolve_origin_rectangle(img,offsets,origin);
 		if(num_layers<5)
 		{
 			switch(img._spectrum)
@@ -311,7 +317,7 @@ namespace ScoreProcessor {
 				if(num_layers==3||num_layers==4&&color[3]==255)
 				{
 					cil::CImg<unsigned char> temp(img._width,img._height,1,3);
-					size_t const size=img._width*img._height;
+					auto const size=std::size_t{img._width}*img._height;
 					memcpy(temp.data(),img.data(),size);
 					memcpy(temp.data()+size,img.data(),size);
 					memcpy(temp.data()+2U*size,img.data(),size);
@@ -320,7 +326,7 @@ namespace ScoreProcessor {
 				else if(num_layers==4)
 				{
 					cil::CImg<unsigned char> temp(img._width,img._height,1,4);
-					size_t const size=img._width*img._height;
+					auto const size=std::size_t{img._width}*img._height;
 					memcpy(temp.data(),img.data(),size);
 					memcpy(temp.data()+size,img.data(),size);
 					memcpy(temp.data()+2U*size,img.data(),size);
@@ -332,7 +338,7 @@ namespace ScoreProcessor {
 				if(num_layers==4&&color[3]!=255)
 				{
 					cil::CImg<unsigned char> temp(img._width,img._height,1,4);
-					size_t const size=img._width*img._height;
+					auto const size=std::size_t{img._width}*img._height;
 					memcpy(temp.data(),img.data(),3U*size);
 					memset(temp.data()+3U*size,255,size);
 					img.swap(temp);
@@ -342,7 +348,7 @@ namespace ScoreProcessor {
 #define ucast static_cast<unsigned int>
 		return fill_selection(
 			img,
-			{ucast(rect.left),ucast(rect.right),ucast(rect.top),ucast(rect.bottom)},
+			rect,
 			color.data(),check_fill_t());
 #undef ucast
 	}
@@ -641,22 +647,31 @@ namespace ScoreProcessor {
 	}
 	bool SlidingTemplateMatchEraseExact::process(Img& img) const
 	{
-		auto const downsized=downscaling==1?cil::CImg(img,true):integral_downscale(img,downscaling);
+		auto const region=resolve_origin_rectangle(img,offsets,origin);
+		auto const downsized=(downscaling==1&&region.left==0&&region.top==0&&region.right==img._width&&region.bottom==img._height)?
+			cil::CImg(img,true):
+			integral_downscale(img,downscaling,region);
+		//downsized.display();
 		using Gray=std::array<unsigned char,1>;
-		auto counts=sliding_template_match<1,float>(downsized,downsized_tmplt,[](Gray t,Gray i)
-			{
-				return ImageUtils::gray_diff({t[0]},{i[0]});
-			});
-		auto const real_threshold=(1-threshold)*downsized_tmplt._width*downsized_tmplt._height;
-		//unsigned char white[]={255,255,255,255};
 		bool found=false;
-		//counts.display();
-		find_local_min_below_thresh(counts,real_threshold,[&](unsigned int x,unsigned int y)
-			{
-				found=true;
-				auto point=downscaling*ImageUtils::PointUINT{x,y};
-				replacer(img,tmplt,point);
-			});
+		for(std::size_t i=0;i<downsized_tmplts.size();++i)
+		{
+			auto& downsized_tmplt=downsized_tmplts[i];
+			auto counts=sliding_template_match<1,float>(downsized,downsized_tmplt,[](Gray t,Gray i)
+				{
+					return ImageUtils::gray_diff({t[0]},{i[0]});
+				});
+			auto const real_threshold=(1-threshold)*downsized_tmplt._width*downsized_tmplt._height;
+			//unsigned char white[]={255,255,255,255};
+			//counts.display();
+			auto& tmplt=tmplts[i];
+			find_local_min_below_thresh(counts,real_threshold,[&](unsigned int x,unsigned int y)
+				{
+					found=true;
+					auto point=downscaling*ImageUtils::PointUINT{x,y}+region.top_left();
+					replacer(img,tmplt,point);
+				});
+		}
 		return found;
 	}
 

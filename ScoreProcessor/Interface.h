@@ -1155,11 +1155,11 @@ namespace ScoreProcessor {
 			PMINLINE static flagged parse(char const* sv,size_t prefix)
 			{
 				char const* to_parse=sv+prefix+1;
-				if(prefix!=-1&&sv[0]=='w')
+				if(prefix==-1||sv[0]=='r')
 				{
-					return {true,IntegerParser<int,Coord,no_check>().parse(to_parse)};
+					return {false,IntegerParser<int,Coord,no_check>().parse(to_parse)};
 				}
-				return {false,IntegerParser<int,Width,no_negatives>().parse(to_parse)};
+				return {true,IntegerParser<int,Width,no_negatives>().parse(to_parse)};
 			}
 		};
 
@@ -1175,11 +1175,11 @@ namespace ScoreProcessor {
 			PMINLINE static flagged parse(char const* sv,size_t prefix)
 			{
 				char const* to_parse=sv+prefix+1;
-				if(prefix!=-1&&sv[0]=='h')
+				if(prefix==-1||sv[0]=='b')
 				{
-					return {true,IntegerParser<int,Coord,no_check>().parse(to_parse)};
+					return {false,IntegerParser<int,Coord,no_check>().parse(to_parse)};
 				}
-				return {false,IntegerParser<int,Height,no_negatives>().parse(to_parse)};
+				return {true,IntegerParser<int,Height,no_negatives>().parse(to_parse)};
 			}
 		};
 
@@ -2798,7 +2798,7 @@ namespace ScoreProcessor {
 			clbl("name","nm","tnm");
 			static char const* parse(InputType in)
 			{
-				return Output::PatternParser::parse(in);
+				return in;
 			}
 		};
 		struct Threshold {
@@ -2921,7 +2921,7 @@ namespace ScoreProcessor {
 							{
 								for(auto const rect:rects)
 								{
-									std::fill(&img(rect.left,rect.y,0,s),&img(rect.right,rect.y,0,s),180);
+									std::fill(&img(rect.left,rect.y,0,s),&img(rect.right,rect.y,0,s),255);
 								}
 							}
 						}
@@ -2940,13 +2940,71 @@ namespace ScoreProcessor {
 				};
 			}
 		};
-		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* name,unsigned int downscale,float threshold,Replacer::Func replacer)
+
+
+		struct Left:FRMaker::Left {
+			cndf(-999999)
+		};
+		struct Top:FRMaker::Top {
+			cndf(-999999)
+		};
+		using FRMaker::flagged;
+		struct Right:FRMaker::Right {
+			static flagged def_val()
 			{
-				del.pl.add_process<SlidingTemplateMatchEraseExact>(name,downscale,threshold,replacer);
+				return {false,999999};
 			}
 		};
-		extern SingMaker<UseTuple,TemplateClearMaker::Name,Downscale,TemplateClearMaker::Threshold,Replacer> maker;
+		struct Bottom:FRMaker::Bottom {
+			static flagged def_val()
+			{
+				return {false,99999};
+			}
+		};
+		using FRMaker::Origin;
+
+		struct UseTuple {
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,char const* name,unsigned int downscale,float threshold,Replacer::Func replacer,int left,int top,flagged hor,flagged vert,FillRectangle::origin_reference origin)
+			{
+				std::vector<cil::CImg<unsigned char>> tmplts;
+				auto start=Output::PatternParser::parse(name);
+				auto find_next=[](char const* in)
+				{
+					while(true)
+					{
+						auto c=*in;
+						if(c=='*')
+						{
+							return in;
+						}
+						if(c=='\0')
+						{
+							return in;
+						}
+						++in;
+					}
+				};
+				std::string filename;
+				while(true)
+				{
+					auto end=find_next(start);
+					filename.assign(start,end-start);
+					tmplts.emplace_back(filename.c_str());
+					if(*end=='\0')
+					{
+						break;
+					}
+					start=Output::PatternParser::parse(end+1);
+				}
+				if(tmplts.empty())
+				{
+					throw std::invalid_argument("Need at least one template");
+				}
+				del.pl.add_process<SlidingTemplateMatchEraseExact>(std::move(tmplts),downscale,threshold,replacer,FRMaker::coords_to_rect(left,top,hor,vert),origin);
+			}
+		};
+
+		extern SingMaker<UseTuple,TemplateClearMaker::Name,Downscale,TemplateClearMaker::Threshold,Replacer,IntParser<Left>,IntParser<Top>,Right,Bottom,Origin> maker;
 	}
 
 	struct compair {
