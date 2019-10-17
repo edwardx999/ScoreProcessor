@@ -704,4 +704,14 @@ namespace ScoreProcessor {
 			}
 		}
 	}
+
+	bool RemoveEmptyLines::process(Img& img) const
+	{
+		return remove_empty_lines(img,background_threshold,min_space,max_presence);
+	}
+
+	bool VertCompress::process(Img& img) const
+	{
+		return compress_vertical(img,background_threshold,min_vert_space,min_horiz_space,min_horizontal_protection,max_vertical_protection,0);
+	}
 }

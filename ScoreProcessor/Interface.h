@@ -3007,6 +3007,60 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple,TemplateClearMaker::Name,Downscale,TemplateClearMaker::Threshold,Replacer,IntParser<Left>,IntParser<Top>,Right,Bottom,Origin> maker;
 	}
 
+	namespace RemoveEmptyLinesMaker {
+		struct MinSpace {
+			cnnm("min space");
+			clbl("ms");
+		};
+		struct MaxPresence {
+			cnnm("max presence");
+			clbl("mp");
+			cndf(5U);
+		};
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del,unsigned int ms,unsigned int mp,unsigned char bt)
+			{
+				del.pl.add_process<RemoveEmptyLines>(ms,mp,bt);
+			}
+		};
+		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxPresence>,HPMaker::BGParser> maker;
+	}
+
+	namespace VerticalCompressMaker {
+		struct MinSpace {
+			cnnm("min (vertical) space");
+			clbl("ms","mvs");
+		};
+		struct MinHSpace {
+			cnnm("min horizontal space");
+			clbl("mhs");
+			static unsigned int parse(char const* data)
+			{
+				if(strcmp(data,"ms")==0||strcmp(data,"mvs")==0)
+				{
+					return -1;
+				}
+				return UIntParser<MinHSpace>().parse(data);
+			}
+			cndf(-1)
+		};
+		struct MaxVerticalProtection {
+			cnnm("max vertical protection");
+			clbl("mvp");
+		};
+		struct MinHorizProtection {
+			cnnm("min horizontal protection");
+			clbl("mhp");
+		};
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del,unsigned int mvs,unsigned int mh,unsigned int mv,unsigned char bg,unsigned int mhs)
+			{
+				del.pl.add_process<VertCompress>(mvs,mhs,mh,mv,bg);
+			}
+		};
+		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxVerticalProtection>,UIntParser<MaxVerticalProtection>,HPMaker::BGParser,MinHSpace> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -3049,7 +3103,9 @@ namespace ScoreProcessor {
 			compair("ccs",&CCSMaker::maker),
 			compair("mlaa",&MlaaMaker::maker),
 			compair("tme",&TemplateClearMaker::maker),
-			compair("stme",&SlidingTemplateClearMaker::maker));
+			compair("stme",&SlidingTemplateClearMaker::maker),
+			compair("rel",&RemoveEmptyLinesMaker::maker),
+			compair("vc",&VerticalCompressMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),

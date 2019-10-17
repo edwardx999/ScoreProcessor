@@ -81,6 +81,12 @@ namespace ScoreProcessor {
 			Gets the ranges of the cluster
 		*/
 		::std::vector<ImageUtils::Rectangle<unsigned int>> const& get_ranges() const;
+
+		template<typename Comp=std::less<>>
+		void sort(Comp c=Comp()) noexcept
+		{
+			std::sort(ranges.begin(),ranges.end(),c);
+		}
 	private:
 
 		template<typename OverlapFunc>

@@ -353,18 +353,45 @@ namespace ScoreProcessor {
 	}
 	namespace SlidingTemplateClearMaker {
 		decltype(maker) maker{
-			"Sliding Match Erase Down\n"
 			"slides a template across a downscaled version of the image to erase matches\n"
 			"template: what to match, separate multiple files with *; tags: name, nm, tnm\n"
 			"downscale: the downscale ratio of the image used to compare the templates; tags: dsf, fact, f\n"
 			"thresh: correspondence threshold to erase; tags: th, thr\n"
 			"replace: what to do with a match\n"
 			"  mff:upper_threshold, mutual flood fill, flood fills corresponding parts\n"
-			"  repl: , replace match with image\n"
+			"  rpl: , replace match with image\n"
 			"  fill:color, fill match with color\n"
 			"l,t,h,v: region to limit matching to; see -fr, fill rectangle",
 			"Sliding Erase Downscale Match",
 			"template_file_names downscale thresh=0.95 replace=fill:255 l=-99999 t=-999999 h=99999 v=99999 o=tl"
+		};
+	}
+	namespace RemoveEmptyLinesMaker {
+		decltype(maker) maker{
+			"Lines that contain fewer non-background pixels than max presence\n"
+			"are removed if their removal does not result in a space smaller\n"
+			"than min space\n"
+			"min space; tag: ms\n"
+			"max presence; tag: mp\n"
+			"background threshold; tag: bg",
+			"Remove Empty Lines",
+			"min_space max_presence=5 background_threshold=128"
+		};
+	}
+
+	namespace VerticalCompressMaker {
+		decltype(maker) maker{
+			"Removes lines where there is a lot of vertical space.\n"
+			"All but the largest cluster (as determined by background)\n"
+			"are protected. Pixels of the largest cluster through which\n"
+			"a long horizontal path or only a short vertical path\n"
+			"are protected.\n"
+			"min space; tag: ms\n"
+			"min horizontal protection; tag: mhp\n"
+			"max vertical protection; tag: mvp\n"
+			"background threshold; tag: bg",
+			"Vertical Compress",
+			"min_space min_horiz_pr max_vert_pr background=128"
 		};
 	}
 }

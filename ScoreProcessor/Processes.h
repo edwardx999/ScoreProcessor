@@ -429,5 +429,31 @@ namespace ScoreProcessor {
 		}
 		bool process(Img&) const override;
 	};
+
+	class RemoveEmptyLines:public ImageProcess<> {
+		unsigned int min_space;
+		unsigned int max_presence;
+		unsigned char background_threshold;
+	public:
+		RemoveEmptyLines(unsigned int ms,unsigned int mp,unsigned char bt):min_space{ms},max_presence{mp},background_threshold{bt}{}
+		bool process(Img&) const override;
+	 };
+
+	class VertCompress:public ImageProcess<> {
+		unsigned int min_vert_space;
+		unsigned int min_horiz_space;
+		unsigned int min_horizontal_protection;
+		unsigned int max_vertical_protection;
+		unsigned char background_threshold;
+	public:
+		VertCompress(unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_prot,unsigned int max_vert_prot,unsigned char bt):
+			min_vert_space{min_vert_space},
+			min_horiz_space{min_horiz_space==-1?min_vert_space:min_horiz_space},
+			min_horizontal_protection{min_horiz_prot},
+			max_vertical_protection{max_vert_prot},
+			background_threshold{bt}{}
+		bool process(Img&) const override;
+	};
+
 }
 #endif

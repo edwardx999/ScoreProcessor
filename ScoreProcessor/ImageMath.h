@@ -632,5 +632,74 @@ namespace cimg_library {
 		}
 		return lines;
 	}
+
+	namespace functions {
+		struct identity {
+			template<typename T>
+			constexpr T&& operator()(T&& val) const
+			{
+				return std::forward<T>(val);
+			}
+		};
+	}
+
+	template<typename T,typename U,typename Transformer=functions::identity>
+	CImg<T> integral_image(CImg<U> const& img,Transformer transform={})
+	{
+		if(img.empty())
+		{
+			return {};
+		}
+		CImg<T> ret{img._width,img._height,img._depth,img._spectrum};
+		std::size_t const width=img._width;
+		std::size_t const height=img._height;
+		for(unsigned int s=0;s<ret._spectrum;++s)
+		{
+			for(unsigned int d=0;d<ret._depth;++d)
+			{
+				auto const rdata=&ret(0,0,s,d);
+				auto const idata=&img(0,0,s,d);
+				*rdata=transform(*idata);
+				for(std::size_t x=1;x<width;++x)
+				{
+					rdata[x]=transform(idata[x])+rdata[x-1];
+				}
+				for(std::size_t y=1;y<height;++y)
+				{
+					auto const rrow=rdata+y*width;
+					auto const prrow=rrow-width;
+					auto const irow=idata+y*width;
+					rrow[0]=transform(irow[0])+prrow[0];
+					for(std::size_t x=1;x<width;++x)
+					{
+						rrow[x]=transform(irow[x])+rrow[x-1]+prrow[x]-prrow[x-1];
+					}
+				}
+			}
+		}
+		return ret;
+	}
+
+
+	template<typename Iter,typename OutIter>
+	OutIter horizontal_to_vertical(Iter horiz_rect_begin,Iter end,OutIter out)
+	{
+		std::sort(horiz_rect_begin,end,[](auto const& a,auto const& b)
+			{
+				if(a.left<b.left)
+				{
+					return true;
+				}
+				if(a.left>b.left)
+				{
+					return false;
+				}
+				return a.top<b.top;
+			});
+		for(auto it=horiz_rect_begin;it!=end;++it)
+		{
+			
+		}
+	}
 }
 #endif // !IMAGE_MATH_H

@@ -29,15 +29,492 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <assert.h>
 #include "ImageMath.h"
 #include "lib/exstring/exmath.h"
+#include "lib/exstring/exalg.h"
 #include <atomic>
 #include <mutex>
 #include "lib/threadpool/thread_pool.h"
-#include "opencv2/imgproc.hpp"
+#include <numeric>
 using namespace std;
 using namespace ImageUtils;
 using namespace cimg_library;
 using namespace misc_alg;
 namespace ScoreProcessor {
+
+	//template<typename PixelDetector>
+	bool remove_empty_lines_help(cil::CImg<unsigned char>& img,unsigned int min_space,unsigned int max_presence/*,PixelDetector detector*/)
+	{
+		unsigned int read_start=0;
+		unsigned int write_head=0;
+		unsigned int empty_line_count=0;
+		auto const size=std::size_t{img._width}*img._height;
+		bool changed=false;
+		auto is_line_foreground=[&img,max_presence](unsigned int y)
+		{
+			auto const row=&img(0,y);
+			unsigned int background_count=0;
+			for(unsigned int x=0;x<img._width;++x)
+			{
+				if(/*detector(row+x)*/row[x]<128)
+				{
+					if(++background_count>max_presence)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		};
+		auto in_empty_region=!is_line_foreground(0);
+		unsigned int space;
+		for(unsigned int read_head=1;read_head<img._height;++read_head)
+		{
+			auto const line_is_foreground=is_line_foreground(read_head);
+			if(in_empty_region)
+			{
+				if(line_is_foreground)
+				{
+					in_empty_region=false;
+					//std::cout<<read_start<<' '<<read_head<<'\n';
+					space=read_head-read_start;
+					if(space>min_space)
+					{
+						changed=true;
+						auto const fore_padding=min_space/2;
+						auto const aft_padding=min_space-fore_padding;
+						auto const fore_size=std::size_t{fore_padding}*img._width;
+						auto const aft_size=std::size_t{aft_padding}*img._width;
+						for(unsigned int s=0;s<img._spectrum;++s)
+						{
+							std::memmove(
+								&img(0,write_head,0,s),
+								&img(0,read_start,0,s),
+								fore_size);
+							std::memmove(
+								&img(0,write_head+fore_padding,0,s),
+								&img(0,read_head-aft_padding,0,s),
+								aft_size);
+						}
+						write_head+=min_space;
+					}
+					else
+					{
+						goto copy_unchanged;
+					}
+					read_start=read_head;
+				}
+			}
+			else
+			{
+				if(!line_is_foreground)
+				{
+					//std::cout<<read_start<<' '<<read_head<<'\n';
+					in_empty_region=true;
+					space=read_head-read_start;
+				copy_unchanged:
+					if(read_start!=write_head)
+					{
+						for(unsigned int s=0;s<img._spectrum;++s)
+						{
+							std::memmove(
+								&img(0,write_head,0,s),
+								&img(0,read_start,0,s),
+								std::size_t{space}*img._width);
+						}
+					}
+					write_head+=space;
+					read_start=read_head;
+				}
+			}
+		}
+		space=std::min(img._height-read_start,min_space);
+		for(unsigned int s=0;s<img._spectrum;++s)
+		{
+			std::memmove(
+				&img(0,write_head,0,s),
+				&img(0,read_start,0,s),
+				std::size_t{space}*img._width);
+		}
+		write_head+=space;
+		if(img._spectrum==1)
+		{
+			img.crop(0,0,img._width-1,write_head-1);
+		}
+		else
+		{
+			img._height=write_head;
+		}
+		return changed;
+	}
+
+	bool compress_vertical(cil::CImg<unsigned char>& img,unsigned char background_threshold,unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_protection,unsigned int max_vert_protection,unsigned int optimal_height)
+	{
+		using count_t=short;
+		constexpr auto dim_lim=std::numeric_limits<count_t>::max();
+		if(img._height<exlib::multi_max(3U,min_vert_space)||img._width<std::max(3U,min_horiz_space)||img._height>dim_lim||img._width>dim_lim)
+		{
+			return false;
+		}
+		enum safety {
+			safe=-1,
+			unsafe=0,
+			candidate_path_mark,
+			real_path_mark,
+		};
+		cil::CImg<char> safe_points;
+		{
+			auto const clusters=[&img,background_threshold]()
+			{
+				auto const rects=global_select<1>(img,[=](std::array<unsigned char,1> color)
+					{
+						return color[0]<background_threshold;
+					});
+				return Cluster::cluster_ranges_8way(rects);
+			}();
+			if(clusters.size()==0)
+			{
+				return false;
+			}
+			auto const it_kill=std::max_element(clusters.begin(),clusters.end(),[](auto const& a,auto const& b)
+				{
+					return a.size()<b.size();
+				});
+			auto& kill=*it_kill;
+			using CountImg=cil::CImg<count_t>;
+			std::vector<Point<unsigned short>> pixels;
+			//for(auto const& kill:clusters)
+			{
+				for(auto const rect:kill.get_ranges())
+				{
+					using us=unsigned short;
+					for(unsigned int y=rect.top;y<rect.bottom;++y)
+					{
+						for(unsigned int x=rect.left;x<rect.right;++x)
+						{
+							pixels.push_back({us(x),us(y)});
+						}
+					}
+				}
+			}
+			std::sort(pixels.begin(),pixels.end(),[](auto a,auto b)
+				{
+					return std::make_pair(a.x,a.y)<std::make_pair(b.x,b.y);
+				});
+			CountImg path_counts_raw(img._width,img._height+2);
+			CountImg path_counts(path_counts_raw,true);
+			path_counts._data+=path_counts._width;
+			path_counts._height-=2;
+			// steps mark white space as 0
+			// protect small clusters (mark as -1)
+			// protect portions of kill that you can draw a sufficiently large horizontal path through 
+			// mark portions of kill that you can draw a sufficiently large vertical path through as 0
+			std::memset(path_counts_raw.begin(),0,path_counts_raw.size()*sizeof(count_t));
+			{ //finding horiz_paths
+				auto ipix=pixels.begin();
+				auto const ipix_end=pixels.end();
+				while(true)
+				{
+					if(ipix==ipix_end)
+					{
+						goto end_horiz_trace;
+					}
+					if(ipix->x>0)
+					{
+						break;
+					}
+					path_counts(0,ipix->y)=1;
+					++ipix;
+				}
+				do
+				{
+					auto const pixx=ipix->x;
+					auto const pixy=ipix->y;
+					auto const val=exlib::multi_max(
+						path_counts(pixx-1,pixy-1),
+						path_counts(pixx-1,pixy),
+						path_counts(pixx-1,pixy+1));
+					path_counts(pixx,pixy)=val+1;
+					++ipix;
+				} while(ipix!=ipix_end);
+			end_horiz_trace:
+				for(auto it=pixels.rbegin();it!=pixels.rend();++it)
+				{
+					auto const pix_loc=*it;
+					path_counts(pix_loc.x,pix_loc.y)=exlib::multi_max(
+						path_counts(pix_loc.x+1,pix_loc.y-1),
+						path_counts(pix_loc.x+1,pix_loc.y),
+						path_counts(pix_loc.x+1,pix_loc.y+1),
+						path_counts(pix_loc.x,pix_loc.y)
+					);
+				}
+				pixels.erase(std::remove_if(pixels.begin(),pixels.end(),[&](auto pix)
+					{
+						if(path_counts(pix.x,pix.y)>=min_horiz_protection)
+						{
+							path_counts(pix.x,pix.y)=safe;
+							return true;
+						}
+						else
+						{
+							path_counts(pix.x,pix.y)=unsafe;
+							return false;
+						}
+					}),pixels.end());
+			}
+			//std::cout<<"Horizontal protection\n";
+			//path_counts.display();
+			//if(false)
+			{ // protected small clusters
+				auto protect_rect=[&path_counts](auto const rect)
+				{
+					auto row=&path_counts(rect.left,rect.top);
+					auto const end=row+std::size_t(rect.height())*path_counts._width;
+					auto const width=rect.width()*sizeof(count_t);
+					for(;row<end;row+=path_counts._width)
+					{
+						std::memset(row,safe,width);
+					}
+				};
+				auto protect_cluster=[&,left_threshold=it_kill->bounding_box().left](auto const& cluster)
+				{
+					for(auto const rect:cluster.get_ranges())
+					{
+						protect_rect(rect);
+					}
+				};
+				for(auto it=clusters.begin();it!=it_kill;++it)
+				{
+					protect_cluster(*it);
+				}
+				for(auto it=std::next(it_kill);it!=clusters.end();++it)
+				{
+					protect_cluster(*it);
+				}
+			}
+			//std::cout<<"Small protection\n";
+			//path_counts.display();
+			{ //marking kill sufficiently large vertical paths
+				std::sort(pixels.begin(),pixels.end(),[](auto a,auto b)
+					{
+						return std::make_pair(a.y,a.x)<std::make_pair(b.y,b.x);
+					});
+				for(auto const pix_loc:pixels)
+				{
+					path_counts(pix_loc.x,pix_loc.y)=exlib::multi_max(
+						path_counts(pix_loc.x-1,pix_loc.y-1),
+						path_counts(pix_loc.x,pix_loc.y-1),
+						path_counts(pix_loc.x+1,pix_loc.y-1)
+					)+1;
+				}
+				for(auto it=pixels.rbegin();it!=pixels.rend();++it)
+				{
+					auto const pix_loc=*it;
+					path_counts(pix_loc.x,pix_loc.y)=exlib::multi_max(
+						path_counts(pix_loc.x-1,pix_loc.y+1),
+						path_counts(pix_loc.x,pix_loc.y+1),
+						path_counts(pix_loc.x+1,pix_loc.y+1),
+						path_counts(pix_loc.x,pix_loc.y)
+					);
+				}
+				//std::cout<<"Vertical paths\n";
+				//path_counts.display();
+				for(auto const pix_loc:pixels)
+				{
+					auto& pix=path_counts(pix_loc.x,pix_loc.y);
+					// need to trace back
+					if(pix<max_vert_protection)
+					{
+						pix=safe;
+					}
+					else
+					{
+						pix=unsafe;
+					}
+				}
+			}
+			//std::cout<<"Vertical protection\n";
+			//path_counts.display();
+			cil::CImg<char> safe_points_raw(path_counts._width,path_counts._height);
+			{
+				// now -1 is safe, 0 is unsafe, mark pixels safe due to min_width; they can only descend from the bottom of clusters
+				auto const tail_space=min_vert_space/2;
+				auto const head_space=min_vert_space-tail_space;
+				std::memset(path_counts.data(),-1,size_t{head_space}*path_counts._width*sizeof(count_t));
+				{
+					auto const tail_space_d=size_t{tail_space}*path_counts._width;
+					std::memset(path_counts.end()-tail_space_d,-1,tail_space_d*sizeof(count_t));
+				}
+				auto const statuses=path_counts_raw.data();
+				for(unsigned int y=0;y<path_counts._height;++y)
+				{
+					exlib::get_fatten(&path_counts(0,y),&path_counts(0,y+1),min_horiz_space-min_horiz_space/2,&safe_points_raw(0,y));
+				}
+				{
+					//decltype(safe_points_raw) layer0(safe_points_raw,true);
+					//layer0._spectrum=1;
+					//layer0.display();
+				}
+				safe_points_raw.rotate(-90); // for cache coherency
+				safe_points.resize(path_counts._height,path_counts._width);
+				for(unsigned int x=0;x<path_counts._width;++x)
+				{
+					auto const begin=&safe_points_raw(0,x);
+					exlib::get_fatten(begin,begin+path_counts._height,head_space,&safe_points(0,x));
+				}
+			}
+		}
+		//std::cout<<"Min space protection\n";
+		//safe_points.display();
+		{
+			// hug left path tracer
+			auto const width=count_t(safe_points._width);
+			auto const height=count_t(safe_points._height);
+			auto const last_row=height-1;
+			//std::vector<count_t> path(safe_points._height);
+			std::unique_ptr<count_t[]> path(new count_t[safe_points._height]);
+			auto trace_path_down=[&safe_points,&path,width,height,last_row](count_t x)
+			{
+				{
+					auto& start=safe_points(x,0);
+					if(start!=unsafe)
+					{
+						return;
+					}
+					start=candidate_path_mark;
+				}
+				path[0]=x;
+				decltype(x) y=0;
+				while(true)
+				{
+					count_t furthest_left=x;
+					auto const current_row=&safe_points(0,y);
+					auto const next_row=current_row+safe_points._width;
+					for(;;)
+					{
+						auto const cand=furthest_left-1;
+						if(current_row[cand]!=unsafe)
+						{
+							break;
+						}
+						furthest_left=cand;
+					}
+					{
+						bool found_in_left=false;
+						for(;furthest_left<=x;++furthest_left)
+						{
+							auto const pix=next_row[furthest_left];
+							if(pix==unsafe)
+							{
+								found_in_left=true;
+								break;
+							}
+						}
+						if(!found_in_left)
+						{
+							for(;;++furthest_left)
+							{
+								auto const level_pix=current_row[furthest_left];
+								if(level_pix!=unsafe)
+								{
+									std::fill(current_row+x+1,current_row+furthest_left,candidate_path_mark);
+									return;
+								}
+								auto const next_pix=next_row[furthest_left];
+								if(next_pix==unsafe)
+								{
+									break;
+								}
+							}
+						}
+					}
+					for(;;)
+					{
+						auto const cand=furthest_left-1;
+						if(next_row[cand]!=unsafe)
+						{
+							break;
+						}
+						furthest_left=cand;
+					}
+					++y;
+					next_row[furthest_left]=candidate_path_mark;
+					path[y]=furthest_left;
+					if(y==last_row)
+					{
+						for(count_t r=0;r<safe_points._height;++r)
+						{
+							safe_points(path[r],r)=real_path_mark;
+						}
+						break;
+					}
+					x=furthest_left;
+				}
+			};
+			for(count_t x_top=0;x_top<width;++x_top)
+			{
+				trace_path_down(x_top);
+				if(x_top%100==0)
+				{
+					//safe_points.display();
+				}
+			}
+			//safe_points.display();
+		}
+		img.rotate(-90);
+		//img.display();
+		unsigned int new_width=0;
+		for(unsigned int y=0;y<img._height;++y)
+		{
+			auto* img_row=&img(0,y);
+			auto const* safe_row=&safe_points(0,y);
+			unsigned int write_head=0;
+			auto const width=img._width;
+			for(unsigned int read_head=0;read_head<width;++read_head)
+			{
+				if(safe_row[read_head]!=real_path_mark)
+				{
+					img_row[write_head]=img_row[read_head];
+					++write_head;
+				}
+			}
+			new_width=std::max(new_width,write_head);
+		}
+		img.crop(0,new_width-1);
+		//img.display();
+		img.rotate(90);
+		//img.display();
+		return true;
+	}
+
+	bool remove_empty_lines(cil::CImg<unsigned char>& img,unsigned char background_threshold,unsigned int min_space,unsigned int max_presence)
+	{
+		if(img._height==0)
+		{
+			return false;
+		}
+		switch(img._spectrum)
+		{
+		case 1:
+		case 2:
+		{
+			return remove_empty_lines_help(img,min_space,max_presence/*,[background_threshold](unsigned char const* pixel)
+				{
+					return *pixel<background_threshold;
+				} */);
+		}
+		case 3:
+		case 4:
+		{
+			auto s=std::size_t{img._height}*img._width;
+			return remove_empty_lines_help(img,min_space,max_presence/*,[t=3*background_threshold,s,s2=2*s](unsigned char const* pixel)
+				{
+					return pixel[0]+pixel[s]+pixel[s2]<t;
+				}*/);
+		}
+		default:
+			throw std::invalid_argument("Invalid spectrum");
+		}
+	}
+
 
 	template<typename CountType>
 	unsigned int sliding_template_match_erase_exact_help(cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,float threshold,std::array<unsigned char,4> color)
@@ -159,7 +636,8 @@ namespace ScoreProcessor {
 	struct guarded_pool {
 		exlib::thread_pool pool;
 		std::mutex lock;
-		explicit guarded_pool(unsigned int nt):pool{std::max(1U,nt)}{}
+		explicit guarded_pool(unsigned int nt):pool{std::max(1U,nt)}
+		{}
 	};
 
 	auto& init_exclusive_pool(unsigned int num_threads)
@@ -272,22 +750,22 @@ namespace ScoreProcessor {
 		bool edited=false;
 		auto repl=std::array<unsigned char,3>({replacer.r,replacer.g,replacer.b});
 		map_if<3U>(image,[=](auto color)
-		{
-			return repl;;
-		},[=,&edited](auto color)
-		{
-			if(color==repl)
 			{
+				return repl;;
+			},[=,&edited](auto color)
+			{
+				if(color==repl)
+				{
+					return false;
+				}
+				auto const brightness=(float(color[0])+color[1]+color[2])/3.0f;
+				if(brightness>=lowerBrightness&&brightness<=upperBrightness)
+				{
+					edited=true;
+					return true;
+				}
 				return false;
-			}
-			auto const brightness=(float(color[0])+color[1]+color[2])/3.0f;
-			if(brightness>=lowerBrightness&&brightness<=upperBrightness)
-			{
-				edited=true;
-				return true;
-			}
-			return false;
-		});
+			});
 		return edited;
 	}
 	bool replace_by_hsv(::cimg_library::CImg<unsigned char>& image,ImageUtils::ColorHSV start,ImageUtils::ColorHSV end,ImageUtils::ColorRGB replacer)
@@ -296,33 +774,33 @@ namespace ScoreProcessor {
 		bool edited=false;
 		std::array<unsigned char,3> const& repl=*reinterpret_cast<std::array<unsigned char,3>*>(&replacer);
 		map_if<3U>(image,[=](auto color)
-		{
-			return repl;
-		},[=,&edited](auto color)
-		{
-			if(color==repl)
 			{
-				return false;
-			}
-			ColorHSV hsv=*reinterpret_cast<ColorRGB*>(&color);
-			if(hsv.s>=start.s&&hsv.s<=end.s&&hsv.v>=start.v&&hsv.v<=end.v)
+				return repl;
+			},[=,&edited](auto color)
 			{
-				if(start.h<end.h)
+				if(color==repl)
 				{
-					if(hsv.h>=start.h&&hsv.h<=end.h)
+					return false;
+				}
+				ColorHSV hsv=*reinterpret_cast<ColorRGB*>(&color);
+				if(hsv.s>=start.s&&hsv.s<=end.s&&hsv.v>=start.v&&hsv.v<=end.v)
+				{
+					if(start.h<end.h)
+					{
+						if(hsv.h>=start.h&&hsv.h<=end.h)
+						{
+							edited=true;
+							return true;
+						}
+					}
+					else if(hsv.h>=start.h||hsv.h<=end.h)
 					{
 						edited=true;
 						return true;
 					}
 				}
-				else if(hsv.h>=start.h||hsv.h<=end.h)
-				{
-					edited=true;
-					return true;
-				}
-			}
-			return false;
-		});
+				return false;
+			});
 		return edited;
 	}
 	bool replace_by_rgb(::cil::CImg<unsigned char>& image,ImageUtils::ColorRGB start,ImageUtils::ColorRGB end,ImageUtils::ColorRGB replacer)
@@ -331,23 +809,23 @@ namespace ScoreProcessor {
 		bool edited=false;
 		std::array<unsigned char,3> const& repl=*reinterpret_cast<std::array<unsigned char,3>*>(&replacer);
 		map_if<3U>(image,[=](auto color)
-		{
-			return repl;
-		},[=,&edited](auto color)
-		{
-			if(color==repl)
 			{
+				return repl;
+			},[=,&edited](auto color)
+			{
+				if(color==repl)
+				{
+					return false;
+				}
+				if(color[0]>=start.r&&color[0]<=end.r&&
+					color[1]>=start.g&&color[1]<=end.g&&
+					color[2]>=start.b&&color[2]<=end.b)
+				{
+					edited=true;
+					return true;
+				}
 				return false;
-			}
-			if(color[0]>=start.r&&color[0]<=end.r&&
-				color[1]>=start.g&&color[1]<=end.g&&
-				color[2]>=start.b&&color[2]<=end.b)
-			{
-				edited=true;
-				return true;
-			}
-			return false;
-		});
+			});
 		return edited;
 	}
 	bool auto_center_horiz(CImg<unsigned char>& image)
@@ -1027,9 +1505,9 @@ namespace ScoreProcessor {
 				}
 			}
 			std::sort(boxes.begin(),boxes.end(),[](line a,line b)
-			{
-				return a.top<b.top;
-			});
+				{
+					return a.top<b.top;
+				});
 			unsigned int last_row=map._width-1;
 			for(size_t i=1;i<boxes.size();++i)
 			{
@@ -1172,7 +1650,7 @@ namespace ScoreProcessor {
 				auto const bottom=img(x,y+1);
 				return
 					//(top<=boundary&&bottom>boundary)||
-					(top>boundary&&bottom<=boundary);
+					(top>boundary&& bottom<=boundary);
 			};
 			HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
 			return M_PI_2-ha.angle();
@@ -1187,7 +1665,7 @@ namespace ScoreProcessor {
 				auto const bottom=unsigned int(*pbottom)+*(pbottom+size)+*(pbottom+2*size);
 				return
 					//(top<=boundary&&bottom>boundary)||
-					(top>boundary&&bottom<=boundary);
+					(top>boundary&& bottom<=boundary);
 			};
 			HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
 			return M_PI_2-ha.angle();
@@ -1222,14 +1700,14 @@ namespace ScoreProcessor {
 		std::vector<unsigned int> rightProfile;
 		switch(image._spectrum)
 		{
-			case 1:
-				rightProfile=build_right_profile(image,Grayscale::WHITE);
-				break;
-			case 3:
-				rightProfile=build_right_profile(image,ColorRGB::WHITE);
-				break;
-			default:
-				return {{0,0},{0,0}};
+		case 1:
+			rightProfile=build_right_profile(image,Grayscale::WHITE);
+			break;
+		case 3:
+			rightProfile=build_right_profile(image,ColorRGB::WHITE);
+			break;
+		default:
+			return {{0,0},{0,0}};
 		}
 		struct LineCandidate {
 			PointUINT start;
@@ -1321,31 +1799,31 @@ namespace ScoreProcessor {
 		unsigned int left,right,top,bottom;
 		switch(image._spectrum)
 		{
-			case 1:
-			case 2:
+		case 1:
+		case 2:
+		{
+			auto selector=[=](auto color)
 			{
-				auto selector=[=](auto color)
-				{
-					return color[0]<background;
-				};
-				left=find_left<3>(image,tolerance,selector);
-				right=find_right<3>(image,tolerance,selector)+1;
-				top=find_top<3>(image,tolerance,selector);
-				bottom=find_bottom<3>(image,tolerance,selector)+1;
-				break;
-			}
-			default:
+				return color[0]<background;
+			};
+			left=find_left<3>(image,tolerance,selector);
+			right=find_right<3>(image,tolerance,selector)+1;
+			top=find_top<3>(image,tolerance,selector);
+			bottom=find_bottom<3>(image,tolerance,selector)+1;
+			break;
+		}
+		default:
+		{
+			auto selector=[bg=3*float(background)](auto color)
 			{
-				auto selector=[bg=3*float(background)](auto color)
-				{
-					return float(color[0])+color[1]+color[2]<bg;
-				};
-				left=find_left<3>(image,tolerance,selector);
-				right=find_right<3>(image,tolerance,selector)+1;
-				top=find_top<3>(image,tolerance,selector);
-				bottom=find_bottom<3>(image,tolerance,selector)+1;
-				break;
-			}
+				return float(color[0])+color[1]+color[2]<bg;
+			};
+			left=find_left<3>(image,tolerance,selector);
+			right=find_right<3>(image,tolerance,selector)+1;
+			top=find_top<3>(image,tolerance,selector);
+			bottom=find_bottom<3>(image,tolerance,selector)+1;
+			break;
+		}
 		}
 		if(left>right) return false;
 		if(top>bottom) return false;
@@ -1394,27 +1872,27 @@ namespace ScoreProcessor {
 		signed int x1,x2;
 		switch(image._spectrum)
 		{
-			case 1:
-			case 2:
+		case 1:
+		case 2:
+		{
+			auto selector=[=](auto color)
 			{
-				auto selector=[=](auto color)
-				{
-					return color[0]<=background;
-				};
-				x1=left_pad==-1?0:find_left<1>(image,tolerance,selector)-left_pad;
-				x2=right_pad==-1?image.width()-1:find_right<1>(image,tolerance,selector)+right_pad;
-				break;
-			}
-			default:
+				return color[0]<=background;
+			};
+			x1=left_pad==-1?0:find_left<1>(image,tolerance,selector)-left_pad;
+			x2=right_pad==-1?image.width()-1:find_right<1>(image,tolerance,selector)+right_pad;
+			break;
+		}
+		default:
+		{
+			auto selector=[bg=3U*unsigned int(background)](auto color)
 			{
-				auto selector=[bg=3U*unsigned int(background)](auto color)
-				{
-					return unsigned int(color[0])+color[1]+color[2]<=bg;
-				};
-				x1=left_pad==-1?0:find_left<3>(image,tolerance,selector)-left_pad;
-				x2=right_pad==-1?image.width()-1:find_right<3>(image,tolerance,selector)+right_pad;
-				break;
-			}
+				return unsigned int(color[0])+color[1]+color[2]<=bg;
+			};
+			x1=left_pad==-1?0:find_left<3>(image,tolerance,selector)-left_pad;
+			x2=right_pad==-1?image.width()-1:find_right<3>(image,tolerance,selector)+right_pad;
+			break;
+		}
 		}
 		if(x1>x2)
 		{
@@ -1436,27 +1914,27 @@ namespace ScoreProcessor {
 		signed int y1,y2;
 		switch(image._spectrum)
 		{
-			case 1:
-			case 2:
+		case 1:
+		case 2:
+		{
+			auto selector=[=](auto color)
 			{
-				auto selector=[=](auto color)
-				{
-					return color[0]<=background;
-				};
-				y1=tp==-1?0:find_top<1>(image,tolerance,selector)-tp;
-				y2=bp==-1?image.height()-1:find_bottom<1>(image,tolerance,selector)+bp;
-				break;
-			}
-			default:
+				return color[0]<=background;
+			};
+			y1=tp==-1?0:find_top<1>(image,tolerance,selector)-tp;
+			y2=bp==-1?image.height()-1:find_bottom<1>(image,tolerance,selector)+bp;
+			break;
+		}
+		default:
+		{
+			auto selector=[bg=3U*unsigned int(background)](auto color)
 			{
-				auto selector=[bg=3U*unsigned int(background)](auto color)
-				{
-					return unsigned int(color[0])+color[1]+color[2]<=bg;
-				};
-				y1=tp==-1?0:find_top<3>(image,tolerance,selector)-tp;
-				y2=bp==-1?image.height()-1:find_bottom<3>(image,tolerance,selector)+bp;
-				break;
-			}
+				return unsigned int(color[0])+color[1]+color[2]<=bg;
+			};
+			y1=tp==-1?0:find_top<3>(image,tolerance,selector)-tp;
+			y2=bp==-1?image.height()-1:find_bottom<3>(image,tolerance,selector)+bp;
+			break;
+		}
 		}
 		if(y1>y2)
 		{
@@ -1484,9 +1962,9 @@ namespace ScoreProcessor {
 			return unsigned short(color[0])+color[1]+color[2]<=threshold;
 		}):
 			global_select<1>(img,[bt](auto color)
-		{
-			return color[0]<=bt;
-		});
+				{
+					return color[0]<=bt;
+				});
 		auto clusters=Cluster::cluster_ranges(selections);
 		if(clusters.size()==0)
 		{
@@ -1552,11 +2030,11 @@ namespace ScoreProcessor {
 		if(image._spectrum==1)
 		{
 			clear_clusters(copy,std::array<unsigned char,1>({255}),[](auto val)
-			{
-				return val[0]<220;
-			},[threshold=2*copy._width/3](Cluster const& c){
-				return c.bounding_box().width()<threshold;
-			});
+				{
+					return val[0]<220;
+				},[threshold=2*copy._width/3](Cluster const& c){
+					return c.bounding_box().width()<threshold;
+				});
 		}
 		else
 		{
@@ -1908,7 +2386,7 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	void vertical_shift(cil::CImg<unsigned char>&img,bool eval_bottom,bool from_right,unsigned char background_threshold)
+	void vertical_shift(cil::CImg<unsigned char>& img,bool eval_bottom,bool from_right,unsigned char background_threshold)
 	{
 
 		std::vector<int> shifts(img._width);
@@ -2057,5 +2535,5 @@ namespace ScoreProcessor {
 			}
 		}
 	}
-	
+
 }

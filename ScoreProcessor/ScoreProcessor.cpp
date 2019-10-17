@@ -6,6 +6,7 @@
 #include "lib/exstring/exfiles.h"
 #include "Logs.h"
 #include <assert.h>
+#include <unordered_set>
 #include "Splice.h"
 #ifdef MAKE_README
 #include <fstream>
@@ -197,11 +198,6 @@ void help_output(CommandMaker const& cm)
 //lists out the files in files
 void list_files(std::vector<std::string> const& files)
 {
-	if(files.empty())
-	{
-		std::cout<<"No files were found.\n";
-	}
-	else
 	{
 		std::cout<<'\n';
 		for(auto const& file:files)
@@ -504,6 +500,52 @@ void do_splice(CommandMaker::delivery const& del,std::vector<std::string> const&
 	}
 }
 
+template<typename PathsIter>
+bool has_collisions(PathsIter begin,PathsIter end,SaveRules const& rules,unsigned int si)
+{
+	struct BasicString {
+		std::unique_ptr<char[]> data;
+		std::size_t len;
+		BasicString(std::size_t len):data{new char[len]},len{len}{}
+		bool operator==(BasicString const& other) const noexcept
+		{
+			return std::strcmp(data.get(),other.data.get())==0;
+		}
+		bool operator!=(BasicString const& other) const noexcept
+		{
+			return std::strcmp(data.get(),other.data.get())!=0;
+		}
+	};
+	struct Hasher {
+		std::size_t operator()(BasicString const& c) const
+		{
+			return std::_Hash_array_representation(c.data.get(),std::strlen(c.data.get()));
+		}
+	};
+	if(begin==end) return false;
+
+	auto make_path=[&rules](std::string const& a,unsigned int i)
+	{
+		auto const converted=rules.make_filename(a.c_str(),i);
+		BasicString out{_MAX_PATH};
+		GetFullPathNameA(converted.data(),_MAX_PATH,out.data.get(),nullptr);
+		return out;
+	};
+	std::unordered_set<BasicString,Hasher> paths;
+	auto first=paths.insert(make_path(*begin,si));
+	++si;
+	++begin;
+	for(;begin!=end;++begin,++si)
+	{
+		auto path=make_path(*begin,si);
+		auto res=paths.insert(std::move(path));
+		if(!res.second)
+		{
+			return true;
+		}
+	}
+	return false;
+}
 int main(int argc,InputIter argv)
 {
 #ifdef MAKE_README
@@ -552,11 +594,21 @@ int main(int argc,InputIter argv)
 		std::cout<<ex.what()<<'\n';
 		return 0;
 	}
+	if(files.empty())
+	{
+		std::cout<<"No files were found.\n";
+		return 0;
+	}
 	if(del.list_files)
 	{
 		list_files(files);
 	}
 	del.fix_values(files.size());
+	if(del.flag!=del.do_splice&&has_collisions(files.begin(),files.end(),del.sr,del.starting_index))
+	{
+		std::cout<<"Collision in output names\n";
+		return 0;
+	}
 	std::optional<Loggers::AmountLog> al;
 	Loggers::CoutLog cl;
 	switch(del.lt)

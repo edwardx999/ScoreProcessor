@@ -27,10 +27,54 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <mutex>
 #include "lib/threadpool/thread_pool.h"
 #include "../NeuralNetwork/neural_net.h"
+#include <optional>
 #ifdef _WIN64
 #define USE_CAFFE
 #endif
 namespace ScoreProcessor {
+
+#ifdef USE_CAFFE
+	class CaffeFilterNet {
+		class Impl;
+		std::unique_ptr<Impl> _impl;
+		static cil::CImg<unsigned char> cpu_run(Impl const* impl,cil::CImg<unsigned char> const& img);
+		static cil::CImg<unsigned char> gpu_run(Impl const* impl,cil::CImg<unsigned char> const& img);
+		static std::optional<cil::CImg<unsigned char>> try_gpu_run(Impl const* impl,cil::CImg<unsigned char> const& img);
+	public:
+		CaffeFilterNet(std::filesystem::path const& file);
+		cil::CImg<unsigned char> cpu_run(cil::CImg<unsigned char> const& img) const
+		{
+			return cpu_run(_impl.get(),img);
+		}
+		cil::CImg<unsigned char> gpu_run(cil::CImg<unsigned char> const& img) const
+		{
+			return gpu_run(_impl.get(),img);
+		}
+		std::optional<cil::CImg<unsigned char>> try_gpu_run(cil::CImg<unsigned char> const& img) const
+		{
+			return try_gpu_run(_impl.get(),img);
+		}
+	};
+#endif
+
+	bool remove_empty_lines(cil::CImg<unsigned char>& img,unsigned char background_threshold,unsigned int min_space,unsigned int min_horizontal_protection);
+
+	/*
+		Compress the image vertical and return whether changes were made.
+		background_threshold - pixels <= this are considered background
+		min_space - if vertical spacing is greater than this it can be removed
+		min_horiz_protection - regions of the largest cluster through which a horizontal path can be traced at least this length are protected
+		max_vertical_protection - regions of the largest cluster through which a vertical can be be traced less at least this length are treated like background
+		protection has higher authority over mark for removal
+	*/
+	bool compress_vertical(
+		cil::CImg<unsigned char>& img,
+		unsigned char background_threshold,
+		unsigned int min_vertical_space,
+		unsigned int min_horizontal_space,
+		unsigned int min_horiz_protection,
+		unsigned int max_vertical_protection,
+		unsigned int min_height);
 
 	template<typename T>
 	cil::CImg<T> to_rgb(cil::CImg<T> const& img)
@@ -222,6 +266,11 @@ namespace ScoreProcessor {
 		T* _top;
 		size_t _width;
 	public:
+		using difference_type=std::ptrdiff_t;
+		using value_type=T;
+		using pointer=T*;
+		using reference=T&;
+		using iterator_category=std::random_access_iterator_tag;
 		vertical_iterator(cil::CImg<T> const& img,unsigned int column,unsigned int spectrum=0) noexcept:_top{img.data()+column+size_t{spectrum}*img._width*img._height},_width{img._width}{}
 		vertical_iterator(cil::CImg<T>& img,unsigned int column,unsigned int spectrum=0) noexcept:_top{img.data()+column+size_t{spectrum}*img._width*img._height},_width{img._width}{}
 		vertical_iterator(T* top,unsigned int width) noexcept:_top{top},_width{width}{}
@@ -1246,11 +1295,11 @@ namespace ScoreProcessor {
 		Does a scanline flood operation from a seed (DOES NOT KEEP TRACK OF SELECTED PIXELS ITSELF)
 		img - img to flood op on
 		start - where flood starts from
-		selector - function that takes a PointUINT and returns whether it is a valid point, may do other stuff to
-		dwl - takes in a HorizontalLine
+		selector - function that takes a PointUINT and returns whether it is a valid point, may do other stuff too
+		dwl - takes in a horizontal_line<>
 	*/
 	template<typename Img,typename Selector,typename DoWithLine>
-	void flood_operation(Img& img,ImageUtils::PointUINT start,Selector& selector,DoWithLine& dwl)
+	void flood_operation(Img&& img,ImageUtils::PointUINT start,Selector&& selector,DoWithLine&& dwl)
 	{
 		std::vector<detail::scan_range> scan_ranges;
 		return detail::flood_operation(img,start,selector,dwl,scan_ranges);
@@ -1316,11 +1365,11 @@ void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtil
 	{
 		if(shifty>0) //shiftx>0 and shifty>0
 		{
-			for(unsigned int x=selection.right;x-->selection.left;)
+			for(unsigned int s=0;s<numChannels;++s)
 			{
-				for(unsigned int y=selection.bottom;y-->selection.top;)
+				for(unsigned int x=selection.right;x-->selection.left;)
 				{
-					for(unsigned int s=0;s<numChannels;++s)
+					for(unsigned int y=selection.bottom;y-->selection.top;)
 					{
 						image(x,y,s)=image(x-shiftx,y-shifty,s);
 					}
@@ -1329,11 +1378,11 @@ void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtil
 		}
 		else //shiftx>0 and shifty<=0
 		{
-			for(unsigned int x=selection.right;x-->selection.left;)
+			for(unsigned int s=0;s<numChannels;++s)
 			{
-				for(unsigned int y=selection.top;y<selection.bottom;++y)
+				for(unsigned int x=selection.right;x-->selection.left;)
 				{
-					for(unsigned int s=0;s<numChannels;++s)
+					for(unsigned int y=selection.top;y<selection.bottom;++y)
 					{
 						image(x,y,s)=image(x-shiftx,y-shifty,s);
 					}
@@ -1345,11 +1394,11 @@ void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtil
 	{
 		if(shifty>0) //shiftx<=0 and shifty>0
 		{
-			for(unsigned int x=selection.left;x<selection.right;++x)
+			for(unsigned int s=0;s<numChannels;++s)
 			{
-				for(unsigned int y=selection.bottom;y-->selection.top;)
+				for(unsigned int x=selection.left;x<selection.right;++x)
 				{
-					for(unsigned int s=0;s<numChannels;++s)
+					for(unsigned int y=selection.bottom;y-->selection.top;)
 					{
 						image(x,y,s)=image(x-shiftx,y-shifty,s);
 					}
@@ -1358,11 +1407,11 @@ void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtil
 		}
 		else //shiftx<=0 and shifty<=0
 		{
-			for(unsigned int x=selection.left;x<selection.right;++x)
+			for(unsigned int s=0;s<numChannels;++s)
 			{
-				for(unsigned int y=selection.top;y<selection.bottom;++y)
+				for(unsigned int x=selection.left;x<selection.right;++x)
 				{
-					for(unsigned int s=0;s<numChannels;++s)
+					for(unsigned int y=selection.top;y<selection.bottom;++y)
 					{
 						image(x,y,s)=image(x-shiftx,y-shifty,s);
 					}
@@ -1641,7 +1690,7 @@ namespace ScoreProcessor {
 	template<unsigned int num_layers,typename T,typename Selector>
 	std::vector<ImageUtils::Rectangle<unsigned int>> global_select(
 		::cil::CImg<T> const& image,
-		Selector keep)
+		Selector keep,bool compress=true)
 	{
 		static_assert(num_layers>0,"Positive number of layers required");
 		assert(image._spectrum>=num_layers);
@@ -1699,7 +1748,10 @@ namespace ScoreProcessor {
 				range_found=0;
 			}
 		}
-		ImageUtils::compress_rectangles(container);
+		if(compress)
+		{
+			ImageUtils::compress_rectangles(container);
+		}
 		return container;
 	}
 
