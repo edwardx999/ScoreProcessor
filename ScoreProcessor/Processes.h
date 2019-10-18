@@ -111,11 +111,12 @@ namespace ScoreProcessor {
 
 	class Crop:public ImageProcess<> {
 	public:
-		using mark=exlib::maybe_fixed<int,float>;
+		using mark=std::optional<int>;
 	private:
-		mark left,top,right,bottom;
+		int left,top;
+		mark right,bottom;
 	public:
-		inline Crop(mark l,mark t,mark r,mark b):left(l),top(t),right(r),bottom(b)
+		inline Crop(int l,int t,mark r,mark b):left(l),top(t),right(r),bottom(b)
 		{}
 		bool process(Img& img) const override;
 	};

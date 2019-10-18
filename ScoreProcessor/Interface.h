@@ -1343,32 +1343,28 @@ namespace ScoreProcessor {
 			}
 		};
 
+		inline void check_flagged(int base,flagged comp,char const* err_msg1,char const* err_msg2)
+		{
+			if(!comp.flag)
+			{
+				if(comp.value<=base)
+				{
+					throw std::invalid_argument(err_msg1);
+				}
+			}
+			else
+			{
+				if(comp.value<0)
+				{
+					throw std::invalid_argument(err_msg2);
+				}
+			}
+		}
+
 		inline ImageUtils::Rectangle<int> coords_to_rect(int left,int top,flagged right,flagged bottom)
 		{
-			if(!right.flag)
-			{
-				if(right.value<=left)
-					throw std::invalid_argument("Right coord must be greater than left coord");
-			}
-			else
-			{
-				if(right.value<0)
-				{
-					throw std::invalid_argument("Width cannot be negative");
-				}
-			}
-			if(!bottom.flag)
-			{
-				if(bottom.value<=top)
-					throw std::invalid_argument("Bottom coord must be greater than top coord");
-			}
-			else
-			{
-				if(bottom.value<0)
-				{
-					throw std::invalid_argument("Height cannot be negative");
-				}
-			}
+			check_flagged(left,right,"Right coord must be greater than left coord","Width cannot be negative");
+			check_flagged(top,bottom,"Bottom coord must be greater than top coord","Height cannot be negative");
 			ImageUtils::Rectangle<int> rect;
 			rect.left=left;
 			rect.top=top;
@@ -2660,23 +2656,60 @@ namespace ScoreProcessor {
 
 	namespace Cropper {
 
-		using FRMaker::Left;
+		template<typename Base>
+		struct TLParser:Base {
+			cndf(int(0))
+		};
 
-		using FRMaker::Top;
+		using Left=TLParser<FRMaker::Left>;
 
-		using FRMaker::Bottom;
-
-		using FRMaker::Right;
+		using Top=TLParser<FRMaker::Top>;
 
 		using FRMaker::flagged;
+		
+		template<typename Base>
+		struct RBParser:Base {
+			static std::optional<flagged> parse(char const* c,size_t prefix)
+			{
+				if(*c=='k')
+				{
+					return {};
+				}
+				return Base::parse(c,prefix);
+			}
+			cndf(std::optional<flagged>())
+		};
 
-		using FRMaker::coords_to_rect;
+		using Bottom=RBParser<FRMaker::Bottom>;
+
+		using Right=RBParser<FRMaker::Right>;
 
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,int l,int t,flagged r,flagged b)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,int l,int t,std::optional<flagged> r,std::optional<flagged> b)
 			{
-				auto rect=coords_to_rect(l,t,r,b);
-				del.pl.add_process<Crop>(rect.left,rect.top,rect.right,rect.bottom);
+				auto fix_value=[](int base,auto& val,auto err_msg1,auto err_msg2)
+				{
+					if(val.has_value())
+					{
+						auto& value=val.value();
+						FRMaker::check_flagged(base,value,err_msg1,err_msg2);
+						if(value.flag)
+						{
+							value.value+=base;
+						}
+					}
+				};
+				fix_value(l,r,"Right coord must be greater than left coord","Width cannot be negative");
+				fix_value(t,b,"Bottom coord must be greater than top coord","Height cannot be negative");
+				auto flagged_to_optional_int=[](auto flagged) -> std::optional<int>
+				{
+					if(flagged.has_value())
+					{
+						return {flagged.value().value};
+					}
+					return {};
+				};
+				del.pl.add_process<Crop>(l,t,flagged_to_optional_int(r),flagged_to_optional_int(b));
 			}
 		};
 

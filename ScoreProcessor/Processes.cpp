@@ -97,17 +97,24 @@ namespace ScoreProcessor {
 		auto const h=img.height();
 		using rint=ImageUtils::Rectangle<int>;
 		rint region;
-		region.left=left(w,h);
-		region.right=right(w,h);
-		region.top=top(w,h);
-		region.bottom=bottom(w,h);
+		region.left=left;
+		region.right=right.value_or(w);
+		region.top=top;
+		region.bottom=bottom.value_or(h);
 		if(region==rint({0,w,0,h}))
 		{
 			return false;
 		}
-		region.right--;
-		region.bottom--;
-		img=get_crop_fill(img,region,unsigned char(255));
+		if(region.right<=region.left||region.bottom<=region.top)
+		{
+			img=Img();
+		}
+		else
+		{
+			region.right--;
+			region.bottom--;
+			img=get_crop_fill(img,region,unsigned char(255));
+		}
 		return true;
 	}
 
