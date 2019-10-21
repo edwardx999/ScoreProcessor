@@ -39,7 +39,7 @@ namespace ScoreProcessor {
 				"gamma: gamma correction applied; tags: g, gam\n"
 				"use horiz: whether to use horizontal or vertical lines to determine angle",
 				"Straighten",
-				"min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2");
+				"min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2 use_horiz=t");
 	}
 
 	namespace CGMaker {
@@ -384,12 +384,13 @@ namespace ScoreProcessor {
 			"are protected. Pixels of the largest cluster through which\n"
 			"a long horizontal path or only a short vertical path\n"
 			"are protected.\n"
-			"min space; tag: ms\n"
+			"min vertical space; tag: ms, mvs\n"
 			"min horizontal protection; tag: mhp\n"
 			"max vertical protection; tag: mvp\n"
-			"background threshold; tag: bg",
+			"background threshold; tag: bg\n"
+			"min horizontal space; tag: mhs",
 			"Vertical Compress",
-			"min_space min_horiz_pr max_vert_pr background=128"
+			"min_vert_space min_horiz_pr max_vert_pr background=128 min_horiz_space=mvs"
 		};
 	}
 }
