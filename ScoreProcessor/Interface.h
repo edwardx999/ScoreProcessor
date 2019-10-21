@@ -1106,7 +1106,7 @@ namespace ScoreProcessor {
 				}
 				else
 				{
-					return !actual[0]=='t';
+					return actual[0]!='t';
 				}
 			}
 		};
