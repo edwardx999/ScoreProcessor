@@ -1633,7 +1633,7 @@ namespace ScoreProcessor {
 		return RAD_DEG*auto_rotate_bare(image,pixel_prec,min_angle*DEG_RAD+M_PI_2,max_angle*DEG_RAD+M_PI_2,(max_angle-min_angle)/angle_prec+1,boundary);
 	}
 
-	float find_angle_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary)
+	float find_angle_bare(::cimg_library::CImg<unsigned char>& img,double pixel_prec,double min_angle,double max_angle,unsigned int angle_steps,unsigned char boundary,bool use_horiz)
 	{
 		assert(angle_steps>0);
 		assert(pixel_prec>0);
@@ -1644,31 +1644,65 @@ namespace ScoreProcessor {
 		}
 		if(img._spectrum<3)
 		{
-			auto selector=[&img,boundary](unsigned int x,unsigned int y)
+			if(use_horiz)
 			{
-				auto const top=img(x,y);
-				auto const bottom=img(x,y+1);
-				return
-					//(top<=boundary&&bottom>boundary)||
-					(top>boundary&& bottom<=boundary);
-			};
-			HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
-			return M_PI_2-ha.angle();
+				auto selector=[&img,boundary](unsigned int x,unsigned int y)
+				{
+					auto const top=img(x,y);
+					auto const bottom=img(x,y+1);
+					return
+						//(top<=boundary&&bottom>boundary)||
+						(top>boundary&& bottom<=boundary);
+				};
+				HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
+				return M_PI_2-ha.angle();
+			}
+			else
+			{
+				auto selector=[&img,boundary](unsigned int x,unsigned int y)
+				{
+					auto const left=img(x,y);
+					auto const right=img(x+1,y);
+					return
+						//(left<=boundary&&right>boundary)||
+						(left>boundary&& right<=boundary);
+				};
+				HoughArray<unsigned short> ha(selector,img._width-1,img._height,M_PI_2+min_angle,M_PI_2+max_angle,angle_steps,pixel_prec);
+				return M_PI-ha.angle();
+			}
 		}
 		else
 		{
-			auto selector=[&img,boundary=3U*boundary,size=size_t(img._width)*img._height](unsigned int x,unsigned int y)
+			if(use_horiz)
 			{
-				auto const ptop=&img(x,y);
-				auto const pbottom=&img(x,y+1);
-				auto const top=unsigned int(*ptop)+*(ptop+size)+*(ptop+2*size);
-				auto const bottom=unsigned int(*pbottom)+*(pbottom+size)+*(pbottom+2*size);
-				return
-					//(top<=boundary&&bottom>boundary)||
-					(top>boundary&& bottom<=boundary);
-			};
-			HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
-			return M_PI_2-ha.angle();
+				auto selector=[&img,boundary=3U*boundary,size=size_t(img._width)*img._height](unsigned int x,unsigned int y)
+				{
+					auto const ptop=&img(x,y);
+					auto const pbottom=&img(x,y+1);
+					auto const top=unsigned int(*ptop)+*(ptop+size)+*(ptop+2*size);
+					auto const bottom=unsigned int(*pbottom)+*(pbottom+size)+*(pbottom+2*size);
+					return
+						//(top<=boundary&&bottom>boundary)||
+						(top>boundary&& bottom<=boundary);
+				};
+				HoughArray<unsigned short> ha(selector,img._width,img._height-1,min_angle,max_angle,angle_steps,pixel_prec);
+				return M_PI_2-ha.angle();
+			}
+			else
+			{
+				auto selector=[&img,boundary=3U*boundary,size=size_t(img._width)*img._height](unsigned int x,unsigned int y)
+				{
+					auto const ptop=&img(x,y);
+					auto const pbottom=&img(x+1,y);
+					auto const top=unsigned int(*ptop)+*(ptop+size)+*(ptop+2*size);
+					auto const bottom=unsigned int(*pbottom)+*(pbottom+size)+*(pbottom+2*size);
+					return
+						//(top<=boundary&&bottom>boundary)||
+						(top>boundary&& bottom<=boundary);
+				};
+				HoughArray<unsigned short> ha(selector,img._width-1,img._height,M_PI_2+min_angle,M_PI_2+max_angle,angle_steps,pixel_prec);
+				return M_PI-ha.angle();
+			}
 		}
 	}
 

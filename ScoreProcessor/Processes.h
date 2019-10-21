@@ -217,12 +217,13 @@ namespace ScoreProcessor {
 		double min_angle,max_angle;
 		unsigned char boundary;
 		float gamma;
+		bool use_horiz;
 	public:
-		inline Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary,float gamma)
+		inline Straighten(double pixel_prec,double min_angle,double max_angle,double angle_prec,unsigned char boundary,float gamma,bool use_horiz)
 			:pixel_prec(pixel_prec),
 			min_angle(M_PI_2+min_angle*DEG_RAD),max_angle(M_PI_2+max_angle*DEG_RAD),
 			num_steps(std::ceil((max_angle-min_angle)/angle_prec)),
-			boundary(boundary),gamma(gamma)
+			boundary(boundary),gamma(gamma),use_horiz(use_horiz)
 		{}
 		bool process(Img& img) const override;
 	};

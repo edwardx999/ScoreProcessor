@@ -29,17 +29,15 @@ namespace ScoreProcessor {
 	}
 
 	namespace StrMaker {
-		SingMaker<UseTuple,
-			DoubleParser<MinAngle,no_check>,DoubleParser<MaxAngle,no_check>,
-			DoubleParser<AnglePrec>,DoubleParser<PixelPrec>,
-			IntegerParser<unsigned char,Boundary>,FloatParser<Gamma>>
+		decltype(maker)
 			maker("Straightens the image\n"
 				"min angle: minimum angle to consider rotation; tags: mn, min, mna\n"
 				"max angle: maximum angle to consider rotation; tags: mx, max, mxa\n"
 				"angle prec: quantization of angles to consider; tags: a, ap\n"
 				"pixel prec: pixels this close are considered the same; tags: p, pp\n"
 				"boundary, vertical transition across this is considered an edge; tags: b\n"
-				"gamma: gamma correction applied; tags: g, gam",
+				"gamma: gamma correction applied; tags: g, gam\n"
+				"use horiz: whether to use horizontal or vertical lines to determine angle",
 				"Straighten",
 				"min_angle=-5 max_angle=5 angle_prec=0.1 pixel_prec=1 boundary=128 gamma=2");
 	}

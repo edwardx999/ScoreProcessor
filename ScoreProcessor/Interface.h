@@ -1093,8 +1093,26 @@ namespace ScoreProcessor {
 			cndf(float(2))
 		};
 
+		struct UseHoriz {
+			cnnm("use horiz");
+			clbl("h","horiz","v","vert","vertical","horizontal");
+			cndf(true)
+			static bool parse(char const* in,size_t prefix_len)
+			{
+				auto const actual=in+prefix_len+1;
+				if(prefix_len==-1||in[0]=='h')
+				{
+					return actual[0]=='t';
+				}
+				else
+				{
+					return !actual[0]=='t';
+				}
+			}
+		};
+
 		struct UseTuple {
-			PMINLINE static void use_tuple(CommandMaker::delivery& del,double mn,double mx,double a,double p,unsigned char b,float g)
+			PMINLINE static void use_tuple(CommandMaker::delivery& del,double mn,double mx,double a,double p,unsigned char b,float g,bool use_horiz)
 			{
 				if(mn>=mx)
 				{
@@ -1104,7 +1122,7 @@ namespace ScoreProcessor {
 				{
 					throw std::invalid_argument("Difference between angles must be less than or equal to 180");
 				}
-				del.pl.add_process<Straighten>(p,mn,mx,a,b,g);
+				del.pl.add_process<Straighten>(p,mn,mx,a,b,g,use_horiz);
 			}
 		};
 
@@ -1114,7 +1132,7 @@ namespace ScoreProcessor {
 			SingMaker<UseTuple,
 			DoubleParser<MinAngle,no_check>,DoubleParser<MaxAngle,no_check>,
 			DoubleParser<AnglePrec>,DoubleParser<PixelPrec>,
-			IntegerParser<unsigned char,Boundary>,GammaParser>
+			IntegerParser<unsigned char,Boundary>,GammaParser,UseHoriz>
 			maker;
 	}
 

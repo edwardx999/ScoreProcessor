@@ -368,7 +368,7 @@ namespace ScoreProcessor {
 
 	bool Straighten::process(Img& img) const
 	{
-		auto angle=find_angle_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary);
+		auto angle=find_angle_bare(img,pixel_prec,min_angle,max_angle,num_steps,boundary,use_horiz);
 		if(angle==0)
 		{
 			return false;
