@@ -3109,7 +3109,7 @@ namespace ScoreProcessor {
 				del.pl.add_process<VertCompress>(mvs,mhs,mh,mv,bg);
 			}
 		};
-		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxVerticalProtection>,UIntParser<MaxVerticalProtection>,HPMaker::BGParser,MinHSpace> maker;
+		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxVerticalProtection>,UIntParser<MinHorizProtection>,HPMaker::BGParser,MinHSpace> maker;
 	}
 
 	struct compair {
