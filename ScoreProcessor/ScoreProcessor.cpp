@@ -592,7 +592,7 @@ int main(int argc,InputIter argv)
 	catch(std::exception const& ex)
 	{
 		std::cout<<ex.what()<<'\n';
-		return 0;
+		return 1;
 	}
 	if(files.empty())
 	{
@@ -607,7 +607,7 @@ int main(int argc,InputIter argv)
 	if(del.flag!=del.do_splice&&has_collisions(files.begin(),files.end(),del.sr,del.starting_index))
 	{
 		std::cout<<"Collision in output names\n";
-		return 0;
+		return 1;
 	}
 	std::optional<Loggers::AmountLog> al;
 	Loggers::CoutLog cl;

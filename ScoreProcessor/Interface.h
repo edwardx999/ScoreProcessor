@@ -312,7 +312,7 @@ namespace ScoreProcessor {
 	//parses a float and ensures it is between 0 and 1
 	//and allows % at the end to input percentages
 	//n: object to use get name from to throw an appropriate error
-	inline float parse01(char const* cp)
+	inline float parse01(char const* cp, float min=0, float max=1)
 	{
 		float v;
 		auto res=exlib::parse(cp,v);
@@ -335,9 +335,9 @@ namespace ScoreProcessor {
 			if(*res.last!=' ') throw std::invalid_argument("Invalid argument");
 			++res.last;
 		}
-		if(v<0||v>1)
+		if(v<min||v>max)
 		{
-			throw std::invalid_argument("Argument must be in range [0,1]");
+			throw std::invalid_argument("Argument must be in range [" +std::to_string(min)+","+std::to_string(max)+"]");
 		}
 		return v;
 	}
@@ -2513,7 +2513,7 @@ namespace ScoreProcessor {
 					if(actual[sl-1]=='%') return pv(parse01(actual),0);
 					return pv(UIntParser<Base>().parse(actual));
 				}
-				auto amount=parse01(actual);
+				auto amount=parse01(actual,0,INFINITY);
 				if(it[3]=='w')
 				{
 					return pv(amount,0);
@@ -3112,6 +3112,64 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxVerticalProtection>,UIntParser<MinHorizProtection>,HPMaker::BGParser,MinHSpace> maker;
 	}
 
+	namespace ResizeToBoundMaker {
+
+		struct Width {
+			cnnm("width");
+			clbl("w","width");
+		};
+
+		struct Height {
+			cnnm("height");
+			clbl("h", "height");
+		};
+
+		struct Pad {
+			cnnm("pad");
+			clbl("pad", "fill");			
+			static int parse(InputType in, std::size_t prefix_len)
+			{
+				auto const real_start = in + prefix_len + 1;
+				if(real_start==in || in[0] == 'p')
+				{
+					if(real_start[0] == 't')
+					{
+						return 255;
+					}
+					return -1;
+				}
+				else
+				{
+					return UCharParser<Pad>().parse(real_start);
+				}
+			}
+			cndf(int(-1))
+		};
+
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del, unsigned int width, unsigned height, int fill, Rescale::rescale_mode mode, float gamma)
+			{
+				if(fill == -1)
+				{
+					del.pl.add_process<ResizeToBound>(width, height, false, 0, mode, gamma);
+				}
+				else
+				{
+					del.pl.add_process<ResizeToBound>(width, height, true, unsigned char(fill), mode, gamma);
+				}
+			}
+		};
+
+		extern SingMaker<UseTuple, 
+			UIntParser<Width,force_positive>, 
+			UIntParser<Height, force_positive>,
+			Pad,
+			RsMaker::Mode,
+			RotMaker::GammaParser
+		> maker;
+
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -3156,7 +3214,8 @@ namespace ScoreProcessor {
 			compair("tme",&TemplateClearMaker::maker),
 			compair("stme",&SlidingTemplateClearMaker::maker),
 			compair("rel",&RemoveEmptyLinesMaker::maker),
-			compair("vc",&VerticalCompressMaker::maker));
+			compair("vc",&VerticalCompressMaker::maker),
+			compair("rsb",&ResizeToBoundMaker::maker));
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),

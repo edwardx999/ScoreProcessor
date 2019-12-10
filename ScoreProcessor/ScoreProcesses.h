@@ -846,6 +846,48 @@ namespace ScoreProcessor {
 		}
 		return ret;
 	}
+
+	// bg: std::array<T,Layers> pixel -> U brightness
+	// repl: std::array<T,Layers>& pixel, ThresholdCalcType threshold -> void
+	template<std::size_t Layers,typename ThresholdCalcType=float,typename T,typename BrightnessGetter,typename Replacer>
+	void local_sauvola(cil::CImg<T>& img,unsigned int window_radius,BrightnessGetter bg,Replacer repl,ThresholdCalcType k,ThresholdCalcType max_standard_deviation=128)
+	{
+		auto const integral=cil::integral_image<Layers>(img,[bg](auto input)
+			{
+				return std::array{bg(input)};
+			});
+		auto const integral_squared=cil::integral_image<Layers>(img,[bg](auto input)
+			{
+				decltype(auto) res=bg(input);
+				return std::array{res*res};
+			});
+		std::size_t const wradius=window_radius;
+		std::size_t const width=img._width;
+		std::size_t const height=img._height;
+		auto const area=width*height;
+		for(std::size_t y=0;y<height;++y)
+		{
+			auto const y_min=wradius>y?0:y-wradius;
+			auto const y_max=std::min(y+wradius,height);
+			auto const y_dist=y_max-y_min;
+			for(std::size_t x=0;x<width;++x)
+			{
+				auto const x_min=wradius>x?0:x-wradius;
+				auto const x_max=std::min(x+wradius,width);
+				auto const area=y_dist*(x_max-m_min);
+				auto get_point=[&](auto& img)
+				{
+					return ThresholdCalcType(img(x_max-1,y_max-1)-img(x_min,y_min))/area;
+				};
+				ThresholdCalcType const mean=get_point(integral);
+				ThresholdCalcType const mean_of_squared=get_point(integral_squared);
+				auto const std_dev=sqrt(mean_of_squared-mean*mean);
+				auto const threshold=mean*(1+k*(std_dev/max_standard_deviation-1));
+				repl(cil::pixel_reference<Layers>(&img(x,y),area),threshold);
+			}
+		}
+	}
+
 	/*
 		Reduces colors to two colors
 		@param image, must be a 3 channel RGB image

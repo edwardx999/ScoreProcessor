@@ -393,4 +393,18 @@ namespace ScoreProcessor {
 			"min_vert_space min_horiz_pr max_vert_pr background=128 min_horiz_space=mvs"
 		};
 	}
+
+	namespace ResizeToBoundMaker {
+		decltype(maker) maker{
+			"Forces image to fit in given size bounds,\n"
+			"optionally padding image\n"
+			"width; tags: w, width\n"
+			"height; tags: h, height\n"
+			"fill; tags: fill:color, pad:t or f; pad:t equivalent to fill:255\n"
+			"mode; see -rs\n"
+			"gamma; see -rs",
+			"Resize to Bound",
+			"width height fill=pad:f interpolation_mode=auto gamma=2"
+		};
+	}
 }

@@ -196,7 +196,7 @@ namespace ScoreProcessor {
 		std::array<unsigned char,4> color;
 		unsigned int num_layers;
 	public:
-		inline FillRectangle(ImageUtils::Rectangle<signed int> offsets,std::array<unsigned char,4> color,unsigned int num_layers,origin_reference orgn):offsets(offsets),color(color),num_layers(num_layers),origin(orgn)
+		FillRectangle(ImageUtils::Rectangle<signed int> offsets,std::array<unsigned char,4> color,unsigned int num_layers,origin_reference orgn):offsets(offsets),color(color),num_layers(num_layers),origin(orgn)
 		{
 			assert(origin>=top_left&&origin<=bottom_right);
 		}
@@ -238,7 +238,7 @@ namespace ScoreProcessor {
 		float angle;
 		interp_mode mode;
 	public:
-		inline Rotate(float angle,interp_mode mode):angle(angle),mode(mode)
+		Rotate(float angle,interp_mode mode):angle(angle),mode(mode)
 		{}
 		bool process(Img& img) const override;
 	};
@@ -297,8 +297,9 @@ namespace ScoreProcessor {
 		int width;
 		int height;
 		FillRectangle::origin_reference origin;
+		unsigned char fill;
 	public:
-		ChangeCanvasSize(int width,int height,FillRectangle::origin_reference origin):width{width},height{height},origin{origin}{}
+		ChangeCanvasSize(int width, int height, FillRectangle::origin_reference origin, unsigned char fill = 255):width{width}, height{height}, origin{origin}, fill{fill}{}
 		bool process(Img&) const override;
 	};
 
@@ -454,6 +455,27 @@ namespace ScoreProcessor {
 			min_horizontal_protection{min_horiz_prot},
 			max_vertical_protection{max_vert_prot},
 			background_threshold{bt}{}
+		bool process(Img&) const override;
+	};
+
+	class ResizeToBound:public ImageProcess<> {
+	protected:
+		unsigned int width;
+		unsigned int height;
+		bool pad;
+		unsigned char fill;
+		Rescale::rescale_mode mode;
+		float gamma;
+	public:
+		ResizeToBound(unsigned int width, unsigned int height, bool pad=false, unsigned char fill=255,Rescale::rescale_mode mode=Rescale::automatic, float gamma=2):
+			width(width),height(height),pad(pad),fill(fill),mode(mode),gamma(gamma){}
+
+		bool process(Img&) const override;
+	};
+
+	class SquishToBound:public ResizeToBound {
+	public:
+		using ResizeToBound::ResizeToBound;
 		bool process(Img&) const override;
 	};
 
