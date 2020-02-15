@@ -264,7 +264,7 @@ namespace cimg_library {
 	}
 
 	template<unsigned int NumLayers,typename T,typename ArrayRToR,typename R>
-	R fold(CImg<T>const & img,ArrayRToR func,R acc)
+	R fold(CImg<T>const& img,ArrayRToR func,R acc)
 	{
 		auto const data=img._data;
 		auto const size=size_t(img._width)*img._height; //I hope the compiler can realize this is unused if NumLayers==1
@@ -282,7 +282,7 @@ namespace cimg_library {
 	}
 
 	template<unsigned int Numlayers,typename T,typename ArrayRToR,typename R>
-	R fold(CImg<T>const & img,ArrayRToR func,R acc,ImageUtils::Rectangle<unsigned int> const selection)
+	R fold(CImg<T>const& img,ArrayRToR func,R acc,ImageUtils::Rectangle<unsigned int> const selection)
 	{
 		unsigned int const width=img._width;
 		auto const size=size_t(width)*img._height;
@@ -599,7 +599,7 @@ namespace cimg_library {
 		auto max_it=begin();
 		for(auto it=max_it+1;it!=end();++it)
 		{
-			if(*it>*max_it)
+			if(*it>* max_it)
 			{
 				max_it=it;
 			}
@@ -613,7 +613,7 @@ namespace cimg_library {
 		exlib::LimitedSet<decltype(begin())> top;
 		auto comp=[](auto a,auto b)
 		{
-			return *a>*b;
+			return *a>* b;
 		};
 		for(auto it=begin();it!=end();++it)
 		{
@@ -643,41 +643,103 @@ namespace cimg_library {
 		};
 	}
 
-	template<typename T,typename U,typename Transformer=functions::identity>
+	namespace detail {
+		template<typename T,std::size_t... I>
+		auto pixel_reference(T* location,std::size_t image_size,std::index_sequence<I...>)
+		{
+			return std::tie(*(location+image_size*I)...);
+		}
+	}
+
+	template<std::size_t Layers=1,typename T>
+	auto pixel_reference(T* location,std::size_t image_layer_size)
+	{
+		return detail::pixel_reference(location,image_layer_size,std::make_index_sequence<Layers>{});
+	}
+
+	namespace detail {
+
+		template<typename Arr,std::size_t... I,typename Op>
+		constexpr Arr array_sum(Arr a,Arr b,std::index_sequence<I...>,Op op)
+		{
+			return {{op(a[I],b[I])...}};
+		}
+
+		template<typename T,std::size_t S>
+		constexpr std::array<T,S> array_sum(std::array<T,S> a,std::array<T,S> b)
+		{
+			return array_sum(a,b,std::make_index_sequence<S>{},std::plus<>{});
+		}
+
+		template<typename T,std::size_t S>
+		constexpr std::array<T,S> array_diff(std::array<T,S> a,std::array<T,S> b)
+		{
+			return array_sum(a,b,std::make_index_sequence<S>{},std::minus<>{});
+		}
+
+		template<typename T,typename U,typename Transformer,std::size_t... InLayers,std::size_t... OutLayers>
+		void integral_image(CImg<T>& out,CImg<U> const& img,Transformer transform,std::index_sequence<InLayers...>,std::index_sequence<OutLayers...> oi)
+		{
+			assert(out._width==img._width&&out._height==img._height);
+			std::size_t const width=img._width;
+			std::size_t const height=img._height;
+			auto const size=width*height;
+			auto const output_data=&out(0);
+			auto const input_data=&img(0);
+			auto output_tuple=[size](auto* output_point)
+			{
+				return std::tie(*(output_point+size*OutLayers)...);
+			};
+			auto input_tuple=[size,transform](auto* input_point)
+			{
+				transform(*(input_data+size*InLayers)...);
+			};
+			output_tuple(output_data)=input_tuple(input_data);
+			for(std::size_t x=1;x<width;++x)
+			{
+				output_tuple(output_data+x)=array_sum(input_tuple(input_data+x),output_tuple(output_data[x-1]));
+			}
+			for(std::size_t y=1;y<height;++y)
+			{
+				auto const output_row=output_data+y*width;
+				auto const prev_output_row=output_row-width;
+				auto const input_row=input_data+y*width;
+				output_tuple(output_row)=array_sum(input_tuple(input_row),output_tuple(prev_output_row));
+				for(std::size_t x=1;x<width;++x)
+				{
+					output_tuple(output_row+x)=
+						array_diff(array_sum(input_tuple(input_row+x),array_sum(output_tuple(output_row+x-1),output_tuple(prev_output_row+x))),
+							output_tuple(prev_output_row+x-1));
+				}
+			}
+		}
+	}
+
+	template<std::size_t InputLayers=1,typename T,typename U,typename Transformer=functions::identity>
+	void integral_image(CImg<T>& out,CImg<U> const& img,Transformer transform={})
+	{
+		assert(out._width==img._width&&out._height==img._height);
+		using OutLayers=std::make_index_sequence<std::tuple_size_v<decltype(transform(std::declval<std::array<U,InputLayers>>()))>>;
+		detail::integral_image(out,img,transform,std::make_index_sequence<InputLayers>{},OutLayers{});
+	}
+
+	template<typename T,std::size_t InputLayers=1,typename U,typename Transformer=functions::identity>
 	CImg<T> integral_image(CImg<U> const& img,Transformer transform={})
 	{
 		if(img.empty())
 		{
 			return {};
 		}
-		CImg<T> ret{img._width,img._height,img._depth,img._spectrum};
-		std::size_t const width=img._width;
-		std::size_t const height=img._height;
-		for(unsigned int s=0;s<ret._spectrum;++s)
-		{
-			for(unsigned int d=0;d<ret._depth;++d)
-			{
-				auto const rdata=&ret(0,0,s,d);
-				auto const idata=&img(0,0,s,d);
-				*rdata=transform(*idata);
-				for(std::size_t x=1;x<width;++x)
-				{
-					rdata[x]=transform(idata[x])+rdata[x-1];
-				}
-				for(std::size_t y=1;y<height;++y)
-				{
-					auto const rrow=rdata+y*width;
-					auto const prrow=rrow-width;
-					auto const irow=idata+y*width;
-					rrow[0]=transform(irow[0])+prrow[0];
-					for(std::size_t x=1;x<width;++x)
-					{
-						rrow[x]=transform(irow[x])+rrow[x-1]+prrow[x]-prrow[x-1];
-					}
-				}
-			}
-		}
+		constexpr unsigned int out_layers=std::tuple_size_v<decltype(transform(std::declval<std::array<U,InputLayers>>()))>;
+		CImg<T> ret{img._width,img._height,1,out_layers};
+		integral_image<InputLayers>(ret,img,transform);
 		return ret;
+	}
+
+	template<std::size_t InputLayers=1,typename U,typename Transformer=functions::identity>
+	auto integral_image(CImg<U> const& img,Transformer transform={})
+	{
+		return integral_image<decltype(1U*std::declval<U>()),InputLayers>(img,transform);
 	}
 
 
@@ -698,7 +760,7 @@ namespace cimg_library {
 			});
 		for(auto it=horiz_rect_begin;it!=end;++it)
 		{
-			
+
 		}
 	}
 }

@@ -479,5 +479,18 @@ namespace ScoreProcessor {
 		bool process(Img&) const override;
 	};
 
+	class ClusterWiden:public ImageProcess<> {
+		unsigned char _lower_bound;
+		unsigned char _upper_bound;
+		unsigned int _widen_to;
+		Rescale::rescale_mode _mode;
+		float _gamma;
+	public:
+		ClusterWiden(unsigned char lower_bound, unsigned char upper_bound, unsigned int widen_to, Rescale::rescale_mode mode, float gamma) noexcept:
+			_lower_bound(lower_bound),_upper_bound(upper_bound),_widen_to(widen_to),_mode(mode),_gamma(gamma)
+		{}
+		bool process(Img&) const override;
+	};
+
 }
 #endif

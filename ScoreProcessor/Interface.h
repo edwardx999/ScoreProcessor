@@ -3170,6 +3170,68 @@ namespace ScoreProcessor {
 
 	}
 
+	namespace ClusterWidenMaker {
+		struct WidenTo {
+			cnnm("widen to");
+			clbl("w", "wt", "width");
+		};
+		struct LowerBound {
+			cnnm("lower bound");
+			clbl("l", "lb");
+			cndf(unsigned char(0))
+		};
+		struct UpperBound {
+			cnnm("upper bound");
+			clbl("u", "ub");
+			cndf(unsigned char(254))
+		};
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del, unsigned int w, unsigned char lb, unsigned char ub, Rescale::rescale_mode mode, float gamma)
+			{
+				del.pl.add_process<ClusterWiden>(lb, ub, w, mode, gamma);
+			}
+		};
+
+		extern SingMaker<UseTuple, UIntParser<WidenTo>, UCharParser<LowerBound>, UIntParser<UpperBound>, RsMaker::Mode, RotMaker::GammaParser> maker;
+	}
+
+	namespace ClusterPaddingMaker {
+		using uint = unsigned int;
+		struct UpperBound {
+			cnnm("upper bound");
+			clbl("u", "ub", "bg");
+			cndf(unsigned char(254))
+		};
+		struct Left {
+			cnnm("left");
+			clbl("l");
+			cndf(uint(-1))
+		};
+		struct Right {
+			cnnm("right");
+			clbl("r");
+			cndf(uint(-1))
+		};
+		struct Top {
+			cnnm("top");
+			clbl("t");
+			cndf(uint(-1))
+		};
+		struct Bottom {
+			cnnm("bottom");
+			clbl("b");
+			cndf(uint(-1))
+		};
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del, uint l, uint r, uint t, uint b, unsigned char bg)
+			{
+				del.pl.add_process<PadCluster>(l,r,t,b,bg);
+			}
+		};
+
+		extern SingMaker<UseTuple, UIntParser<Left>, UIntParser<Right>, UIntParser<Top>, UIntParser<Bottom>, UCharParser<UpperBound>> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -3237,7 +3299,9 @@ namespace ScoreProcessor {
 			compair("splice",&SpliceMaker::maker),
 			compair("ss",&SmartScale::maker),
 			compair("hs",&HSMaker::maker),
-			compair("vs",&VSMaker::maker));
+			compair("vs",&VSMaker::maker),
+			compair("cw", &ClusterWidenMaker::maker),
+			compair("cp", &ClusterPaddingMaker::maker));
 
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const

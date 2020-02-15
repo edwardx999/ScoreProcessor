@@ -2008,7 +2008,7 @@ namespace ScoreProcessor {
 		Cluster const* top_cluster;
 		for(auto const& cluster:clusters)
 		{
-			auto size=cluster.size();
+			auto const size=cluster.bounding_box().area();
 			if(size>top_size)
 			{
 				top_size=size;

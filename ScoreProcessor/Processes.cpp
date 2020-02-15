@@ -771,4 +771,39 @@ namespace ScoreProcessor {
 		}
 		return ResizeToBound::process(img);
 	}
+
+	bool ClusterWiden::process(Img& img) const
+	{
+		auto const rects = global_select<1>(img, [this](std::array<unsigned char, 1> pixel)
+			{
+				return (pixel[0] >= _lower_bound) && (pixel[0] <= _upper_bound);
+			});
+		if(rects.empty())
+		{
+			return false;
+		}
+		auto const clusters = Cluster::cluster_ranges(rects);
+		auto largest = clusters.begin();
+		auto largest_bbox = largest->bounding_box();
+		for(auto it = next(largest); it != clusters.end(); ++it)
+		{
+			auto const bbox = it->bounding_box();
+			if(bbox.width() > largest_bbox.width())
+			{
+				largest = it;
+				largest_bbox = bbox;
+			}
+		}
+		auto const rescale_ratio = float(_widen_to) / float(largest_bbox.width());
+		auto const new_width = unsigned int(std::round(rescale_ratio * img._width));
+		auto const new_height = unsigned int(std::round(rescale_ratio * img._height));
+		if(new_width != img._width || new_height != img._height)
+		{
+			apply_gamma(img, _gamma);
+			Rescale(rescale_ratio, _mode).process(img);
+			apply_gamma(img, 1.0f/_gamma);
+			return true;
+		}
+		return false;
+	}
 }

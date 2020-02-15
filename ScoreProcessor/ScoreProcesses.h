@@ -1361,6 +1361,7 @@ namespace ScoreProcessor {
 		@param optimal_ratio
 	*/
 	bool auto_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const vertical_padding,unsigned int const max_horizontal_padding,unsigned int const min_horizontal_padding,signed int horiz_offset,float optimal_ratio=16.0f/9.0f,unsigned int tolerance=5,unsigned char background=200);
+	
 	bool cluster_padding(
 		::cil::CImg<unsigned char>& img,
 		unsigned int const left,

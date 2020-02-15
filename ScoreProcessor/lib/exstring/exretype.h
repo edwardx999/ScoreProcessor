@@ -95,10 +95,10 @@ namespace exlib {
 
 	template<typename Type,std::uint64_t Id=0>
 	class empty_store:public empty_store_impl::empty_store_base<Type> {
-		using Base=empty_store_impl::empty_store_base<Type>;
+		using EMSBase=empty_store_impl::empty_store_base<Type>;
 	public:
 		template<typename... Args>
-		constexpr empty_store(Args&&... args) noexcept(std::is_nothrow_constructible<Type,Args&&...>::value):Base(std::forward<Args>(args)...)
+		constexpr empty_store(Args&&... args) noexcept(std::is_nothrow_constructible<Type,Args&&...>::value):EMSBase(std::forward<Args>(args)...)
 		{}
 		constexpr empty_store() noexcept(std::is_nothrow_default_constructible<Type>::value)
 		{}
@@ -115,6 +115,27 @@ namespace exlib {
 
 	template<typename T>
 	using remove_cvref_t=typename remove_cvref<T>::type;
+
+	template<typename T>
+	struct remove_rvalue_reference {
+		using type = T;
+	};
+
+	template<typename T>
+	struct remove_rvalue_reference<T&&> {
+		using type = T;
+	};
+
+	template<typename T>
+	struct remove_lvalue_reference {
+		using type = T;
+	};
+
+	template<typename T>
+	struct remove_lvalue_reference<T&> {
+		using type = T;
+	};
+
 #endif
 
 	/*

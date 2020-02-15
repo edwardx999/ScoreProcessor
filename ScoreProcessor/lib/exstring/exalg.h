@@ -1005,7 +1005,7 @@ namespace exlib {
 	{
 		while((begin!=end)&&(begin!=--end))
 		{
-			exlib::swap(*begin,*end);
+			exlib::adl_swap(*begin,*end);
 			++begin;
 		}
 	}

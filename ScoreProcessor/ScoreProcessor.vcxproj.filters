@@ -81,6 +81,9 @@
     <ClInclude Include="Splice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FilterNet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -111,6 +114,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Splice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FilterNet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
