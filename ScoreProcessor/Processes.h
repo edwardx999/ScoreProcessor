@@ -492,5 +492,11 @@ namespace ScoreProcessor {
 		bool process(Img&) const override;
 	};
 
+	class Invert:public ImageProcess<> {
+	public:
+		Invert() {}
+		bool process(Img&) const override;
+	};
+
 }
 #endif

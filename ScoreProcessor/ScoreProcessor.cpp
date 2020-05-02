@@ -524,6 +524,10 @@ bool find_collisions(Iter begin, Sentinal end)
 	{
 		PathRef entry = *begin;
 		auto dir = entry.parent_path();
+		if(dir.empty())
+		{
+			dir = ".";
+		}
 		auto filename = entry.filename();
 		bool found = false;
 		for(auto& known_dir : collisions)

@@ -806,4 +806,15 @@ namespace ScoreProcessor {
 		}
 		return false;
 	}
+
+	bool Invert::process(Img& img) const
+	{
+		auto const size = img.size();
+		auto const data = img.data();
+		for(std::size_t i = 0; i < size; ++i)
+		{
+			data[i] = ~data[i];
+		}
+		return true;
+	}
 }
