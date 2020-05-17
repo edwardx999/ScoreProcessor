@@ -305,6 +305,15 @@ void filter_out_files(std::vector<std::string>& files, CommandMaker::delivery co
 	}
 }
 
+std::string& append_trailing_slash(std::string& path)
+{
+	if(path.back() != '/' && path.back() != '\\')
+	{
+		path += '\\';
+	}
+	return path;
+}
+
 //returns a list of files as specified by the input from between begin and end
 std::vector<std::string> get_files(InputIter begin, InputIter end)
 {
@@ -322,51 +331,84 @@ std::vector<std::string> get_files(InputIter begin, InputIter end)
 		}
 		else
 		{
-			auto fixed_path =
+			std::string fixed_path =
 				((*pos)[0] == '-' && (*pos)[1] == '-') ?
 				(*pos) + 1 :
 				*pos;
-			auto file_attr = GetFileAttributesA(fixed_path);
-			if(file_attr == INVALID_FILE_ATTRIBUTES)
+			auto const path_end = exlib::find_path_end(fixed_path.begin(), fixed_path.end());
+			bool is_current_or_parent = false;
+			if(fixed_path[0] == '.')
+			{
+				std::size_t head;
+				if(fixed_path[1] == '.')
+				{
+					head = 2;
+				}
+				else
+				{
+					head = 1;
+				}
+				is_current_or_parent = std::all_of(fixed_path.begin() + head, fixed_path.end(), [](char c)
+					{
+						return c == '/' || c == '\\';
+					});
+			}
+			auto found = is_current_or_parent?exlib::files_in_dir(append_trailing_slash(fixed_path)):exlib::files_in_dir(fixed_path, std::string(), 0);
+			if(found.size() == 0)
 			{
 				std::string err_msg("File or folder not found: ");
 				err_msg.append(fixed_path);
 				throw std::invalid_argument(err_msg);
 			}
-			if(file_attr & FILE_ATTRIBUTE_DIRECTORY)
+			auto root_path = std::string(fixed_path.begin(), path_end);
+			if(!root_path.empty())
 			{
-
-				std::string path(fixed_path);
-				if(path.back() != '/' && path.back() != '\\')
+				if(root_path == ".")
 				{
-					path += '\\';
-				}
-				auto fid = do_recursive ? exlib::files_in_dir_rec(path) : exlib::files_in_dir(path);
-				if(path == "./" || path == ".\\")
-				{
-					files.insert(files.end(), std::make_move_iterator(fid.begin()), std::make_move_iterator(fid.end()));
+					root_path.clear();
 				}
 				else
 				{
-					files.reserve(files.size() + fid.size());
-					for(auto const& str : fid)
-					{
-						std::string name(path);
-						name.append(str);
-						files.emplace_back(std::move(name));
-					}
+					root_path += *path_end;
 				}
-				do_recursive = false;
 			}
-			else
+			for(auto& path : found)
 			{
-				if(do_recursive)
+				if(!root_path.empty())
 				{
-					std::string err_msg("Cannot recursively search non-folder: ");
-					err_msg.append(fixed_path);
-					throw std::logic_error(err_msg);
+					path = root_path + path;
 				}
-				files.emplace_back(std::move(fixed_path));
+				auto file_attr = GetFileAttributesA(path.c_str());
+				if(file_attr & FILE_ATTRIBUTE_DIRECTORY)
+				{
+					append_trailing_slash(path);
+					auto fid = do_recursive ? exlib::files_in_dir_rec(path) : exlib::files_in_dir(path);
+					if(path == "./" || path == ".\\")
+					{
+						files.insert(files.end(), std::make_move_iterator(fid.begin()), std::make_move_iterator(fid.end()));
+					}
+					else
+					{
+						files.reserve(files.size() + fid.size());
+						for(auto const& str : fid)
+						{
+							std::string name(path);
+							name.append(str);
+							files.emplace_back(std::move(name));
+						}
+					}
+					do_recursive = false;
+				}
+				else
+				{
+					if(do_recursive)
+					{
+						std::string err_msg("Cannot recursively search non-folder: ");
+						err_msg.append(fixed_path);
+						throw std::logic_error(err_msg);
+					}
+					files.emplace_back(std::move(path));
+				}
 			}
 		}
 	}

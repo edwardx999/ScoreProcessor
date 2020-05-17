@@ -824,7 +824,7 @@ namespace exlib {
 	template<typename T>
 	constexpr T lowercase(T a)
 	{
-		constexpr auto diff='A'-'a';
+		constexpr auto diff='a'-'A';
 		if(a>='A'&&a<='Z')
 		{
 			return a+diff;

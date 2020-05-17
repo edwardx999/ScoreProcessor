@@ -23,12 +23,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 namespace exlib {
 	/*
-	Returns a vector containing the filenames of all files in the first level of the given directory.
-	*/
-	template<typename String>
-	std::vector<String> files_in_dir(String const& path);
-
-	/*
 	Returns a String with any consecutive slashes replaced by a single slash.
 	*/
 	template<typename String,typename U>
@@ -47,10 +41,14 @@ namespace exlib {
 	size_t remove_multislashes(T* input);
 
 #ifdef _WINDOWS
+
+	/*
+	Returns a vector containing the filenames of all files in the first level of the given directory.
+	*/
 	template<typename String>
-	std::vector<String> files_in_dir(String const& path)
+	std::vector<String> files_in_dir(String path,String const& wildcard="*.*",DWORD banned_attributes=FILE_ATTRIBUTE_DIRECTORY)
 	{
-		String search=path+"*.*";
+		String search=std::move(path)+wildcard;
 		HANDLE hFind;
 		WIN32_FIND_DATAA fdata;
 		hFind=FindFirstFileA(search.c_str(),&fdata);
@@ -59,7 +57,12 @@ namespace exlib {
 		{
 			do
 			{
-				if(!(fdata.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY))
+				auto const filename=fdata.cFileName;
+				if(filename[0]=='.'&&(filename[1]=='\0'||(filename[1]=='.'&&filename[2]=='\0')))
+				{
+					continue;
+				}
+				if(!(fdata.dwFileAttributes&banned_attributes))
 				{
 					files.emplace_back(fdata.cFileName);
 				}
@@ -92,11 +95,12 @@ namespace exlib {
 				}
 				else
 				{
-					if(strcmp(fdata.cFileName,".")==0||strcmp(fdata.cFileName,"..")==0)
+					auto const filename=fdata.cFileName;
+					if(filename[0]=='.'&&(filename[1]=='\0'||(filename[1]=='.'&&filename[2]=='\0')))
 					{
 						continue;
 					}
-					auto rec=String(fdata.cFileName)+"\\";
+					auto rec=String(filename)+"\\";
 					rec_searches.emplace_back(std::move(rec));
 				}
 			} while(FindNextFileA(hFind,&fdata));
