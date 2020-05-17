@@ -314,6 +314,43 @@ std::string& append_trailing_slash(std::string& path)
 	return path;
 }
 
+std::string remove_trailing_slash(std::string path)
+{
+	auto count = path.size();
+	if(count == 0)
+	{
+		return path;
+	}
+	--count;
+	while(true)
+	{
+		if(path[count] != '/' && path[count] != '\\')
+		{
+			path.resize(count + 1);
+			return path;
+		}
+		if(count == 0)
+		{
+			return "";
+		}
+		--count;
+	}
+}
+
+std::vector<std::string> glob_search(std::string& path)
+{
+	auto const fixed_path = remove_trailing_slash(path);
+	if(fixed_path.size() == path.size()) // not ending in slash
+	{
+		return exlib::files_in_dir(fixed_path, std::string(), 0);
+	}
+	else
+	{
+		path = fixed_path;
+		return exlib::files_in_dir(fixed_path, std::string(), 0, FILE_ATTRIBUTE_DIRECTORY);
+	}
+}
+
 //returns a list of files as specified by the input from between begin and end
 std::vector<std::string> get_files(InputIter begin, InputIter end)
 {
@@ -335,7 +372,6 @@ std::vector<std::string> get_files(InputIter begin, InputIter end)
 				((*pos)[0] == '-' && (*pos)[1] == '-') ?
 				(*pos) + 1 :
 				*pos;
-			auto const path_end = exlib::find_path_end(fixed_path.begin(), fixed_path.end());
 			bool is_current_or_parent = false;
 			if(fixed_path[0] == '.')
 			{
@@ -353,13 +389,14 @@ std::vector<std::string> get_files(InputIter begin, InputIter end)
 						return c == '/' || c == '\\';
 					});
 			}
-			auto found = is_current_or_parent?exlib::files_in_dir(append_trailing_slash(fixed_path)):exlib::files_in_dir(fixed_path, std::string(), 0);
+			auto found = is_current_or_parent ? exlib::files_in_dir(append_trailing_slash(fixed_path)) : glob_search(fixed_path);
 			if(found.size() == 0)
 			{
 				std::string err_msg("File or folder not found: ");
 				err_msg.append(fixed_path);
 				throw std::invalid_argument(err_msg);
 			}
+			auto const path_end = exlib::find_path_end(fixed_path.begin(), fixed_path.end());
 			auto root_path = std::string(fixed_path.begin(), path_end);
 			if(!root_path.empty())
 			{
