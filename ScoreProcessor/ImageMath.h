@@ -79,12 +79,18 @@ namespace cimg_library {
 		return img;
 	}
 
-	template<unsigned int InputLayers,unsigned int OutputLayers=InputLayers,typename T,typename ArrayToArray>
+	template<unsigned int InputLayers,unsigned int OutputLayers=-1,typename T,typename ArrayToArray>
 	auto get_map(CImg<T> const& img,ArrayToArray func)
 	{
 		std::array<T,InputLayers> input;
 		typedef std::remove_reference<decltype(func(input)[0])>::type R;
-		CImg<R> ret(img._width,img._height,1,OutputLayers);
+		using func_output = decltype(func(input));
+		unsigned int output_layers = OutputLayers;
+		if constexpr (OutputLayers == -1)
+		{
+			output_layers = std::tuple_size_v<std::remove_reference_t<func_output>>;
+		}
+		CImg<R> ret(img._width,img._height,1,output_layers);
 		size_t const size=size_t(img._width)*img._height;
 		auto const idata=img._data;
 		auto const odata=ret._data;
@@ -96,9 +102,9 @@ namespace cimg_library {
 				input[s]=*(ipix+s*size);
 			}
 			auto output=func(input);
-			static_assert(output.size()>=OutputLayers,"Mapping function outputs too few layers");
+			static_assert(OutputLayers == -1 || output.size()>=OutputLayers,"Mapping function outputs too few layers");
 			auto const opix=odata+i;
-			for(auto s=0U;s<OutputLayers;++s)
+			for(auto s=0U;s<output_layers;++s)
 			{
 				*(opix+s*size)=output[s];
 			}
@@ -106,14 +112,20 @@ namespace cimg_library {
 		return ret;
 	}
 
-	template<unsigned int InputLayers,unsigned int OutputLayers=InputLayers,typename T,typename ArrayToArray>
+	template<unsigned int InputLayers,unsigned int OutputLayers=-1,typename T,typename ArrayToArray>
 	auto get_map(CImg<T> const& img,ArrayToArray func,ImageUtils::Rectangle<unsigned int> const selection)
 	{
 		std::array<T,InputLayers> input;
 		auto const owidth=selection.width();
 		auto const oheight=selection.height();
 		auto const osize=size_t(owidth)*oheight;
-		CImg<std::remove_reference<decltype(func(input)[0])>::type> ret(owidth,oheight,1,OutputLayers);
+		using func_output = decltype(func(input));
+		unsigned int output_layers = OutputLayers;
+		if constexpr(OutputLayers == -1)
+		{
+			output_layers = std::tuple_size_v<std::remove_reference_t<func_output>>;
+		}
+		CImg<std::remove_reference<decltype(func(input)[0])>::type> ret(owidth,oheight,1,output_layers);
 		auto const isize=size_t(img._width)*img._height;
 		auto const idata=img._data;
 		for(auto y=0U;x<oheight;++x)
@@ -129,8 +141,8 @@ namespace cimg_library {
 					input[s]=*(ipix+s*isize);
 				}
 				auto output=func(input);
-				static_assert(output.size()>=OutputLayers,"Mapping function outputs too few layers");
-				for(auto s=0U;s<OutputLayers;++s)
+				static_assert(OutputLayers == -1 || output.size()>=OutputLayers,"Mapping function outputs too few layers");
+				for(auto s=0U;s<output_layers;++s)
 				{
 					*(opix+s*osize)=output[s];
 				}

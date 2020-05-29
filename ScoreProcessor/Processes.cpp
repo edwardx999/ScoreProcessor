@@ -312,46 +312,51 @@ namespace ScoreProcessor {
 		return rect;
 	}
 
-	bool FillRectangle::process(Img& img) const
+	void fill_fix_layers(ImageProcess<>::Img& img,std::array<unsigned char,4> color,unsigned int num_layers)
 	{
-		auto rect = resolve_origin_rectangle(img, offsets, origin);
-		if(num_layers < 5)
+		if(num_layers<5)
 		{
 			switch(img._spectrum)
 			{
 			case 1:
 			case 2:
-				if(num_layers == 3 || num_layers == 4 && color[3] == 255)
+				if(num_layers==3||num_layers==4&&color[3]==255)
 				{
-					cil::CImg<unsigned char> temp(img._width, img._height, 1, 3);
-					auto const size = std::size_t{img._width}*img._height;
-					memcpy(temp.data(), img.data(), size);
-					memcpy(temp.data() + size, img.data(), size);
-					memcpy(temp.data() + 2U * size, img.data(), size);
+					cil::CImg<unsigned char> temp(img._width,img._height,1,3);
+					auto const size=std::size_t{img._width}*img._height;
+					memcpy(temp.data(),img.data(),size);
+					memcpy(temp.data()+size,img.data(),size);
+					memcpy(temp.data()+2U*size,img.data(),size);
 					img.swap(temp);
 				}
-				else if(num_layers == 4)
+				else if(num_layers==4)
 				{
-					cil::CImg<unsigned char> temp(img._width, img._height, 1, 4);
-					auto const size = std::size_t{img._width}*img._height;
-					memcpy(temp.data(), img.data(), size);
-					memcpy(temp.data() + size, img.data(), size);
-					memcpy(temp.data() + 2U * size, img.data(), size);
-					memset(temp.data() + 3U * size, 255, size);
+					cil::CImg<unsigned char> temp(img._width,img._height,1,4);
+					auto const size=std::size_t{img._width}*img._height;
+					memcpy(temp.data(),img.data(),size);
+					memcpy(temp.data()+size,img.data(),size);
+					memcpy(temp.data()+2U*size,img.data(),size);
+					memset(temp.data()+3U*size,255,size);
 					img.swap(temp);
 				};
 				break;
 			case 3:
-				if(num_layers == 4 && color[3] != 255)
+				if(num_layers==4&&color[3]!=255)
 				{
-					cil::CImg<unsigned char> temp(img._width, img._height, 1, 4);
-					auto const size = std::size_t{img._width}*img._height;
-					memcpy(temp.data(), img.data(), 3U * size);
-					memset(temp.data() + 3U * size, 255, size);
+					cil::CImg<unsigned char> temp(img._width,img._height,1,4);
+					auto const size=std::size_t{img._width}*img._height;
+					memcpy(temp.data(),img.data(),3U*size);
+					memset(temp.data()+3U*size,255,size);
 					img.swap(temp);
 				}
 			}
 		}
+	}
+
+	bool FillRectangle::process(Img& img) const
+	{
+		auto rect = resolve_origin_rectangle(img, offsets, origin);
+		fill_fix_layers(img,color,num_layers);
 #define ucast static_cast<unsigned int>
 		return fill_selection(
 			img,
@@ -814,6 +819,104 @@ namespace ScoreProcessor {
 		for(std::size_t i = 0; i < size; ++i)
 		{
 			data[i] = ~data[i];
+		}
+		return true;
+	}
+
+	bool WhiteToTransparent::process(Img& img) const
+	{
+		switch(img._spectrum)
+		{
+			using uchar = unsigned char;
+		case 1:
+			img = cil::get_map<1>(img, [](std::array<uchar, 1> color)
+				{
+					return exlib::make_array<uchar>(0, 0, 0, 255 - color[0]);
+				});
+			break;
+		case 3:
+			img = cil::get_map<3>(img, [](std::array<uchar, 3> color)
+				{
+					uchar const brightness = ImageUtils::brightness({color[0], color[1], color[2]});
+					return exlib::make_array<uchar>(0, 0, 0, 255 - brightness);
+				});
+			break;
+		default:
+			return false;
+		}
+		return true;
+	}
+
+	bool FloodFill::process(Img& img) const
+	{
+		auto rect=resolve_origin_rectangle(img,_region,_origin);
+		std::vector<ImageUtils::horizontal_line<>> lines;
+		std::vector<bool> checked(img._width*img._height);
+		switch(img._spectrum)
+		{
+		case 1:
+		case 2:
+			for(unsigned int y=rect.top;y<rect.bottom;++y)
+			{
+				for(unsigned int x=rect.left;x<rect.right;++x)
+				{
+					flood_operation(img,{x,y},
+						[&checked,&img,this](auto point)
+						{
+							auto const coord=point.y*img._width+point.x;
+							std::vector<bool>::reference ref=checked[coord];
+							if(ref)
+							{
+								return false;
+							}
+							ref=true;
+							auto const pixel=img(point.x,point.y);
+							return pixel>=_lower_bound&&pixel<=_upper_bound;
+						},
+						[&lines](ImageUtils::horizontal_line<> line)
+						{
+							lines.push_back(line);
+						});
+				}
+			}
+			break;
+		case 3:
+		case 4:
+			for(unsigned int y=rect.top;y<rect.bottom;++y)
+			{
+				for(unsigned int x=rect.left;x<rect.right;++x)
+				{
+					flood_operation(img,{x,y},
+						[&checked,&img,this](auto point)
+						{
+							auto const coord=point.y*img._width+point.x;
+							std::vector<bool>::reference ref=checked[coord];
+							if(ref)
+							{
+								return false;
+							}
+							ref=true;
+							auto const pixel=ImageUtils::brightness(ImageUtils::ColorRGB{img(point.x,point.y,0,0),img(point.x,point.y,0,1),img(point.x,point.y,0,3)});
+							return pixel>=_lower_bound&&pixel<=_upper_bound;
+						},
+						[&lines](ImageUtils::horizontal_line<> line)
+						{
+							lines.push_back(line);
+						});
+				}
+			}
+			break;
+		default:
+			return false;
+		}
+		if(lines.empty())
+		{
+			return false;
+		}
+		fill_fix_layers(img,_replacer_color,_replacer_num_layers);
+		for(auto const& line:lines)
+		{
+			fill_selection(img,{line.left, line.right, line.y, line.y+1},_replacer_color.data());
 		}
 		return true;
 	}

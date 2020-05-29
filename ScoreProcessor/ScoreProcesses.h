@@ -1238,7 +1238,7 @@ namespace ScoreProcessor {
 
 				//scan right
 				for(right=current_range.right;
-					right<img._width&&selector({right,current_range.y});
+					right<img._width&&selector(point{right,current_range.y});
 					++right)
 				{
 				}
@@ -1338,7 +1338,7 @@ namespace ScoreProcessor {
 		img - img to flood op on
 		start - where flood starts from
 		selector - function that takes a PointUINT and returns whether it is a valid point, may do other stuff too
-		dwl - takes in a horizontal_line<>
+		dwl - takes in a horizontal_line<> that has been selected
 	*/
 	template<typename Img,typename Selector,typename DoWithLine>
 	void flood_operation(Img&& img,ImageUtils::PointUINT start,Selector&& selector,DoWithLine&& dwl)

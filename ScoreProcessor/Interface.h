@@ -1158,7 +1158,7 @@ namespace ScoreProcessor {
 			cnnm("top");
 		};
 		struct flagged {
-			bool flag=false;
+			bool is_relative=false;
 			signed int value;
 		};
 		struct Right {
@@ -1315,6 +1315,7 @@ namespace ScoreProcessor {
 		struct Origin {
 			cnnm("origin");
 			clbl("o","or");
+			cndf(FillRectangle::origin_reference::top_left)
 			PMINLINE static FillRectangle::origin_reference parse(char const* sv)
 			{
 				auto error=[=]()
@@ -1363,7 +1364,7 @@ namespace ScoreProcessor {
 
 		inline void check_flagged(int base,flagged comp,char const* err_msg1,char const* err_msg2)
 		{
-			if(!comp.flag)
+			if(!comp.is_relative)
 			{
 				if(comp.value<=base)
 				{
@@ -1386,8 +1387,8 @@ namespace ScoreProcessor {
 			ImageUtils::Rectangle<int> rect;
 			rect.left=left;
 			rect.top=top;
-			rect.right=right.flag?left+right.value:right.value;
-			rect.bottom=bottom.flag?top+bottom.value:bottom.value;
+			rect.right=right.is_relative?left+right.value:right.value;
+			rect.bottom=bottom.is_relative?top+bottom.value:bottom.value;
 			return rect;
 		}
 
@@ -1811,7 +1812,7 @@ namespace ScoreProcessor {
 			}
 		}
 
-		struct RCR {
+		struct RCRBase {
 			static PMINLINE std::array<unsigned char,2> parse(InputType in)
 			{
 				std::array<unsigned char,2> ret;
@@ -1831,6 +1832,9 @@ namespace ScoreProcessor {
 			}
 			cnnm("required color range");
 			clbl("rcr");
+		};
+
+		struct RCR:RCRBase {
 			cndf((std::array<unsigned char,2>{0,255}))
 		};
 
@@ -2711,7 +2715,7 @@ namespace ScoreProcessor {
 					{
 						auto& value=val.value();
 						FRMaker::check_flagged(base,value,err_msg1,err_msg2);
-						if(value.flag)
+						if(value.is_relative)
 						{
 							value.value+=base;
 						}
@@ -3232,6 +3236,65 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple, UIntParser<Left>, UIntParser<Right>, UIntParser<Top>, UIntParser<Bottom>, UCharParser<UpperBound>> maker;
 	}
 
+	namespace InvertMaker {
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del)
+			{
+				del.pl.add_process<Invert>();
+			}
+		};
+
+		extern SingMaker<UseTuple> maker;
+	}
+
+	namespace WhiteToTransparentMaker {
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del)
+			{
+				del.pl.add_process<WhiteToTransparent>();
+			}
+		};
+
+		extern SingMaker<UseTuple> maker;
+	}
+
+	namespace FloodFillMaker {
+
+		struct RCR:CCGMaker::RCRBase {
+			cndf((std::array<unsigned char,2>{0,254}))
+		};
+
+		using FRMaker::Color;
+
+		using FRMaker::Left;
+
+		using FRMaker::Top;
+
+		struct Bottom:FRMaker::Bottom {
+			cndf((FRMaker::flagged{true,1}))
+		};
+
+		struct Right:FRMaker::Right {
+			cndf((FRMaker::flagged{true,1}))
+		};
+
+		using FRMaker::Origin;
+
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del, int left, int top,FRMaker::flagged horizontal, FRMaker::flagged vertical,FillRectangle::origin_reference origin,std::array<unsigned char,2> rcr,FRMaker::color color)
+			{
+				auto rect=FRMaker::coords_to_rect(left,top,horizontal,vertical);
+				if(rcr[0]==0&&rcr[1]==255)
+				{
+					throw std::invalid_argument("Flood fill selects everything");
+				}
+				del.pl.add_process<FloodFill>(rcr[0],rcr[1],color.data,color.num_layers,rect,origin);
+			}
+		};
+
+		extern SingMaker<UseTuple,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Origin,RCR,Color> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -3277,7 +3340,11 @@ namespace ScoreProcessor {
 			compair("stme",&SlidingTemplateClearMaker::maker),
 			compair("rel",&RemoveEmptyLinesMaker::maker),
 			compair("vc",&VerticalCompressMaker::maker),
-			compair("rsb",&ResizeToBoundMaker::maker));
+			compair("rsb",&ResizeToBoundMaker::maker),
+			compair("inv",&InvertMaker::maker),
+			compair("wtt", &WhiteToTransparentMaker::maker),
+			compair("ff",&FloodFillMaker::maker)
+		);
 
 		constexpr auto mcl=exlib::make_array<compair>(
 			compair("spl",&SpliceMaker::maker),

@@ -498,5 +498,29 @@ namespace ScoreProcessor {
 		bool process(Img&) const override;
 	};
 
+	class WhiteToTransparent:public ImageProcess<> {
+	public:
+		WhiteToTransparent() {}
+		bool process(Img&) const override;
+	};
+
+	class FloodFill:public ImageProcess<> {
+		unsigned char _lower_bound;
+		unsigned char _upper_bound;
+		std::array<unsigned char,4> _replacer_color;
+		unsigned int _replacer_num_layers;
+		ImageUtils::Rectangle<int> _region;
+		FillRectangle::origin_reference _origin;
+	public:
+		FloodFill(unsigned char lower_bound,unsigned char upper_bound,std::array<unsigned char,4> replacer,unsigned int replacer_num_layers,ImageUtils::Rectangle<int> start_region,FillRectangle::origin_reference origin):
+			_lower_bound(lower_bound),
+			_upper_bound(upper_bound),
+			_replacer_color(replacer),
+			_replacer_num_layers(replacer_num_layers),
+			_region(start_region),
+			_origin(origin)
+		{}
+		bool process(Img&) const override;
+	};
 }
 #endif

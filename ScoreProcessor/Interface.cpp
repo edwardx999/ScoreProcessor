@@ -428,4 +428,30 @@ namespace ScoreProcessor {
 			"l r t b bg"
 		};
 	}
+
+	namespace InvertMaker {
+		decltype(maker) maker{
+			"Invert",
+			"Invert",
+			"no arguments"
+		};
+	}
+
+	namespace WhiteToTransparentMaker {
+		decltype(maker) maker{
+			"Converts White Pixels to Transparent Pixels",
+			"White to Transparent",
+			"no arguments"
+		};
+	}
+
+	namespace FloodFillMaker {
+		decltype(maker) maker{
+			"Flood fill seed at selected rectangle, and replacing pixels in required color range with replacer"
+			"left, right, horiz, vert, origin, replacer; see -fr fill rectangle\n"
+			"required_color_range: pixels of this brightness replaced; see -ccg cluster clear gray",
+			"Flood Fill",
+			"left right horiz=width:1 vert=height:1 origin=tl required_color_range=0,254 replacer=255"
+		};
+	}
 }
