@@ -904,9 +904,9 @@ namespace ScoreProcessor {
 		static_assert(state>CommandMaker::delivery::do_state::do_single,"Invalid multistate");
 		static PMINLINE void check(CommandMaker::delivery& del)
 		{
-			if(del.flag==del.do_single)
+			if(del.flag>decltype(del.flag)::do_nothing)
 			{
-				throw std::invalid_argument("Single operations cannot be performed at the same time as multi operations");
+				throw std::invalid_argument("Multi operations cannot be performed the same time as other operations");
 			}
 			del.flag=state;
 		}
