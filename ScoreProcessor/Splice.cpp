@@ -405,6 +405,7 @@ namespace ScoreProcessor {
 			{
 				support=decltype(support)::png;
 			}
+			//auto save=image.get_rotate(-90);
 			return cil::save_image(image, name, support, quality);
 		};
 		return splice_pages_parallel(managers,output_rule,starting_index,num_threads,pe,create_layout,cost,&splice_images, saver);
@@ -515,8 +516,8 @@ namespace ScoreProcessor {
 			auto const end=breaks[i].index;
 			auto const s=end-start;
 			pool.push_back(
-				[&,index=num_imgs,
-				num_digs,
+				[&,
+				filename_index=start+starting_index,
 				fbegin=filenames.data()+start,
 				ibegin=descriptions.data()+start,
 				num_pages=s,
@@ -537,7 +538,7 @@ namespace ScoreProcessor {
 						imgs[2*i].top=ibegin[i].top;
 						imgs[2*i].bottom=ibegin[i].bottom;
 					}
-					auto const output=output_rule.make_filename(fbegin[0]);
+					auto const output=output_rule.make_filename(fbegin[0],filename_index);
 					auto support=supported_path(output.c_str());
 					if(support==decltype(support)::no)
 					{

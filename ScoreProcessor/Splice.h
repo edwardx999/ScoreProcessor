@@ -296,9 +296,8 @@ namespace ScoreProcessor {
 			auto const end=breaks[i].index;
 			auto const s=end-start;
 			pool.push_back(
-				[index=num_imgs,
-				num_digs,
-				&output_rule,
+				[&output_rule,
+				filename_index=start+starting_index,
 				fbegin=files.data()+start,
 				ibegin=page_descs.data()+start,
 				num_pages=s,
@@ -318,7 +317,7 @@ namespace ScoreProcessor {
 					imgs[0].top=ibegin[0].top.raw;
 					auto const last=num_pages-1;
 					imgs[last].bottom=ibegin[last].bottom.raw;
-					auto const filename=output_rule.make_filename(fbegin[0].fname());
+					auto const filename=output_rule.make_filename(fbegin[0].fname(),filename_index);
 					saver(splicer(imgs.data(),num_pages,padding),filename.c_str());
 				}
 				catch(std::exception const& ex)
