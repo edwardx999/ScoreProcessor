@@ -533,8 +533,8 @@ void do_cut(CommandMaker::delivery const& del, std::vector<std::string> const& f
 			{
 				if(ca->verbosity > ProcessList<>::verbosity::silent)
 				{
-					std::string err(ex.what());
-					err += '\n';
+					using namespace std::literals;
+					auto err=exlib::container_concat<std::string>("Error processing "sv,*input,": "sv,std::string_view(ex.what()),"\n"sv);
 					ca->log->log_error(err.c_str(), index);
 				}
 			}
@@ -565,13 +565,13 @@ void do_splice(CommandMaker::delivery const& del, std::vector<std::string> const
 {
 	try
 	{
-		auto save = del.sr.make_filename(files[0], del.starting_index);
-		auto ext = exlib::find_extension(save.begin(), save.end());
-		validate_extension(ext);
+		// auto save = del.sr.make_filename(files[0], del.starting_index);
+		// auto ext = exlib::find_extension(save.begin(), save.end());
+		// validate_extension(ext);
 		Splice::standard_heuristics sh;
 		auto num = del.splice_divider.data() ?
-			splice_pages_parallel(files, save.c_str(), del.starting_index, del.num_threads, del.splice_args, del.splice_divider, del.quality) :
-			splice_pages_parallel(files, save.c_str(), del.starting_index, del.num_threads, del.splice_args, del.quality);
+			splice_pages_parallel(files, del.sr, del.starting_index, del.num_threads, del.splice_args, del.splice_divider, del.quality) :
+			splice_pages_parallel(files, del.sr, del.starting_index, del.num_threads, del.splice_args, del.quality);
 		std::cout << "Created " << num << (num == 1 ? " page\n" : " pages\n");
 	}
 	catch(std::exception const& ex)
@@ -701,7 +701,7 @@ int main(int argc, InputIter argv)
 		list_files(files);
 	}
 	del.fix_values(files.size());
-	if(del.flag != del.do_splice && has_collisions(files.begin(), files.end(), del.sr, del.starting_index))
+	if(has_collisions(files.begin(), files.end(), del.sr, del.starting_index))
 	{
 		std::cout << "Collision in output names\n";
 		return 1;

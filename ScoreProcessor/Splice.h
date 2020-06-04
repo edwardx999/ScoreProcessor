@@ -4,9 +4,11 @@
 #include <mutex>
 #include <vector>
 #include <string>
+#include "ImageUtils.h"
 #include "lib/threadpool/thread_pool.h"
 #include "lib/exstring/exmath.h"
 #include <array>
+#include "ImageProcess.h"
 namespace ScoreProcessor {
 
 	//Anything in namespace Splice, except standard_heurstics, you should not access directly
@@ -179,24 +181,25 @@ namespace ScoreProcessor {
 
 	//splices together the non-greedily and multi-threadedly, based on the given page descriptors and evaluators
 	//returns the number of pages spliced together
-	template<typename EvalPage,typename CreateLayout,typename Cost>
+	template<typename EvalPage,typename CreateLayout,typename Cost,typename Splicer,typename Saver>
 	unsigned int splice_pages_parallel(
 		std::vector<Splice::manager>& files,
-		char const* output,
+		SaveRules const& output_rule,
 		unsigned int starting_index,
 		unsigned int num_threads,
 		EvalPage ep,
 		CreateLayout cl,
 		Cost cost,
-		int quality)
+		Splicer splicer,
+		Saver saver)
 	{
 		auto const c=files.size();
 		if(c<2)
 		{
 			throw std::invalid_argument("Need multiple pages to splice");
 		}
-		auto const extension=exlib::find_extension(output,output+std::strlen(output));
-		validate_extension(extension);
+		//auto const extension=exlib::find_extension(output,output+std::strlen(output));
+		//validate_extension(extension);
 		std::string error_log;
 		std::mutex error_mutex;
 		std::vector<Splice::page_desc> page_descs(c);
@@ -295,13 +298,14 @@ namespace ScoreProcessor {
 			pool.push_back(
 				[index=num_imgs,
 				num_digs,
-				output,
+				&output_rule,
 				fbegin=files.data()+start,
 				ibegin=page_descs.data()+start,
 				num_pages=s,
 				padding=breaks[i].padding,
 				send_error,
-				quality](parent_ref parent) noexcept{
+				splicer,
+				saver](parent_ref parent) noexcept {
 				try
 				{
 					std::vector<Splice::page> imgs(num_pages);
@@ -314,9 +318,8 @@ namespace ScoreProcessor {
 					imgs[0].top=ibegin[0].top.raw;
 					auto const last=num_pages-1;
 					imgs[last].bottom=ibegin[last].bottom.raw;
-					auto const support=supported_path(output);
-					auto const filename=cil::number_filename(output,index,num_digs);
-					cil::save_image(splice_images(imgs.data(),num_pages,padding),filename.c_str(),support,quality);
+					auto const filename=output_rule.make_filename(fbegin[0].fname());
+					saver(splicer(imgs.data(),num_pages,padding),filename.c_str());
 				}
 				catch(std::exception const& ex)
 				{
@@ -395,17 +398,26 @@ namespace ScoreProcessor {
 	//cost is 
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
+		SaveRules const& output_rule,
+		unsigned int starting_index,
+		unsigned int num_threads,
+		Splice::standard_heuristics const&,
+		int quality);
+
+	unsigned int splice_pages_horizontal_parallel(
+		std::vector<std::string> const& filenames,
 		char const* output,
 		unsigned int starting_index,
 		unsigned int num_threads,
 		Splice::standard_heuristics const&,
+		ImageUtils::Point<unsigned int> squish_size,
 		int quality);
 
 	//splices together images using the standard heuristics and dif^3 cost algorithm
 	//cost is 
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
-		char const* output,
+		SaveRules const& output_rule,
 		unsigned int starting_index,
 		unsigned int num_threads,
 		Splice::standard_heuristics const&,

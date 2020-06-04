@@ -913,6 +913,13 @@ namespace exlib {
 		return c;
 	}
 #else
+
+	template<typename Container>
+	auto container_concat() -> decltype(Container())
+	{
+		return Container();
+	}
+
 	template<typename Container>
 	Container container_concat(Container&& cont)
 	{
@@ -933,12 +940,12 @@ namespace exlib {
 		return std::move(cont);
 	}
 
-	template<typename Container,typename... Rest>
-	Container container_concat(Container const& cont,Rest const&... rest)
+	template<typename Output=void,typename Container,typename... Rest>
+	typename std::conditional<std::is_void<Output>::value,Container,Output>::type container_concat(Container const& cont,Rest const&... rest)
 	{
-		Container copy;
+		typename std::conditional<std::is_void<Output>::value,Container,Output>::type copy;
 		detail::reserve_if_able(copy,(cont.size()+...+rest.size()));
-		copy.insert(cont.begin(),cont.end());
+		copy.insert(copy.begin(),cont.begin(),cont.end());
 		(copy.insert(copy.end(),rest.begin(),rest.end()),...);
 		return copy;
 	}

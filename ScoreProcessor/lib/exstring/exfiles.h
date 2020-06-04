@@ -46,7 +46,7 @@ namespace exlib {
 	Returns a vector containing the filenames of all files in the first level of the given directory.
 	*/
 	template<typename String>
-	std::vector<String> files_in_dir(String path,String const& wildcard="*.*",DWORD banned_attributes=FILE_ATTRIBUTE_DIRECTORY)
+	std::vector<String> files_in_dir(String path,String const& wildcard="*.*",DWORD banned_attributes=FILE_ATTRIBUTE_DIRECTORY,DWORD required_attributes=0)
 	{
 		String search=std::move(path)+wildcard;
 		HANDLE hFind;
@@ -62,7 +62,7 @@ namespace exlib {
 				{
 					continue;
 				}
-				if(!(fdata.dwFileAttributes&banned_attributes))
+				if(!(fdata.dwFileAttributes&banned_attributes)&&((fdata.dwFileAttributes&required_attributes)==required_attributes))
 				{
 					files.emplace_back(fdata.cFileName);
 				}

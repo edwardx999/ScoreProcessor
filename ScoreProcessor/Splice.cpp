@@ -300,7 +300,7 @@ namespace ScoreProcessor {
 
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
-		char const* output,
+		SaveRules const& output_rule,
 		unsigned int starting_index,
 		unsigned int num_threads,
 		Splice::standard_heuristics const& sh,
@@ -398,12 +398,21 @@ namespace ScoreProcessor {
 		{
 			return layout_cost(p,sh,horiz_padding,opt_pad,opt_height);
 		};
-		return splice_pages_parallel(managers,output,starting_index,num_threads,pe,create_layout,cost,quality);
+		auto saver = [quality](auto const& image, char const* name)
+		{
+			auto support = supported_path(name);
+			if(support==decltype(support)::no)
+			{
+				support=decltype(support)::png;
+			}
+			return cil::save_image(image, name, support, quality);
+		};
+		return splice_pages_parallel(managers,output_rule,starting_index,num_threads,pe,create_layout,cost,&splice_images, saver);
 	}
 
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
-		char const* output,
+		SaveRules const& output_rule,
 		unsigned int starting_index,
 		unsigned int num_threads,
 		Splice::standard_heuristics const& sh,
@@ -415,8 +424,8 @@ namespace ScoreProcessor {
 		{
 			throw std::invalid_argument("Need multiple pages to splice");
 		}
-		auto const extension=exlib::find_extension(output,output+std::strlen(output));
-		validate_extension(extension);
+		// auto const extension=exlib::find_extension(output,output+std::strlen(output));
+		// validate_extension(extension);
 		Splice::page divider_desc{{divider,true}};
 		std::vector<Splice::page> descriptions(filenames.size());
 		exlib::thread_pool pool{num_threads};
@@ -508,7 +517,6 @@ namespace ScoreProcessor {
 			pool.push_back(
 				[&,index=num_imgs,
 				num_digs,
-				output,
 				fbegin=filenames.data()+start,
 				ibegin=descriptions.data()+start,
 				num_pages=s,
@@ -529,8 +537,13 @@ namespace ScoreProcessor {
 						imgs[2*i].top=ibegin[i].top;
 						imgs[2*i].bottom=ibegin[i].bottom;
 					}
-					auto const support=supported_path(output);
-					auto const filename=cil::number_filename(output,index,num_digs);
+					auto const output=output_rule.make_filename(fbegin[0]);
+					auto support=supported_path(output.c_str());
+					if(support==decltype(support)::no)
+					{
+						support=decltype(support)::png;
+					}
+					auto const& filename=output;
 					cil::save_image(splice_images(imgs.data(),imgs.size(),padding),filename.c_str(),support,quality);
 				}
 				catch(std::exception const& ex)
