@@ -64,3 +64,7 @@ libpng:x(64|86)-windows-static
 ~~See READMEs in ScoreProcessor/lib/cudnn and ScoreProcessor/lib/mkldnn~~
 
 Because I started this as a C++ noob, I broke some stuff with the Debug build, and have not bothered to fix it. Only Release is known to work.
+
+Install
+
+get sproc.zip from Releases, unzip to a directory, and add that directory to PATH. Running addme.bat should do this automatically.
