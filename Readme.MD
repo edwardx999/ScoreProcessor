@@ -68,3 +68,4 @@ Because I started this as a C++ noob, I broke some stuff with the Debug build, a
 Install
 
 get sproc.zip from Releases, unzip to a directory, and add that directory to PATH. Running addme.bat should do this automatically.
+You will need microsoft redistributable c++. If you do not have it, you can get it here: https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads
