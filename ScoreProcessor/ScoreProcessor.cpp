@@ -590,6 +590,7 @@ namespace std {
 		}
 	};
 }
+
 template<typename PathS = void, typename Iter, typename Sentinal>
 bool find_collisions(Iter begin, Sentinal end)
 {
@@ -643,6 +644,39 @@ bool has_collisions(PathsIter begin, PathsIter end, SaveRules const& rules, unsi
 	auto tend = decltype(tbegin){end, transformer};
 	return find_collisions(tbegin, tend);
 }
+
+template<typename PathS = void, typename Iter, typename Sentinal>
+bool find_overwrites(Iter begin,Sentinal end)
+{
+	using Path=typename std::conditional<
+		std::is_void<PathS>::value,
+		typename std::decay<decltype(*begin)>::type,
+		PathS>::type;
+	using PathRef=typename std::remove_cv<typename exlib::remove_rvalue_reference<decltype(*begin)>::type>::type;
+	for(;begin!=end;++begin)
+	{
+		PathRef path=*begin;
+		if(exists(path))
+		{
+			std::cout<<"Cannot overwrite "+path.string()+"\n";
+			return true;
+		}
+	}
+	return false;
+}
+
+bool find_overwrites(std::vector<std::string> const& files, SaveRules const& rules, unsigned int si)
+{
+	auto transformer=[&rules,&si](std::string const& input)
+	{
+		auto path=rules.make_filename(input,si++);
+		return std::filesystem::path(path);
+	};
+	auto tbegin=exlib::transform_iterator{files.begin(), transformer};
+	auto tend=decltype(tbegin){files.end(),transformer};
+	return find_overwrites(tbegin,tend);
+}
+
 int main(int argc, InputIter argv)
 {
 #ifdef MAKE_README
@@ -704,6 +738,10 @@ int main(int argc, InputIter argv)
 	if(has_collisions(files.begin(), files.end(), del.sr, del.starting_index))
 	{
 		std::cout << "Collision in output names\n";
+		return 1;
+	}
+	if(del.check_overwrite&&find_overwrites(files,del.sr,del.starting_index))
+	{
 		return 1;
 	}
 	std::optional<Loggers::AmountLog> al;

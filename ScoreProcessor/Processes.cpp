@@ -896,7 +896,7 @@ namespace ScoreProcessor {
 								return false;
 							}
 							ref=true;
-							auto const pixel=ImageUtils::brightness(ImageUtils::ColorRGB{img(point.x,point.y,0,0),img(point.x,point.y,0,1),img(point.x,point.y,0,3)});
+							auto const pixel=ImageUtils::brightness(ImageUtils::ColorRGB{img(point.x,point.y,0,0),img(point.x,point.y,0,1),img(point.x,point.y,0,2)});
 							return pixel>=_lower_bound&&pixel<=_upper_bound;
 						},
 						[&lines](ImageUtils::horizontal_line<> line)
@@ -917,6 +917,50 @@ namespace ScoreProcessor {
 		for(auto const& line:lines)
 		{
 			fill_selection(img,{line.left, line.right, line.y, line.y+1},_replacer_color.data());
+		}
+		return true;
+	}
+
+	bool FlipVertical::process(Img& img) const
+	{
+		if (img._height < 2U)
+		{
+			return false;
+		}
+		auto const width = std::size_t(img._width);
+		auto const height = std::size_t(img._height);
+		auto const layers = std::size_t(img._spectrum);
+		std::unique_ptr<unsigned char[]> swap_buffer(new unsigned char[width]);
+		for (std::size_t layer = 0; layer < layers; ++layer)
+		{
+			for (std::size_t top = 0, bottom = height - 1; top < bottom; ++top, --bottom)
+			{
+				auto const top_data = &img(0, top, 0, layer);
+				auto const bottom_data = &img(0, bottom, 0, layer);
+				std::memcpy(swap_buffer.get(), top_data, width);
+				std::memcpy(top_data, bottom_data, width);
+				std::memcpy(bottom_data, swap_buffer.get(), width);
+			}
+		}
+		return true;
+	}
+
+	bool FlipHorizontal::process(Img& img) const
+	{
+		if (img._width < 2U)
+		{
+			return false;
+		}
+		auto const width = std::size_t(img._width);
+		auto const total = width * img._height * img._spectrum/* *img._depth*/;
+		auto data_begin = img._data;
+		auto const data_end = img._data + total;
+		while (data_begin < data_end)
+		{
+			auto const row_begin = data_begin;
+			auto const row_end = row_begin + width;
+			std::reverse(row_begin, row_end);
+			data_begin = row_end;
 		}
 		return true;
 	}

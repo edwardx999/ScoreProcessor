@@ -522,5 +522,19 @@ namespace ScoreProcessor {
 		{}
 		bool process(Img&) const override;
 	};
+
+	class FlipHorizontal:public ImageProcess<> {
+	public:
+		FlipHorizontal()
+		{}
+		bool process(Img&) const override;
+	};
+
+	class FlipVertical:public ImageProcess<> {
+	public:
+		FlipVertical()
+		{}
+		bool process(Img&) const override;
+	};
 }
 #endif

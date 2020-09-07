@@ -76,6 +76,7 @@ namespace ScoreProcessor {
 			//and thus override the across image thread count
 			unsigned int overridden_num_threads;
 			bool list_files; //whether files should be listed out to the user
+			bool check_overwrite;
 			int quality; //[0,100] jpeg file quality
 			PMINLINE delivery():
 				starting_index(-1), //invalid values means not given by user
@@ -84,6 +85,7 @@ namespace ScoreProcessor {
 				overridden_num_threads(0),
 				do_move(false),
 				list_files(false),
+				check_overwrite(false),
 				lt(unassigned_log),
 				quality(-1)
 			{}
@@ -940,7 +942,7 @@ namespace ScoreProcessor {
 			static PMINLINE constexpr bool parse(InputType s)
 			{
 				auto const c=s[0];
-				if(c=='t'||c=='1'||c=='T')
+				if(c=='t'||c=='1'||c=='T'||c=='\0')
 				{
 					return true;
 				}
@@ -949,11 +951,25 @@ namespace ScoreProcessor {
 			clbl("mv","move","m");
 			cnnm("move");
 			cndf(false)
+		};
 
+		struct CheckOverrideParser {
+			static PMINLINE constexpr bool parse(InputType s)
+			{
+				auto const c=s[0];
+				if(c=='t'||c=='1'||c=='T'||c=='\0')
+				{
+					return true;
+				}
+				return false;
+			}
+			clbl("overwrite","ow");
+			cnnm("overwrite");
+			cndf(true)
 		};
 
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,InputType input,bool do_move)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,InputType input,bool do_move,bool allow_overwrite)
 			{
 				if(*input==0)
 				{
@@ -965,6 +981,7 @@ namespace ScoreProcessor {
 				}
 				del.sr.assign(input);
 				del.do_move=do_move;
+				del.check_overwrite=!allow_overwrite;
 			}
 		};
 
@@ -982,7 +999,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern MakerTFull<UseTuple,Precheck,PatternParser,MoveParser> maker;
+		extern MakerTFull<UseTuple,Precheck,PatternParser,MoveParser,CheckOverrideParser> maker;
 	}
 
 	namespace NumThreads {
@@ -2893,6 +2910,68 @@ namespace ScoreProcessor {
 			cnnm("replacer");
 			clbl("mutualfloodfill","mff","fill","fll","replace","rpl"/*,"darken","drk","lighten","lgh"*/);
 			using Func=std::function<void(cil::CImg<unsigned char>&,cil::CImg<unsigned char> const&,ImageUtils::PointUINT)>;
+			static Func mutual_flood_fill_function(unsigned char boundary)
+			{
+				return [ul = boundary](cil::CImg<unsigned char>& img, cil::CImg<unsigned char> const& tmplt, ImageUtils::PointUINT point)
+				{
+					using Point = decltype(point);
+					std::vector<detail::scan_range> buffer;
+					if (img._spectrum == 1)
+					{
+						for (unsigned int y = 0; y < tmplt._height; ++y)
+						{
+							for (unsigned int x = 0; x < tmplt._width; ++x)
+							{
+								if (tmplt(x, y) <= ul)
+								{
+									detail::flood_operation(img, point + Point{ x,y }, [=, &img](Point p)
+															{
+																if (img(p.x, p.y) <= ul)
+																{
+																	img(p.x, p.y) = 255;
+																	return true;
+																}
+																return false;
+															}, [&](auto)
+															{}, buffer);
+								}
+							}
+						}
+					}
+					else
+					{
+						std::vector<ImageUtils::horizontal_line<unsigned int>> rects;
+						for (unsigned int y = 0; y < tmplt._height; ++y)
+						{
+							for (unsigned int x = 0; x < tmplt._width; ++x)
+							{
+								if (tmplt(x, y) <= ul)
+								{
+									detail::flood_operation(img, point + Point{ x,y }, [=, &img](Point p)
+															{
+																if (img(p.x, p.y) <= ul)
+																{
+																	img(p.x, p.y) = 255;
+																	return true;
+																}
+																return false;
+															}, [&](ImageUtils::horizontal_line<unsigned int> line)
+															{
+																rects.push_back(line);
+															}, buffer);
+								}
+							}
+						}
+						for (unsigned int s = 1; s < img._spectrum; ++s)
+						{
+							for (auto const rect : rects)
+							{
+								std::fill(&img(rect.left, rect.y, 0, s), &img(rect.right, rect.y, 0, s), 255);
+							}
+						}
+					}
+				};
+			}
 			static Func parse(InputType in,std::size_t prefix_len)
 			{
 				auto const real_start=in+prefix_len+1;
@@ -2922,77 +3001,12 @@ namespace ScoreProcessor {
 					{
 						throw std::invalid_argument("This flood fill would be a no-op");
 					}
-					return [ul](cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,ImageUtils::PointUINT point)
-					{
-						using Point=decltype(point);
-						std::vector<detail::scan_range> buffer;
-						if(img._spectrum==1)
-						{
-							for(unsigned int y=0;y<tmplt._height;++y)
-							{
-								for(unsigned int x=0;x<tmplt._width;++x)
-								{
-									if(tmplt(x,y)<=ul)
-									{
-										detail::flood_operation(img,point+Point{x,y},[=,&img](Point p)
-											{
-												if(img(p.x,p.y)<=ul)
-												{
-													img(p.x,p.y)=255;
-													return true;
-												}
-												return false;
-											},[&](auto)
-											{},buffer);
-									}
-								}
-							}
-						}
-						else
-						{
-							std::vector<ImageUtils::horizontal_line<unsigned int>> rects;
-							for(unsigned int y=0;y<tmplt._height;++y)
-							{
-								for(unsigned int x=0;x<tmplt._width;++x)
-								{
-									if(tmplt(x,y)<=ul)
-									{
-										detail::flood_operation(img,point+Point{x,y},[=,&img](Point p)
-											{
-												if(img(p.x,p.y)<=ul)
-												{
-													img(p.x,p.y)=255;
-													return true;
-												}
-												return false;
-											},[&](ImageUtils::horizontal_line<unsigned int> line)
-											{
-												rects.push_back(line);
-											},buffer);
-									}
-								}
-							}
-							for(unsigned int s=1;s<img._spectrum;++s)
-							{
-								for(auto const rect:rects)
-								{
-									std::fill(&img(rect.left,rect.y,0,s),&img(rect.right,rect.y,0,s),255);
-								}
-							}
-						}
-					};
+					return mutual_flood_fill_function(ul);
 				}
 			}
 			static Func def_val()
 			{
-				return [](cil::CImg<unsigned char>& img,cil::CImg<unsigned char> const& tmplt,ImageUtils::PointUINT point)
-				{
-					FillRectangle{
-						{int(point.x),int(point.x+tmplt.width()),int(point.y),int(point.y+tmplt.height())},
-					{255,255,255,255},
-					1,
-					FillRectangle::origin_reference::top_left}.process(img);
-				};
+				return mutual_flood_fill_function(254);
 			}
 		};
 
@@ -3295,6 +3309,26 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple,IntegerParser<int,Left>,IntegerParser<int,Top>,Right,Bottom,Origin,RCR,Color> maker;
 	}
 
+	namespace FlipVerticalMaker {
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del)
+			{
+				del.pl.add_process<FlipVertical>();
+			}
+		};
+		extern SingMaker<UseTuple> maker;
+	}
+
+	namespace FlipHorizontalMaker {
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del)
+			{
+				del.pl.add_process<FlipHorizontal>();
+			}
+		};
+		extern SingMaker<UseTuple> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -3317,7 +3351,7 @@ namespace ScoreProcessor {
 	};
 
 	namespace {
-		constexpr auto scl=exlib::make_array<compair>(
+		constexpr auto scl = std::array{
 			compair("cg",&CGMaker::maker),
 			compair("fg",&FGMaker::maker),
 			compair("hp",&HPMaker::maker),
@@ -3343,14 +3377,16 @@ namespace ScoreProcessor {
 			compair("rsb",&ResizeToBoundMaker::maker),
 			compair("inv",&InvertMaker::maker),
 			compair("wtt", &WhiteToTransparentMaker::maker),
-			compair("ff",&FloodFillMaker::maker)
-		);
+			compair("ff",&FloodFillMaker::maker),
+			compair("fv",&FlipVerticalMaker::maker),
+			compair("fh",&FlipHorizontalMaker::maker)
+		};
 
-		constexpr auto mcl=exlib::make_array<compair>(
+		constexpr auto mcl = std::array{
 			compair("spl",&SpliceMaker::maker),
-			compair("cut",&CutMaker::maker));
+			compair("cut",&CutMaker::maker) };
 
-		constexpr auto ol=exlib::make_array<compair>(
+		constexpr auto ol = std::array{
 			compair("o",&Output::maker),
 			compair("vb",&Verbosity::maker),
 			compair("nt",&NumThreads::maker),
@@ -3358,9 +3394,9 @@ namespace ScoreProcessor {
 			compair("si",&SIMaker::maker),
 			compair("flt",&RgxFilter::maker),
 			compair("list",&List::maker),
-			compair("q",&Quality::maker));
+			compair("q",&Quality::maker) };
 
-		constexpr auto aliases=exlib::make_array<compair>(
+		constexpr auto aliases = std::array{
 			compair("rotate",&RotMaker::maker),
 			compair("ccga",&CCGMaker::maker),
 			compair("splice",&SpliceMaker::maker),
@@ -3368,7 +3404,7 @@ namespace ScoreProcessor {
 			compair("hs",&HSMaker::maker),
 			compair("vs",&VSMaker::maker),
 			compair("cw", &ClusterWidenMaker::maker),
-			compair("cp", &ClusterPaddingMaker::maker));
+			compair("cp", &ClusterPaddingMaker::maker) };
 
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const

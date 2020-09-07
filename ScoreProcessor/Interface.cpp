@@ -3,10 +3,11 @@
 
 namespace ScoreProcessor {
 	namespace Output {
-		MakerTFull<UseTuple, Precheck, PatternParser, MoveParser>
+		decltype(maker)
 			maker("Specifies the output format\n"
 				"pattern: the output template, see below; tags: o, out, p, pat\n"
 				"move: whether to copy or move files (ignored by multi); tags: m, mv, move\n"
+				"overwrite: allow overwrite existing files; tags: overwrite, ow\n"
 				"template specifiers:\n"
 				"  %w filename and extension\n"
 				"  %c entire filename\n"
@@ -17,7 +18,7 @@ namespace ScoreProcessor {
 				"  %% literal percent\n"
 				"Double the starting dash if you want the file to start with a dash.",
 				"Output",
-				"pattern=%w move=false");
+				"pattern=%w move=false overwrite=true");
 	}
 
 	namespace NumThreads {
@@ -359,9 +360,9 @@ namespace ScoreProcessor {
 			"  mff:upper_threshold, mutual flood fill, flood fills corresponding parts\n"
 			"  rpl: , replace match with image\n"
 			"  fill:color, fill match with color\n"
-			"l,t,h,v: region to limit matching to; see -fr, fill rectangle",
+			"left,top,horiz,vert,origin: region to limit matching to; see -fr, fill rectangle",
 			"Sliding Erase Downscale Match",
-			"template_file_names downscale thresh=0.95 replace=fill:255 l=-99999 t=-999999 h=99999 v=99999 o=tl"
+			"template_file_names downscale thresh=0.95 replace=fill:255 left=-99999 top=-99999 horiz=r:99999 vert=b:99999 origin=tl"
 		};
 	}
 	namespace RemoveEmptyLinesMaker {
@@ -452,6 +453,22 @@ namespace ScoreProcessor {
 			"required_color_range: pixels of this brightness replaced; see -ccg cluster clear gray",
 			"Flood Fill",
 			"left right horiz=width:1 vert=height:1 origin=tl required_color_range=0,254 replacer=255"
+		};
+	}
+
+	namespace FlipVerticalMaker {
+		decltype(maker) maker{
+			"Flips Image Vertically (across x-axis)",
+			"Flip Vertical",
+			"no arguments"
+		};
+	}
+
+	namespace FlipHorizontalMaker {
+		decltype(maker) maker{
+			"Flips Images Horizontal (across y-axis)",
+			"Flip Horizontal",
+			"no arguments"
 		};
 	}
 }
