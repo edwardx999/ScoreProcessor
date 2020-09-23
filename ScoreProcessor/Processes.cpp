@@ -814,7 +814,20 @@ namespace ScoreProcessor {
 
 	bool Invert::process(Img& img) const
 	{
-		auto const size = img.size();
+		auto const size = [&img]() -> std::size_t
+		{
+			switch (img._spectrum)
+			{
+			case 1:
+			case 2:
+				return img._width * std::size_t(img._height);
+			case 3:
+			case 4:
+				return img._width * std::size_t(img._height) * 3;
+			default:
+				return 0;
+			}
+		}();
 		auto const data = img.data();
 		for(std::size_t i = 0; i < size; ++i)
 		{
