@@ -977,4 +977,286 @@ namespace ScoreProcessor {
 		}
 		return true;
 	}
+
+	bool NormalizeBrightness::process(Img& img) const
+	{
+		std::vector<unsigned char> good_pixels;
+		if (_select_lower_bound == 0)
+		{
+			switch (img._spectrum)
+			{
+			case 1:
+			case 2:
+				std::copy_if(img.begin(), img.end(), std::back_inserter(good_pixels), [this](unsigned char value)
+							 {
+								 return value <= _select_upper_bound;
+							 });
+					break;
+			case 3:
+			case 4:
+			{
+				auto const size = std::size_t(img._width) * img._height;
+				auto const data = img._data;
+				for (std::size_t i = 0; i < size; ++i)
+				{
+					auto const brightness = ImageUtils::brightness({ data[i], data[i + size], data[i + size * 2] });
+					if (brightness <= _select_upper_bound)
+					{
+						good_pixels.push_back(brightness);
+					}
+				}
+				break;
+			}
+			default:
+				return false;
+			}
+		}
+		else
+		{
+			switch (img._spectrum)
+			{
+			case 1:
+			case 2:
+			{
+				std::copy_if(img.begin(), img.end(), std::back_inserter(good_pixels), [this](unsigned char value)
+							 {
+								 return value <= _select_upper_bound && value >= _select_lower_bound;
+							 });
+				break;
+			}
+			case 3:
+			case 4:
+			{
+				auto const size = std::size_t(img._width) * img._height;
+				auto const data = img._data;
+				for (std::size_t i = 0; i < size; ++i)
+				{
+					auto const brightness = ImageUtils::brightness({ data[i], data[i + size], data[i + size * 2] });
+					if (brightness <= _select_upper_bound && brightness >= _select_lower_bound)
+					{
+						good_pixels.push_back(brightness);
+					}
+				}
+				break;
+			}
+			default:
+				return false;
+			}
+		}
+		if (good_pixels.empty())
+		{
+			return false;
+		}
+		auto const median_iterator = good_pixels.begin() + good_pixels.size() / 2;
+		std::nth_element(good_pixels.begin(), median_iterator, good_pixels.end());
+		auto const median = *median_iterator;
+		auto const offset = _median - int(median);
+		auto const img_data = img._data;
+		auto const img_data_end = [&img]()
+		{
+			switch (img._spectrum)
+			{
+			case 1:
+			case 2:
+				return img._data + img._width * std::size_t(img._height);
+			default:
+				return img._data + img._width * std::size_t(img._height) * 3;
+			}
+		}();
+		for (auto it = img_data; it != img_data_end; ++it)
+		{
+			if (*it >= _select_lower_bound && *it <= _select_upper_bound)
+			{
+				auto const value = *it + offset;
+				*it = exlib::clamp<unsigned char>(value);
+			}
+		}
+		return true;
+	}
+
+	template<typename T>
+	constexpr T saturated_subtract(T a, T b)
+	{
+		if (b >= a)
+		{
+			return T{};
+		}
+		return a - b;
+	}
+
+	bool MedianAdaptiveThreshold::process(Img& img) const
+	{
+		if (img._width == 0 || img._height == 0 || img._spectrum == 0 || img._spectrum > 4)
+		{
+			return false;
+		}
+		std::array<unsigned int, 256> histogram{};
+		auto const gray_image = [&img, gamma = _gamma]()
+		{
+			if (gamma != 1)
+			{
+				auto const gamma_adjust = [gamma](unsigned char input){
+					return static_cast<unsigned char>(std::round(std::pow(input / 255.0f, gamma) * 255));
+				};
+				switch (img._spectrum)
+				{
+				case 1:
+				case 2:
+					return cil::get_map<1>(img, [gamma_adjust](std::array<unsigned char, 1> color)
+										   {
+											   return std::array{ gamma_adjust(color[0]) };
+										   });
+				case 3:
+				case 4:
+					return cil::get_map<3>(img, [gamma_adjust](std::array<unsigned char, 3> color)
+										   {
+											   return std::array{ gamma_adjust(ImageUtils::brightness({ color[0], color[1], color[2] })) };
+										   });
+				}
+			}
+			else
+			{
+				switch (img._spectrum)
+				{
+				case 1:
+					return img;
+				case 2:
+					return cil::get_map<1>(img, [](std::array<unsigned char, 1> color)
+										   {
+											   return std::array{ color[0] };
+										   });
+				case 3:
+				case 4:
+					return cil::get_map<3>(img, [](std::array<unsigned char, 3> color)
+										   {
+											   return std::array{ ImageUtils::brightness({ color[0], color[1], color[2] }) };
+										   });
+				}
+			}
+			return cil::CImg(img, true);
+		}();
+		auto const hwidth = _window_width / 2;
+		auto const hheight = _window_height / 2;
+		auto const hwidth_inv = _window_width - hwidth;
+		auto const hheight_inv = _window_height - hheight;
+		unsigned int window_left = 0;
+		unsigned int window_top = 0;
+		unsigned int window_right = std::min(hwidth_inv, img._width);
+		unsigned int window_bottom = std::min(hheight_inv, img._height);
+		for (unsigned int y = 0; y < window_bottom; ++y)
+		{
+			for (unsigned int x = 0; x < window_right; ++x)
+			{
+				++histogram[gray_image(x, y)];
+			}
+		}
+		auto const find_median = [&]()
+		{
+			auto const window_size = std::size_t(window_right - window_left) * (window_bottom - window_top);
+			auto const threshold = window_size / 2;
+			std::size_t count = 0;
+			for (std::size_t i = 0; i < histogram.size(); ++i)
+			{
+				count += histogram[i];
+				if (count >= threshold)
+				{
+					return (unsigned char)i;
+				}
+			}
+			return (unsigned char)255;
+		};
+		bool changed = false;
+		auto const color_pixel = [&](unsigned int x, unsigned int y)
+		{
+			changed = true;
+			img(x, y) = _replacer;
+			if (img._spectrum >= 3)
+			{
+				img(x, y, 0, 1) = _replacer;
+				img(x, y, 0, 2) = _replacer;
+			}
+		};
+		for (unsigned int x = 0; x < img._width; ++x)
+		{
+			if (x & 1)
+			{
+				for (unsigned int y = img._height; y-- > 0;)
+				{
+					auto const wt_new = saturated_subtract(y, hheight);
+					if (wt_new != window_top)
+					{
+						for (unsigned int x2 = window_left; x2 < window_right; ++x2)
+						{
+							++histogram[gray_image(x2, wt_new)];
+						}
+						window_top = wt_new;
+					}
+					auto const wb_new = std::min(img._height, y + hheight_inv);
+					if (wb_new != window_bottom)
+					{
+						for (unsigned int x2 = window_left; x2 < window_right; ++x2)
+						{
+							--histogram[gray_image(x2, wb_new)];
+						}
+						window_bottom = wb_new;
+					}
+					auto const median = exlib::clamp<unsigned char>(_median_adjustment + find_median());
+					if (gray_image(x, y) > median)
+					{
+						color_pixel(x, y);
+					}
+				}
+			}
+			else
+			{
+				for (unsigned int y = 0; y < img._height; ++y)
+				{
+					auto const wt_new = saturated_subtract(y, hheight);
+					if (wt_new != window_top)
+					{
+						for (unsigned int x2 = window_left; x2 < window_right; ++x2)
+						{
+							--histogram[gray_image(x2, window_top)];
+						}
+						window_top = wt_new;
+					}
+					auto const wb_new = std::min(img._height, y + hheight_inv);
+					if (wb_new != window_bottom)
+					{
+						for (unsigned int x2 = window_left; x2 < window_right; ++x2)
+						{
+							++histogram[gray_image(x2, window_bottom)];
+						}
+						window_bottom = wb_new;
+					}
+					auto const median = exlib::clamp<unsigned char>(_median_adjustment + find_median());
+					if (gray_image(x, y) > median)
+					{
+						color_pixel(x, y);
+					}
+				}
+			}
+			{
+				auto const wl_new = saturated_subtract(x, hwidth);
+				if (wl_new != window_left)
+				{
+					for (unsigned int y = window_top; y < window_bottom; ++y)
+					{
+						--histogram[gray_image(window_left, y)];
+					}
+					window_left = wl_new;
+				}
+			}
+			auto const wr_new = std::min(img._width, x + hwidth_inv);
+			if (wr_new != window_right)
+			{
+				for (unsigned int y = window_top; y < window_bottom; ++y)
+				{
+					++histogram[gray_image(window_right, y)];
+				}
+				window_right = wr_new;
+			}
+		}
+		return changed;
+	}
 }

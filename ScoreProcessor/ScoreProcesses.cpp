@@ -1442,7 +1442,7 @@ namespace ScoreProcessor {
 					}
 				}
 			}
-			if(node_found)
+			if(node_found&&node_start!=0)
 			{
 				place_values();
 			}
@@ -2147,7 +2147,17 @@ namespace ScoreProcessor {
 			}
 			if(node_found)
 			{
-				place_values(node_start,y);
+				if(node_start>0)
+				{
+					place_values(node_start,y);
+				}
+				else
+				{
+					for(int y=0;y<ref._height;++y)
+					{
+						map(x,y)=0;
+					}
+				}
 			}
 		}
 		return map;
@@ -2279,12 +2289,12 @@ namespace ScoreProcessor {
 		}
 	}
 
-	void horizontal_shift(cil::CImg<unsigned char>& img,bool eval_side,bool eval_direction,unsigned char background_threshold)
+	void horizontal_shift(cil::CImg<unsigned char>& img,bool eval_right_side,bool eval_from_bottom,unsigned char background_threshold)
 	{
 		std::vector<int> shifts(img._height);
-		if(eval_side)
+		if(eval_right_side)
 		{
-			if(eval_direction)
+			if(eval_from_bottom)
 			{
 				unsigned int x,y;
 				for(x=img._width;x>0;)
@@ -2348,7 +2358,7 @@ namespace ScoreProcessor {
 		}
 		else
 		{
-			if(eval_direction)
+			if(eval_from_bottom)
 			{
 				unsigned int x,y;
 				for(x=0;x<img._width;++x)
@@ -2366,7 +2376,7 @@ namespace ScoreProcessor {
 				for(unsigned int y_f=img._height;y_f>y;)
 				{
 					--y_f;
-					shifts[y_f]=--x;
+					shifts[y_f]=-x;
 				}
 				for(unsigned int y_f=y;y_f>0;)
 				{
@@ -2375,7 +2385,7 @@ namespace ScoreProcessor {
 					{
 						++x;
 					}
-					shifts[y_f]=--x;
+					shifts[y_f]=-x;
 				}
 			}
 			else
@@ -2394,7 +2404,7 @@ namespace ScoreProcessor {
 			end_loop4:
 				for(unsigned int y_f=0;y_f<=y;++y_f)
 				{
-					shifts[y_f]=--x;
+					shifts[y_f]=-x;
 				}
 				for(unsigned int y_f=y+1;y_f<img._height;++y_f)
 				{
@@ -2522,10 +2532,10 @@ namespace ScoreProcessor {
 			}
 			else
 			{
-				unsigned int x,y;
+				unsigned int x=0,y;
 				for(y=0;y<img._height;++y)
 				{
-					for(x=0;y<img._width;++x)
+					for(x=0;x<img._width;++x)
 					{
 						if(img(x,y)<background_threshold)
 						{

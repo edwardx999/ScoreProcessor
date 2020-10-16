@@ -536,5 +536,35 @@ namespace ScoreProcessor {
 		{}
 		bool process(Img&) const override;
 	};
+
+	class NormalizeBrightness:public ImageProcess<> {
+		unsigned char _median;
+		unsigned char _select_lower_bound;
+		unsigned char _select_upper_bound;
+	public:
+		NormalizeBrightness(unsigned char median, unsigned char select_lb, unsigned char select_ub):
+			_median(median),
+			_select_lower_bound(select_lb),
+			_select_upper_bound(select_ub)
+		{}
+		bool process(Img&) const override;
+	};
+
+	class MedianAdaptiveThreshold:public ImageProcess<> {
+		unsigned int _window_width;
+		unsigned int _window_height;
+		int _median_adjustment;
+		float _gamma;
+		unsigned char _replacer;
+	public:
+		MedianAdaptiveThreshold(unsigned int window_width, unsigned int window_height, int median_adjustment, unsigned char replacer, float gamma):
+			_window_width(window_width),
+			_window_height(window_height),
+			_median_adjustment(median_adjustment),
+			_gamma(gamma),
+			_replacer(replacer)
+		{}
+		bool process(Img&) const override;
+	};
 }
 #endif

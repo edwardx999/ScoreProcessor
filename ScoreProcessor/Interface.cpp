@@ -471,4 +471,24 @@ namespace ScoreProcessor {
 			"no arguments"
 		};
 	}
+	namespace NormalizeBrightnessMaker {
+		decltype(maker) maker{
+			"Lowers median brightness of select pixel to desired",
+			"Normalize Brightness",
+			"median select_upper_brightness select_lower_brightness"
+		};
+	}
+
+	namespace MedianAdaptiveFilter {
+		decltype(maker) maker{
+			"Median Adaptive Filter\n"
+			"window_width: the width of window to take the median from, if <= 0: window_height; tags: w, wwidth, ww\n"
+			"window_height: the height of window to take the median from, if <= 0: window_width; tags: h, wheight, wh\n"
+			"median_adjustment: pixels >= median + this_value replaced; tags: adj, madj\n"
+			"gamma: gamma adjustment for brightness; tags: g, gam\n"
+			"replacer: color to replace with; tags: r, rep",
+			"Median Adaptive Filter",
+			"window_width=0 window_height=0 median_adjustment=0 gamma=0.5 replacer=255"
+		};
+	}
 }

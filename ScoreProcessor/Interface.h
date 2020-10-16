@@ -3329,6 +3329,91 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple> maker;
 	}
 
+	namespace NormalizeBrightnessMaker {
+		struct Median {
+			cnnm("median");
+			clbl("med","md");
+		};
+		struct SelectUpper {
+			cnnm("select_upper_bound");
+			clbl("sup", "up");
+		};
+		struct SelectLower {
+			cnnm("select_lower_bound");
+			clbl("sup", "up");
+			cndf(0)
+		};
+
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del, unsigned char median, unsigned char upper, unsigned char lower)
+			{
+				if (lower > upper)
+				{
+					std::invalid_argument("Lower cannot be greater than upper");
+				}
+				del.pl.add_process<NormalizeBrightness>(median, lower, upper);
+			}
+		};
+		extern SingMaker<UseTuple, UCharParser<Median>, UCharParser<SelectUpper>, UCharParser<SelectLower>> maker;
+	}
+
+	namespace MedianAdaptiveFilter {
+		using FGMaker::Replacer;
+		struct Adjustment {
+			cnnm("median_adjustmen");
+			static int parse(InputType input)
+			{
+				auto const value = IntParser<empty>().parse(input);
+				if (value < -255 || value > 255)
+				{
+					throw std::invalid_argument("Value in range [-255, 255] required");
+				}
+				return value;
+			}
+			clbl("adj", "madj");
+			cndf(0)
+		};
+		struct WindowWidth {
+			cnnm("window_width");
+			clbl("w", "wwidth", "ww");
+			cndf(0)
+		};
+		struct WindowHeight {
+			cnnm("window_height");
+			clbl("h", "wheight", "wh");
+			cndf(0)
+		};
+
+		struct Gamma {
+			cnnm("gamma");
+			clbl("g", "gam");
+			cndf(float(0.5))
+		};
+
+		using GammaParser = FloatParser<Gamma, no_negatives>;
+
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del, int window_width, int window_height, int median_adjustment, float gamma, unsigned char replacer)
+			{
+				if (window_width <= 0 && window_height <= 0)
+				{
+					throw std::invalid_argument("Must give (positive) window height or width");
+				}
+				if (window_width <= 0)
+				{
+					window_width = window_height;
+				}
+				else
+				{
+					window_height = window_width;
+				}
+				using uint = unsigned int;
+				del.pl.add_process<MedianAdaptiveThreshold>(uint(window_width), uint(window_height), median_adjustment, replacer, gamma);
+			}
+		};
+		extern SingMaker<UseTuple, IntParser<WindowWidth>, IntParser<WindowHeight>, Adjustment, GammaParser, IntegerParser<unsigned char, Replacer>> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -3379,13 +3464,18 @@ namespace ScoreProcessor {
 			compair("wtt", &WhiteToTransparentMaker::maker),
 			compair("ff",&FloodFillMaker::maker),
 			compair("fv",&FlipVerticalMaker::maker),
-			compair("fh",&FlipHorizontalMaker::maker)
+			compair("fh",&FlipHorizontalMaker::maker),
+			compair("nb",&NormalizeBrightnessMaker::maker),
+			compair("mat",&MedianAdaptiveFilter::maker)
 		};
 
 		constexpr auto mcl = std::array{
 			compair("spl",&SpliceMaker::maker),
 			compair("cut",&CutMaker::maker) };
 
+#ifdef OPTION_RESTRICTED
+		constexpr auto ol = std::array<compair, 0>{};
+#else
 		constexpr auto ol = std::array{
 			compair("o",&Output::maker),
 			compair("vb",&Verbosity::maker),
@@ -3395,6 +3485,7 @@ namespace ScoreProcessor {
 			compair("flt",&RgxFilter::maker),
 			compair("list",&List::maker),
 			compair("q",&Quality::maker) };
+#endif
 
 		constexpr auto aliases = std::array{
 			compair("rotate",&RotMaker::maker),
