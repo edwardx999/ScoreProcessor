@@ -8,6 +8,7 @@ namespace ScoreProcessor {
 				"pattern: the output template, see below; tags: o, out, p, pat\n"
 				"move: whether to copy or move files (ignored by multi); tags: m, mv, move\n"
 				"overwrite: allow overwrite existing files; tags: overwrite, ow\n"
+				"recurse: whether to recursively make folders for output; tags: r, rec\n"
 				"template specifiers:\n"
 				"  %w filename and extension\n"
 				"  %c entire filename\n"
@@ -18,7 +19,7 @@ namespace ScoreProcessor {
 				"  %% literal percent\n"
 				"Double the starting dash if you want the file to start with a dash.",
 				"Output",
-				"pattern=%w move=false overwrite=true");
+				"pattern=%w move=false overwrite=true recurse=true");
 	}
 
 	namespace NumThreads {

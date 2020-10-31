@@ -25,6 +25,9 @@ constexpr bool could_be_command(char const* str)
 //could be a command but checking that it is not -r
 constexpr bool could_be_command_no_rec(char const* str)
 {
+#ifdef OPTION_RESTRICTED
+	return str[0] == '-' && str[1] >= 'a' && str[1] <= 'z';
+#else
 	if(str[0] == '-')
 	{
 		if(str[1] >= 'a' && str[1] <= 'z')
@@ -40,6 +43,7 @@ constexpr bool could_be_command_no_rec(char const* str)
 		}
 	}
 	return false;
+#endif
 }
 
 //whether str is -r
@@ -469,7 +473,7 @@ InputIter find_file_list(InputIter begin, InputIter end)
 //applies the single image processes
 void do_single(CommandMaker::delivery const& del, std::vector<std::string> const& files)
 {
-	del.pl.process(files, &del.sr, del.num_threads, del.starting_index, del.do_move, del.quality);
+	del.pl.process(files, &del.sr, del.num_threads, del.starting_index, del.do_move, del.quality, del.make_folders);
 }
 
 //applies the cut process to the images
@@ -744,6 +748,10 @@ int main(int argc, InputIter argv)
 	{
 		return 1;
 	}
+#if OPTION_RESTRICTED
+	del.lt = del.errors_only;
+	del.sr.assign("%p/output/%w");
+#endif
 	std::optional<Loggers::AmountLog> al;
 	Loggers::CoutLog cl;
 	switch(del.lt)

@@ -77,6 +77,7 @@ namespace ScoreProcessor {
 			unsigned int overridden_num_threads;
 			bool list_files; //whether files should be listed out to the user
 			bool check_overwrite;
+			bool make_folders;
 			int quality; //[0,100] jpeg file quality
 			PMINLINE delivery():
 				starting_index(-1), //invalid values means not given by user
@@ -86,6 +87,7 @@ namespace ScoreProcessor {
 				do_move(false),
 				list_files(false),
 				check_overwrite(false),
+				make_folders(true),
 				lt(unassigned_log),
 				quality(-1)
 			{}
@@ -968,8 +970,23 @@ namespace ScoreProcessor {
 			cndf(true)
 		};
 
+		struct MakeFolderParser {
+			static constexpr bool parse(InputType s)
+			{
+				auto const c = s[0];
+				if (c=='t'||c=='1'||c=='T'||c=='\0')
+				{
+					return true;
+				}
+				return false;
+			}
+			clbl("r");
+			cnnm("recurse");
+			cndf(true);
+		};
+
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,InputType input,bool do_move,bool allow_overwrite)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,InputType input,bool do_move,bool allow_overwrite,bool recurse)
 			{
 				if(*input==0)
 				{
@@ -982,6 +999,7 @@ namespace ScoreProcessor {
 				del.sr.assign(input);
 				del.do_move=do_move;
 				del.check_overwrite=!allow_overwrite;
+				del.make_folders=recurse;
 			}
 		};
 
@@ -999,7 +1017,7 @@ namespace ScoreProcessor {
 			}
 		};
 
-		extern MakerTFull<UseTuple,Precheck,PatternParser,MoveParser,CheckOverrideParser> maker;
+		extern MakerTFull<UseTuple,Precheck,PatternParser,MoveParser,CheckOverrideParser,MakeFolderParser> maker;
 	}
 
 	namespace NumThreads {

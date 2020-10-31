@@ -230,7 +230,7 @@ namespace ScoreProcessor {
 		}
 
 		void process_unsafe(cimg_library::CImg<T>& img,char const* output) const;
-		void process_unsafe(char const* input,char const* output,bool move,int quality) const;
+		void process_unsafe(char const* input,char const* output,bool move,int quality,bool recurse) const;
 		/*
 			Processes an image.
 		*/
@@ -252,12 +252,12 @@ namespace ScoreProcessor {
 		/*
 			Processes an image at the given filename, and saves it to the output.
 		*/
-		void process(char const* filename,char const* output,bool move,int quality) const;
+		void process(char const* filename,char const* output,bool move,int quality,bool recurse) const;
 		/*
 			Processes an image at the given filename, and saves it based on the SaveRules.
 			Pass nullptr to SaveRules if you do not want it saved (useless, but ok).
 		*/
-		void process(char const* filename,SaveRules const* psr,unsigned int index,bool move,int quality) const;
+		void process(char const* filename,SaveRules const* psr,unsigned int index,bool move,int quality,bool recurse) const;
 
 		/*
 			Processes all the images in the vector.
@@ -279,7 +279,8 @@ namespace ScoreProcessor {
 			unsigned int const num_threads,
 			unsigned int const starting_index,
 			bool move,
-			int quality) const;
+			int quality,
+			bool recurse) const;
 
 		/*
 			Processes all the images in the vector.
@@ -289,7 +290,7 @@ namespace ScoreProcessor {
 			SaveRules const* psr,
 			unsigned int const num_threads,
 			unsigned int const starting_index,
-			bool move,int quality) const;
+			bool move,int quality,bool recurse) const;
 	};
 	typedef ProcessList<unsigned char> IPList;
 
@@ -358,7 +359,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move,int quality) const
+	void ProcessList<T>::process_unsafe(char const* fname,char const* output,bool do_move,int quality,bool recurse) const
 	{
 		using namespace std::filesystem;
 		path in(fname),out(output);
@@ -387,7 +388,7 @@ namespace ScoreProcessor {
 			auto sin=validate_extension(&*in_ext);
 			return std::make_pair(sin,sout);
 		};
-		auto copy_or_move=[do_move,&in,&out,fname,output]()
+		auto copy_or_move=[do_move,&in,&out,fname,output,recurse]()
 		{
 			if(std::filesystem::exists(out)&&std::filesystem::equivalent(in,out))
 			{
@@ -418,25 +419,85 @@ namespace ScoreProcessor {
 		};
 		auto load_s=[fname](cil::CImg<T>&img,auto s)
 		{
-			switch(s.first)
+#if OPTION_RESTRICTED
+			try
 			{
-			case support_type::bmp:
-				img.load_bmp(fname);
-				break;
-			case support_type::jpeg:
-				img.load_jpeg(fname);
-				break;
-			case support_type::png:
-				img.load_png(fname);
-				break;
-			case support_type::tiff:
-				img.load_tiff(fname,0,0);
+#endif
+				switch (s.first)
+				{
+				case support_type::bmp:
+					img.load_bmp(fname);
+					break;
+				case support_type::jpeg:
+					img.load_jpeg(fname);
+					break;
+				case support_type::png:
+					img.load_png(fname);
+					break;
+				case support_type::tiff:
+					img.load_tiff(fname, 0, 0);
+				}
+#if OPTION_RESTRICTED
 			}
+			catch (std::exception const& first_try)
+			{
+				try
+				{
+					if (s.first != support_type::bmp)
+					{
+						img.load_bmp(fname);
+					}
+					return;
+				}
+				catch(...) { }
+				try
+				{
+					if (s.first != support_type::jpeg)
+					{
+						img.load_jpeg(fname);
+					}
+					return;
+				}
+				catch (...) { }
+				try
+				{
+					if (s.first != support_type::png)
+					{
+						img.load_png(fname);
+					}
+					return;
+				}
+				catch (...) { }
+				try
+				{
+					if (s.first != support_type::tiff)
+					{
+						img.load_tiff(fname);
+					}
+					return;
+				}
+				catch (...)
+				{
+					throw first_try;
+				}
+			}
+#endif
 		};
 		auto save_s=[output,quality](cil::CImg<T>&img,auto s)
 		{
 			cil::save_image(img,output,s.second,quality);
 		};
+		if (recurse)
+		{
+			try
+			{
+				std::filesystem::create_directories(out.parent_path());
+			}
+			catch (std::exception const& err)
+			{
+				throw std::runtime_error(std::string("Failed to create paths for ").append(output).append(": ").append(err.what()));
+			}
+		}
 		if(this->empty())
 		{
 			if(!exlib::strncmp_nocase(in_ext,out_ext))
@@ -494,11 +555,11 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(char const* fname,char const* output,bool move,int quality) const
+	void ProcessList<T>::process(char const* fname,char const* output,bool move,int quality,bool recurse) const
 	{
 		try
 		{
-			process_unsafe(fname,output,move,quality);
+			process_unsafe(fname,output,move,quality,recurse);
 		}
 		catch(std::exception const& ex)
 		{
@@ -517,7 +578,7 @@ namespace ScoreProcessor {
 	}
 
 	template<typename T>
-	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index,bool move,int quality) const
+	void ProcessList<T>::process(char const* filename,SaveRules const* psr,unsigned int index,bool move,int quality,bool recurse) const
 	{
 		size_t len=strlen(filename);
 		bool out_loud=plog&&vb>=decltype(vb)::loud;
@@ -533,7 +594,7 @@ namespace ScoreProcessor {
 			output=psr?psr->make_filename(std::string_view(filename,len),index):filename;
 			try
 			{
-				process_unsafe(filename,output.c_str(),move,quality);
+				process_unsafe(filename,output.c_str(),move,quality,recurse);
 			}
 			catch(std::exception const& ex)
 			{
@@ -572,16 +633,13 @@ namespace ScoreProcessor {
 		unsigned int const num_threads,
 		unsigned int const starting_index,
 		bool move,
-		int quality) const
+		int quality,
+		bool recurse) const
 	{
 		exlib::thread_pool tp(num_threads);
 		for(size_t i=0;i<imgs.size();++i)
 		{
-			tp.push_back([]()
-				{
-
-				});
-			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i],this,psr,i+starting_index,move,quality);
+			tp.add_task<typename ProcessList<T>::ProcessTaskFName>(imgs[i],this,psr,i+starting_index,move,quality,recurse);
 		}
 		tp.start();
 	}
@@ -594,13 +652,14 @@ namespace ScoreProcessor {
 		unsigned int const num_threads,
 		unsigned int const starting_index,
 		bool move,
-		int quality) const
+		int quality,
+		bool recurse) const
 	{
 		if(num_threads<2) //avoid threadpool overhead
 		{
 			for(size_t i=0;i<imgs.size();++i)
 			{
-				process(imgs[i].data(),psr,i+starting_index,move,quality);
+				process(imgs[i].data(),psr,i+starting_index,move,quality,recurse);
 			}
 		}
 		else
@@ -608,9 +667,9 @@ namespace ScoreProcessor {
 			exlib::thread_pool tp(num_threads);
 			for(size_t i=0;i<imgs.size();++i)
 			{
-				tp.push_back([name=imgs[i].data(),psr,index=i+starting_index,move,quality,this]() noexcept
+				tp.push_back([name=imgs[i].data(),psr,index=i+starting_index,move,quality,recurse,this]() noexcept
 				{
-					process(name,psr,index,move,quality);
+					process(name,psr,index,move,quality,recurse);
 				});
 			}
 			tp.start();
