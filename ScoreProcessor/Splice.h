@@ -391,6 +391,12 @@ namespace ScoreProcessor {
 			float excess_weight;
 			float padding_weight;
 		};
+		struct options {
+			unsigned int starting_index;
+			unsigned int num_threads;
+			int quality;
+			bool make_folders;
+		};
 	}
 
 	//splices together images using the standard heuristics and dif^3 cost algorithm
@@ -398,30 +404,17 @@ namespace ScoreProcessor {
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
 		SaveRules const& output_rule,
-		unsigned int starting_index,
-		unsigned int num_threads,
-		Splice::standard_heuristics const&,
-		int quality);
-
-	unsigned int splice_pages_horizontal_parallel(
-		std::vector<std::string> const& filenames,
-		char const* output,
-		unsigned int starting_index,
-		unsigned int num_threads,
-		Splice::standard_heuristics const&,
-		ImageUtils::Point<unsigned int> squish_size,
-		int quality);
+		Splice::options const& options,
+		Splice::standard_heuristics const&);
 
 	//splices together images using the standard heuristics and dif^3 cost algorithm
 	//cost is 
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
 		SaveRules const& output_rule,
-		unsigned int starting_index,
-		unsigned int num_threads,
+		Splice::options const& options,
 		Splice::standard_heuristics const&,
-		cil::CImg<unsigned char> const& divider,
-		int quality);
+		cil::CImg<unsigned char> const& divider);
 
 }
 #endif

@@ -495,10 +495,12 @@ void do_cut(CommandMaker::delivery const& del, std::vector<std::string> const& f
 	private:
 		std::string const* input;
 		unsigned int index;
+		CommandMaker::delivery const* del;
 	public:
 		CutProcess(std::string const* input, unsigned int index, CommandMaker::delivery const& del):
 			input(input),
-			index(index)
+			index(index),
+			del(&del)
 		{}
 		void execute(cut_args const* ca) const
 		{
@@ -512,6 +514,17 @@ void do_cut(CommandMaker::delivery const& del, std::vector<std::string> const& f
 					ca->log->log(coutput.c_str(), index);
 				}
 				auto out = ca->output->make_filename(*input, index);
+				if (del->make_folders)
+				{
+					try
+					{
+						std::filesystem::create_directories(std::filesystem::path(out).parent_path());
+					}
+					catch (std::exception const& err)
+					{
+						throw std::runtime_error(std::string("Failed to create paths for ").append(out).append(": ").append(err.what()));
+					}
+				}
 				auto ext = exlib::find_extension(out.begin(), out.end());
 				auto const s = validate_extension(ext);
 				cil::CImg<unsigned char> in(input->c_str());
@@ -573,9 +586,10 @@ void do_splice(CommandMaker::delivery const& del, std::vector<std::string> const
 		// auto ext = exlib::find_extension(save.begin(), save.end());
 		// validate_extension(ext);
 		Splice::standard_heuristics sh;
+		Splice::options const options{ del.starting_index, del.num_threads, del.quality, del.make_folders };
 		auto num = del.splice_divider.data() ?
-			splice_pages_parallel(files, del.sr, del.starting_index, del.num_threads, del.splice_args, del.splice_divider, del.quality) :
-			splice_pages_parallel(files, del.sr, del.starting_index, del.num_threads, del.splice_args, del.quality);
+			splice_pages_parallel(files, del.sr, options, del.splice_args, del.splice_divider) :
+			splice_pages_parallel(files, del.sr, options, del.splice_args);
 		std::cout << "Created " << num << (num == 1 ? " page\n" : " pages\n");
 	}
 	catch(std::exception const& ex)

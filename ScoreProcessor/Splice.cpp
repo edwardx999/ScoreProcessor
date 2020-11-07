@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "Splice.h"
 #include "ScoreProcesses.h"
+#ifdef HSPROC
+#include "Processes.h"
+#endif
 namespace ScoreProcessor {
 
 	template<typename TreatPixel>//function (tog_pixel_pointer,tog_size,current_img,x,y)
@@ -301,10 +304,8 @@ namespace ScoreProcessor {
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
 		SaveRules const& output_rule,
-		unsigned int starting_index,
-		unsigned int num_threads,
-		Splice::standard_heuristics const& sh,
-		int quality)
+		Splice::options const& options,
+		Splice::standard_heuristics const& sh)
 	{
 		if(filenames.size()<2)
 		{
@@ -398,27 +399,44 @@ namespace ScoreProcessor {
 		{
 			return layout_cost(p,sh,horiz_padding,opt_pad,opt_height);
 		};
-		auto saver = [quality](auto const& image, char const* name)
+		auto saver = [quality = options.quality, width = sh.optimal_height, make_folders = options.make_folders](auto const& image, char const* name)
 		{
 			auto support = supported_path(name);
 			if(support==decltype(support)::no)
 			{
 				support=decltype(support)::png;
 			}
-			//auto save=image.get_rotate(-90);
-			return cil::save_image(image, name, support, quality);
+#ifdef HSPROC
+			auto save=image.get_rotate(-90);
+			if (width.fixed())
+			{
+				ChangeCanvasSize(width(), -1, FillRectangle::origin_reference::middle).process(save);
+			}
+#else
+			auto const& save=image;
+#endif
+			if (make_folders)
+			{
+				try
+				{
+					std::filesystem::create_directories(std::filesystem::path(name).parent_path());
+				}
+				catch (std::exception const& err)
+				{
+					throw std::runtime_error(std::string("Failed to create paths for ").append(name).append(": ").append(err.what()));
+				}
+			}
+			return cil::save_image(save, name, support, quality);
 		};
-		return splice_pages_parallel(managers,output_rule,starting_index,num_threads,pe,create_layout,cost,&splice_images, saver);
+		return splice_pages_parallel(managers,output_rule,options.starting_index,options.num_threads,pe,create_layout,cost,&splice_images, saver);
 	}
 
 	unsigned int splice_pages_parallel(
 		std::vector<std::string> const& filenames,
 		SaveRules const& output_rule,
-		unsigned int starting_index,
-		unsigned int num_threads,
+		Splice::options const& options,
 		Splice::standard_heuristics const& sh,
-		cil::CImg<unsigned char> const& divider,
-		int quality)
+		cil::CImg<unsigned char> const& divider)
 	{
 		auto const c=filenames.size();
 		if(c<2)
@@ -429,7 +447,7 @@ namespace ScoreProcessor {
 		// validate_extension(extension);
 		Splice::page divider_desc{{divider,true}};
 		std::vector<Splice::page> descriptions(filenames.size());
-		exlib::thread_pool pool{num_threads};
+		exlib::thread_pool pool{options.num_threads};
 		std::mutex error_lock;
 		std::string error_log;
 		unsigned int horiz_padding,min_pad,opt_pad,opt_height;
@@ -506,7 +524,7 @@ namespace ScoreProcessor {
 			{
 				return layout_cost(p,sh,horiz_padding,opt_pad,opt_height);
 			});
-		unsigned int num_digs=exlib::num_digits(breaks.size()+starting_index);
+		unsigned int num_digs=exlib::num_digits(breaks.size()+options.starting_index);
 		num_digs=num_digs<3?3:num_digs;
 		unsigned int num_imgs=0;
 		auto start=0;
@@ -517,12 +535,13 @@ namespace ScoreProcessor {
 			auto const s=end-start;
 			pool.push_back(
 				[&,
-				filename_index=start+starting_index,
+				filename_index=start+options.starting_index,
 				fbegin=filenames.data()+start,
 				ibegin=descriptions.data()+start,
 				num_pages=s,
 				padding=breaks[i].padding,
-				quality](decltype(pool)::parent_ref parent) noexcept{
+				quality=options.quality,
+				make_folders=options.make_folders](decltype(pool)::parent_ref parent) noexcept{
 				try
 				{
 					std::vector<Splice::page> imgs(num_pages*2-1);
@@ -545,6 +564,17 @@ namespace ScoreProcessor {
 						support=decltype(support)::png;
 					}
 					auto const& filename=output;
+					if (make_folders)
+					{
+						try
+						{
+							std::filesystem::create_directories(std::filesystem::path(filename).parent_path());
+						}
+						catch (std::exception const& err)
+						{
+							throw std::runtime_error(std::string("Failed to create paths for ").append(filename).append(": ").append(err.what()));
+						}
+					}
 					cil::save_image(splice_images(imgs.data(),imgs.size(),padding),filename.c_str(),support,quality);
 				}
 				catch(std::exception const& ex)
