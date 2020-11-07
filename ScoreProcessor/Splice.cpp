@@ -423,7 +423,7 @@ namespace ScoreProcessor {
 				}
 				catch (std::exception const& err)
 				{
-					throw std::runtime_error(std::string("Failed to create paths for ").append(name).append(": ").append(err.what()));
+					// throw std::runtime_error(std::string("Failed to create paths for ").append(name).append(": ").append(err.what()));
 				}
 			}
 			return cil::save_image(save, name, support, quality);
@@ -572,7 +572,7 @@ namespace ScoreProcessor {
 						}
 						catch (std::exception const& err)
 						{
-							throw std::runtime_error(std::string("Failed to create paths for ").append(filename).append(": ").append(err.what()));
+							// throw std::runtime_error(std::string("Failed to create paths for ").append(filename).append(": ").append(err.what()));
 						}
 					}
 					cil::save_image(splice_images(imgs.data(),imgs.size(),padding),filename.c_str(),support,quality);
