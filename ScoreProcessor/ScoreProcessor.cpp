@@ -518,7 +518,11 @@ void do_cut(CommandMaker::delivery const& del, std::vector<std::string> const& f
 				{
 					try
 					{
-						std::filesystem::create_directories(std::filesystem::path(out).parent_path());
+						auto const path = std::filesystem::path(out).parent_path();
+						if (!path.empty())
+						{
+							std::filesystem::create_directories(path);
+						}
 					}
 					catch (std::exception const& err)
 					{

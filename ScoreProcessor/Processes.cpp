@@ -72,13 +72,13 @@ namespace ScoreProcessor {
 	bool PadHoriz::process(Img& img) const
 	{
 		std::array<unsigned int, 2> dims{{img._width,img._height}};
-		return horiz_padding(img, side1(dims), side2(dims), tolerance(dims), background);
+		return horiz_padding(img, side1(dims), side2(dims), tolerance(dims), background, cumulative);
 	}
 
 	bool PadVert::process(Img& img) const
 	{
 		std::array<unsigned int, 2> dims{{img._width,img._height}};
-		return vert_padding(img, side1(dims), side2(dims), tolerance(dims), background);
+		return vert_padding(img, side1(dims), side2(dims), tolerance(dims), background, cumulative);
 	}
 
 	bool PadAuto::process(Img& img) const
@@ -724,7 +724,7 @@ namespace ScoreProcessor {
 
 	bool VertCompress::process(Img& img) const
 	{
-		return compress_vertical(img, background_threshold, min_vert_space, min_horiz_space, min_horizontal_protection, max_vertical_protection, 0);
+		return compress_vertical(img, background_threshold, min_vert_space, min_horiz_space, min_horizontal_protection, max_vertical_protection, 0, only_straight_paths);
 	}
 
 	bool ResizeToBound::process(Img& img) const

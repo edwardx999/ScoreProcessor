@@ -146,7 +146,7 @@ namespace ScoreProcessor {
 		return changed;
 	}
 
-	bool compress_vertical(cil::CImg<unsigned char>& img,unsigned char background_threshold,unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_protection,unsigned int max_vert_protection,unsigned int optimal_height)
+	bool compress_vertical(cil::CImg<unsigned char>& img,unsigned char background_threshold,unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_protection,unsigned int max_vert_protection,unsigned int optimal_height,bool only_straight_paths)
 	{
 		using count_t=short;
 		constexpr auto dim_lim=std::numeric_limits<count_t>::max();
@@ -228,10 +228,11 @@ namespace ScoreProcessor {
 				{
 					auto const pixx=ipix->x;
 					auto const pixy=ipix->y;
-					auto const val=exlib::multi_max(
-						path_counts(pixx-1,pixy-1),
-						path_counts(pixx-1,pixy),
-						path_counts(pixx-1,pixy+1));
+					auto const val=only_straight_paths?path_counts(pixx - 1, pixy):
+						exlib::multi_max(
+							path_counts(pixx-1,pixy-1),
+							path_counts(pixx-1,pixy),
+							path_counts(pixx-1,pixy+1));
 					path_counts(pixx,pixy)=val+1;
 					++ipix;
 				} while(ipix!=ipix_end);
@@ -239,12 +240,13 @@ namespace ScoreProcessor {
 				for(auto it=pixels.rbegin();it!=pixels.rend();++it)
 				{
 					auto const pix_loc=*it;
-					path_counts(pix_loc.x,pix_loc.y)=exlib::multi_max(
-						path_counts(pix_loc.x+1,pix_loc.y-1),
-						path_counts(pix_loc.x+1,pix_loc.y),
-						path_counts(pix_loc.x+1,pix_loc.y+1),
-						path_counts(pix_loc.x,pix_loc.y)
-					);
+					path_counts(pix_loc.x,pix_loc.y)=only_straight_paths?
+						exlib::multi_max(path_counts(pix_loc.x + 1, pix_loc.y), path_counts(pix_loc.x, pix_loc.y)):
+						exlib::multi_max(
+							path_counts(pix_loc.x+1,pix_loc.y-1),
+							path_counts(pix_loc.x+1,pix_loc.y),
+							path_counts(pix_loc.x+1,pix_loc.y+1),
+							path_counts(pix_loc.x,pix_loc.y));
 				}
 				pixels.erase(std::remove_if(pixels.begin(),pixels.end(),[&](auto pix)
 					{
@@ -299,21 +301,35 @@ namespace ScoreProcessor {
 					});
 				for(auto const pix_loc:pixels)
 				{
-					path_counts(pix_loc.x,pix_loc.y)=exlib::multi_max(
-						path_counts(pix_loc.x-1,pix_loc.y-1),
-						path_counts(pix_loc.x,pix_loc.y-1),
-						path_counts(pix_loc.x+1,pix_loc.y-1)
-					)+1;
+					if (only_straight_paths)
+					{
+						path_counts(pix_loc.x, pix_loc.y) = path_counts(pix_loc.x, pix_loc.y - 1) + 1;
+					}
+					else
+					{
+						path_counts(pix_loc.x, pix_loc.y) = exlib::multi_max(
+							path_counts(pix_loc.x - 1, pix_loc.y - 1),
+							path_counts(pix_loc.x, pix_loc.y - 1),
+							path_counts(pix_loc.x + 1, pix_loc.y - 1)
+						) + 1;
+					}
 				}
 				for(auto it=pixels.rbegin();it!=pixels.rend();++it)
 				{
 					auto const pix_loc=*it;
-					path_counts(pix_loc.x,pix_loc.y)=exlib::multi_max(
-						path_counts(pix_loc.x-1,pix_loc.y+1),
-						path_counts(pix_loc.x,pix_loc.y+1),
-						path_counts(pix_loc.x+1,pix_loc.y+1),
-						path_counts(pix_loc.x,pix_loc.y)
-					);
+					if (only_straight_paths)
+					{
+						path_counts(pix_loc.x, pix_loc.y) = exlib::multi_max(path_counts(pix_loc.x, pix_loc.y + 1), path_counts(pix_loc.x, pix_loc.y));
+					}
+					else
+					{
+						path_counts(pix_loc.x, pix_loc.y) = exlib::multi_max(
+							path_counts(pix_loc.x - 1, pix_loc.y + 1),
+							path_counts(pix_loc.x, pix_loc.y + 1),
+							path_counts(pix_loc.x + 1, pix_loc.y + 1),
+							path_counts(pix_loc.x, pix_loc.y)
+						);
+					}
 				}
 				//std::cout<<"Vertical paths\n";
 				//path_counts.display();
@@ -364,6 +380,7 @@ namespace ScoreProcessor {
 		}
 		//std::cout<<"Min space protection\n";
 		//safe_points.display();
+		//safe_points.save("tt.png");
 		{
 			// hug left path tracer
 			auto const width=count_t(safe_points._width);
@@ -1901,7 +1918,7 @@ namespace ScoreProcessor {
 	{
 		return horiz_padding(image,left,left);
 	}
-	bool horiz_padding(CImg<unsigned char>& image,unsigned int const left_pad,unsigned int const right_pad,unsigned int tolerance,unsigned char background)
+	bool horiz_padding(CImg<unsigned char>& image,unsigned int const left_pad,unsigned int const right_pad,unsigned int tolerance,unsigned char background,bool cumulative)
 	{
 		signed int x1,x2;
 		switch(image._spectrum)
@@ -1913,8 +1930,8 @@ namespace ScoreProcessor {
 			{
 				return color[0]<=background;
 			};
-			x1=left_pad==-1?0:find_left<1>(image,tolerance,selector)-left_pad;
-			x2=right_pad==-1?image.width()-1:find_right<1>(image,tolerance,selector)+right_pad;
+			x1=left_pad==-1?0:find_left<1>(image,tolerance,selector,cumulative)-left_pad;
+			x2=right_pad==-1?image.width()-1:find_right<1>(image,tolerance,selector,cumulative)+right_pad;
 			break;
 		}
 		default:
@@ -1923,8 +1940,8 @@ namespace ScoreProcessor {
 			{
 				return unsigned int(color[0])+color[1]+color[2]<=bg;
 			};
-			x1=left_pad==-1?0:find_left<3>(image,tolerance,selector)-left_pad;
-			x2=right_pad==-1?image.width()-1:find_right<3>(image,tolerance,selector)+right_pad;
+			x1=left_pad==-1?0:find_left<3>(image,tolerance,selector,cumulative)-left_pad;
+			x2=right_pad==-1?image.width()-1:find_right<3>(image,tolerance,selector,cumulative)+right_pad;
 			break;
 		}
 		}
@@ -1943,7 +1960,7 @@ namespace ScoreProcessor {
 	{
 		return vert_padding(image,p,p);
 	}
-	bool vert_padding(CImg<unsigned char>& image,unsigned int const tp,unsigned int const bp,unsigned int tolerance,unsigned char background)
+	bool vert_padding(CImg<unsigned char>& image,unsigned int const tp,unsigned int const bp,unsigned int tolerance,unsigned char background,bool cumulative)
 	{
 		signed int y1,y2;
 		switch(image._spectrum)
@@ -1955,8 +1972,8 @@ namespace ScoreProcessor {
 			{
 				return color[0]<=background;
 			};
-			y1=tp==-1?0:find_top<1>(image,tolerance,selector)-tp;
-			y2=bp==-1?image.height()-1:find_bottom<1>(image,tolerance,selector)+bp;
+			y1=tp==-1?0:find_top<1>(image,tolerance,selector,cumulative)-tp;
+			y2=bp==-1?image.height()-1:find_bottom<1>(image,tolerance,selector,cumulative)+bp;
 			break;
 		}
 		default:
@@ -1965,8 +1982,8 @@ namespace ScoreProcessor {
 			{
 				return unsigned int(color[0])+color[1]+color[2]<=bg;
 			};
-			y1=tp==-1?0:find_top<3>(image,tolerance,selector)-tp;
-			y2=bp==-1?image.height()-1:find_bottom<3>(image,tolerance,selector)+bp;
+			y1=tp==-1?0:find_top<3>(image,tolerance,selector,cumulative)-tp;
+			y2=bp==-1?image.height()-1:find_bottom<3>(image,tolerance,selector,cumulative)+bp;
 			break;
 		}
 		}

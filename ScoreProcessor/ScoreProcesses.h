@@ -74,7 +74,8 @@ namespace ScoreProcessor {
 		unsigned int min_horizontal_space,
 		unsigned int min_horiz_protection,
 		unsigned int max_vertical_protection,
-		unsigned int min_height);
+		unsigned int min_height,
+		bool only_straight_paths);
 
 	template<typename T>
 	cil::CImg<T> to_rgb(cil::CImg<T> const& img)
@@ -699,7 +700,7 @@ namespace ScoreProcessor {
 
 	//BackgroundFinder:: returns true if a pixel is NOT part of the background
 	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
-	unsigned int find_left(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	unsigned int find_left(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf,bool cumulative=true)
 	{
 		unsigned int num=0;
 		auto const size=img._width*img._height;
@@ -722,11 +723,15 @@ namespace ScoreProcessor {
 			{
 				return x;
 			}
+			if(!cumulative)
+			{
+				num=0;
+			}
 		}
 		return img._width-1;
 	}
 	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
-	unsigned int find_right(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	unsigned int find_right(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf,bool cumulative=true)
 	{
 		unsigned int num=0;
 		auto const size=img._width*img._height;
@@ -749,12 +754,16 @@ namespace ScoreProcessor {
 			{
 				return x;
 			}
+			if(!cumulative)
+			{
+				num=0;
+			}
 		}
 		return 0;
 	}
 
 	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
-	unsigned int find_top(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	unsigned int find_top(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf,bool cumulative=true)
 	{
 		unsigned int num=0;
 		auto const width=img._width;
@@ -781,12 +790,16 @@ namespace ScoreProcessor {
 			{
 				return y;
 			}
+			if(!cumulative)
+			{
+				num=0;
+			}
 		}
 		return height-1;
 	}
 
 	template<unsigned int NumLayers,typename T,typename BackgroundFinder>
-	unsigned int find_bottom(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf)
+	unsigned int find_bottom(cil::CImg<T> const& img,unsigned int tolerance,BackgroundFinder bf,bool cumulative=true)
 	{
 		unsigned int num=0;
 		auto const width=img._width;
@@ -812,6 +825,10 @@ namespace ScoreProcessor {
 			if(num>=tolerance)
 			{
 				return y;
+			}
+			if(!cumulative)
+			{
+				num=0;
 			}
 		}
 		return 0;
@@ -1100,6 +1117,8 @@ namespace ScoreProcessor {
 		unsigned int min_height;
 		float horizontal_energy_weight;
 		unsigned int minimum_vertical_space;
+		unsigned int minimum_horizontal_space;
+		unsigned int horizontal_cut_through;
 		unsigned char background;
 	};
 	/*
@@ -1109,7 +1128,7 @@ namespace ScoreProcessor {
 		@param padding, how much white space will be put at the top and bottom of the pages
 		@return the number of images created
 	*/
-	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch={1000,80,20,0,128},int quality=100);
+	unsigned int cut_page(::cimg_library::CImg<unsigned char> const& image,char const* filename,cut_heuristics const& ch,int quality=100);
 
 	/*
 		Finds the line that is the top of the score image
@@ -1375,14 +1394,14 @@ namespace ScoreProcessor {
 		@param paddingSize, size in pixels of padding
 	*/
 	bool horiz_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
-	bool horiz_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const left,unsigned int const right,unsigned int tolerance=5,unsigned char background=200);
+	bool horiz_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const left,unsigned int const right,unsigned int tolerance=5,unsigned char background=200,bool cumulative=true);
 	/*
 		Adds or removes paddings from all sides of the image
 		@param image
 		@param paddingSize, size in pixels of padding
 	*/
 	bool vert_padding(::cimg_library::CImg<unsigned char>& image,unsigned int const padding);
-	bool vert_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const top,unsigned int const bottom,unsigned int tolerance=5,unsigned char background=200);
+	bool vert_padding(::cimg_library::CImg<unsigned char>& img,unsigned int const top,unsigned int const bottom,unsigned int tolerance=5,unsigned char background=200,bool cumulative=true);
 
 	void compress(
 		::cimg_library::CImg<unsigned char>& image,
