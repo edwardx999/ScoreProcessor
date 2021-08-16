@@ -2227,8 +2227,17 @@ namespace ScoreProcessor {
 			cndf(unsigned char(128))
 		};
 		using BGParser=IntegerParser<unsigned char,BGround>;
+		struct Cumulative {
+			static bool parse(InputType it)
+			{
+				return RgxFilter::KeepMatch::parse(it);
+			}
+			cnnm("cumulative");
+			clbl("cum", "cm");
+			cndf(true);
+		};
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv left,pv right,pv tol,unsigned char bg)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv left,pv right,pv tol,unsigned char bg,bool cumulative)
 			{
 				if(left.index()==2)
 				{
@@ -2242,10 +2251,10 @@ namespace ScoreProcessor {
 				{
 					right=left;
 				}
-				del.pl.add_process<PadHoriz>(left,right,tol,bg);
+				del.pl.add_process<PadHoriz>(left,right,tol,bg,cumulative);
 			}
 		};
-		extern SingMaker<UseTuple,Left,Right,Tol,BGParser> maker;
+		extern SingMaker<UseTuple,Left,Right,Tol,BGParser,Cumulative> maker;
 	}
 
 	namespace VPMaker {
@@ -2361,8 +2370,9 @@ namespace ScoreProcessor {
 			}
 			cndf(pv(0.005,PadBase::height))
 		};
+		using HPMaker::Cumulative;
 		struct UseTuple {
-			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv top,pv bottom,pv tol,unsigned char bg)
+			static PMINLINE void use_tuple(CommandMaker::delivery& del,pv top,pv bottom,pv tol,unsigned char bg,bool cumulative)
 			{
 				if(top.index()==2)
 				{
@@ -2376,10 +2386,10 @@ namespace ScoreProcessor {
 				{
 					bottom=top;
 				}
-				del.pl.add_process<PadVert>(top,bottom,tol,bg);
+				del.pl.add_process<PadVert>(top,bottom,tol,bg,cumulative);
 			}
 		};
-		extern SingMaker<UseTuple,Top,Bottom,Tol,HPMaker::BGParser> maker;
+		extern SingMaker<UseTuple,Top,Bottom,Tol,HPMaker::BGParser,Cumulative> maker;
 	}
 
 	namespace RCGMaker {
@@ -3139,13 +3149,22 @@ namespace ScoreProcessor {
 			cnnm("min horizontal protection");
 			clbl("mhp");
 		};
-		struct UseTuple {
-			static void use_tuple(CommandMaker::delivery& del,unsigned int mvs,unsigned int mh,unsigned int mv,unsigned char bg,unsigned int mhs)
+		struct OnlyStraight {
+			cnnm("only straight lines");
+			clbl("osl");
+			static unsigned int parse(char const* data)
 			{
-				del.pl.add_process<VertCompress>(mvs,mhs,mh,mv,bg);
+				return data[0]=='t';
+			}
+			cndf(false)
+		};
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del,unsigned int mvs,unsigned int mh,unsigned int mv,unsigned char bg,unsigned int mhs,bool osl)
+			{
+				del.pl.add_process<VertCompress>(mvs,mhs,mh,mv,bg,osl);
 			}
 		};
-		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxVerticalProtection>,UIntParser<MinHorizProtection>,HPMaker::BGParser,MinHSpace> maker;
+		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxVerticalProtection>,UIntParser<MinHorizProtection>,HPMaker::BGParser,MinHSpace,OnlyStraight> maker;
 	}
 
 	namespace ResizeToBoundMaker {

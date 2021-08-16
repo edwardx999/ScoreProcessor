@@ -182,7 +182,7 @@ namespace ScoreProcessor {
 	}
 
 	namespace HPMaker {
-		SingMaker<UseTuple, Left, Right, Tol, BGParser> maker(
+		decltype(maker) maker(
 			"Pads the left and right sides of image.\n"
 			"left: left padding, use k to keep padding, or r to assign equal to right,\n"
 			"  use lpw or lph to calculate it as a proportion of width or height respectively;\n"
@@ -193,14 +193,15 @@ namespace ScoreProcessor {
 			"tolerance: this many pixels below background threshold is considered the side,\n"
 			"  use tpw or tph to calculate it as a proportion of width or height respectively;\n"
 			"  tags: tol, tph, tpw\n"
-			"background_threshold: see tolerance; tags: bg",
+			"background_threshold: see tolerance; tags: bg\n"
+			"cumulative: whether pixels in columns are counted cumulatively; tags: cm, cum",
 			"Horizontal Padding",
-			"left right=l tolerance=0.005 background_threshold=128"
+			"left right=l tolerance=0.005 background_threshold=128 cumulative=true"
 		);
 	}
 
 	namespace VPMaker {
-		extern SingMaker<UseTuple, Top, Bottom, Tol, HPMaker::BGParser> maker(
+		decltype(maker) maker(
 			"Pads the top and bottom sides of image.\n"
 			"top: top padding, use k to keep padding, or b to assign equal to bottom,\n"
 			"  use lpw or lph to calculate it as a proportion of width or height respectively;\n"
@@ -211,9 +212,10 @@ namespace ScoreProcessor {
 			"tolerance: this many pixels below background threshold is considered the side,\n"
 			"  use tpw or tph to calculate it as a proportion of width or height respectively;\n"
 			"  tags: tol, tph, tpw\n"
-			"background_threshold: see tolerance; tags: bg",
+			"background_threshold: see tolerance; tags: bg\n"
+			"cumulative: whether pixels in rows are counted cumulatively; tags: cm, cum",
 			"Vertical Padding",
-			"top bottom=t tolerance=0.005 background_threshold=128"
+			"top bottom=t tolerance=0.005 background_threshold=128 cumulative=true"
 		);
 	}
 
