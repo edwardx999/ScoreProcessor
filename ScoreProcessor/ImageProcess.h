@@ -489,13 +489,18 @@ namespace ScoreProcessor {
 		};
 		if (recurse)
 		{
-			try
+			auto const ppath = out.parent_path();
+			if (!ppath.empty())
 			{
-				std::filesystem::create_directories(out.parent_path());
-			}
-			catch (std::exception const& err)
-			{
-				throw std::runtime_error(std::string("Failed to create paths for ").append(output).append(": ").append(err.what()));
+				try
+				{
+
+					std::filesystem::create_directories(out.parent_path());
+				}
+				catch (std::exception const& err)
+				{
+					throw std::runtime_error(std::string("Failed to create paths for ").append(output).append(": ").append(err.what()));
+				}
 			}
 		}
 		if(this->empty())
