@@ -388,13 +388,18 @@ namespace ScoreProcessor {
 			"are protected. Pixels of the largest cluster through which\n"
 			"a long horizontal path or only a short vertical path\n"
 			"are protected.\n"
+			"If there are more than staff_line_length pixels in a row,\n"
+			"it is treated as a staff line, and min_staff_separation\n"
+			"will be maintained between such lines.\n"
 			"min vertical space; tag: ms, mvs\n"
 			"min horizontal protection; tag: mhp\n"
 			"max vertical protection; tag: mvp\n"
 			"background threshold; tag: bg\n"
-			"min horizontal space; tag: mhs",
+			"min horizontal space; tag: mhs\n"
+			"staff line length; tag: sll\n"
+			"min staff separation; tag: mss\n",
 			"Vertical Compress",
-			"min_vert_space min_horiz_pr max_vert_pr background=128 min_horiz_space=mvs"
+			"min_vert_space min_horiz_pr max_vert_pr background=128 min_horiz_space=mvs staff_line_length=-1 min_staff_separation=-1"
 		};
 	}
 

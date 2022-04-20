@@ -430,7 +430,7 @@ namespace ScoreProcessor {
 									// lazily cut out from the top, could be better, but probably only 1 section
 									auto unsafe_count = static_cast<unsigned int>(free_coords.size());
 									size_t i = 0;
-									while (unsafe_count > free_space)
+									while (unsafe_count > free_space && i < free_coords.size())
 									{
 										row[free_coords[i]] = safe;
 										++i;
