@@ -75,7 +75,9 @@ namespace ScoreProcessor {
 		unsigned int min_horiz_protection,
 		unsigned int max_vertical_protection,
 		unsigned int min_height,
-		bool only_straight_paths);
+		bool only_straight_paths,
+		unsigned int staff_line_length,
+		unsigned int min_staff_separation);
 
 	template<typename T>
 	cil::CImg<T> to_rgb(cil::CImg<T> const& img)
@@ -1413,6 +1415,7 @@ namespace ScoreProcessor {
 
 	*/
 	void rescale_colors(::cimg_library::CImg<unsigned char>&,unsigned char min,unsigned char mid,unsigned char max=255);
+	void hathi_correct(::cimg_library::CImg<unsigned char>&,unsigned char min,unsigned char mid,unsigned char max, unsigned char boundary);
 }
 template<typename T>
 void ScoreProcessor::copy_shift_selection(cimg_library::CImg<T>& image,ImageUtils::Rectangle<unsigned int> selection,int const shiftx,int const shifty)

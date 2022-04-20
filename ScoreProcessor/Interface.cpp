@@ -494,4 +494,12 @@ namespace ScoreProcessor {
 			"window_width=0 window_height=0 median_adjustment=0 gamma=0.5 replacer=255"
 		};
 	}
+
+	namespace HathiCorrectMaker {
+		decltype(maker) maker{
+			"HathiCorrect",
+			"",
+			""
+		};
+	}
 }

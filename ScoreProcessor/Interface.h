@@ -3158,13 +3158,31 @@ namespace ScoreProcessor {
 			}
 			cndf(false)
 		};
+		struct StaffLineLength {
+			cnnm("staff line length");
+			clbl("sll");
+			cndf(-1)
+		};
+		struct MinStaffSeparation {
+			cnnm("min staff separation");
+			clbl("mss");
+			cndf(-1)
+		};
 		struct UseTuple {
-			static void use_tuple(CommandMaker::delivery& del,unsigned int mvs,unsigned int mh,unsigned int mv,unsigned char bg,unsigned int mhs,bool osl)
+			static void use_tuple(CommandMaker::delivery& del,unsigned int mvs,unsigned int mhp,unsigned int mvp,unsigned char bg,unsigned int mhs,bool osl,unsigned int sll,unsigned int mss)
 			{
-				del.pl.add_process<VertCompress>(mvs,mhs,mh,mv,bg,osl);
+				if (sll < mhp)
+				{
+					throw std::invalid_argument("Staff line length must be greater than minimum horizontal protection");
+				}
+				if (mss < mvs)
+				{
+					throw std::invalid_argument("Min staff separation must be greater than min vertical space");
+				}
+				del.pl.add_process<VertCompress>(mvs,mhs,mhp,mvp,bg,osl,sll,mss);
 			}
 		};
-		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MaxVerticalProtection>,UIntParser<MinHorizProtection>,HPMaker::BGParser,MinHSpace,OnlyStraight> maker;
+		extern SingMaker<UseTuple,UIntParser<MinSpace>,UIntParser<MinHorizProtection>,UIntParser<MaxVerticalProtection>,HPMaker::BGParser,MinHSpace,OnlyStraight,UIntParser<StaffLineLength>,UIntParser<MinStaffSeparation>> maker;
 	}
 
 	namespace ResizeToBoundMaker {
@@ -3451,6 +3469,18 @@ namespace ScoreProcessor {
 		extern SingMaker<UseTuple, IntParser<WindowWidth>, IntParser<WindowHeight>, Adjustment, GammaParser, IntegerParser<unsigned char, Replacer>> maker;
 	}
 
+	namespace HathiCorrectMaker {
+
+		struct UseTuple {
+			static void use_tuple(CommandMaker::delivery& del)
+			{
+				del.pl.add_process<HathiCorrect>();
+			}
+		};
+
+		extern SingMaker<UseTuple> maker;
+	}
+
 	struct compair {
 	private:
 		char const* _key;
@@ -3532,7 +3562,8 @@ namespace ScoreProcessor {
 			compair("hs",&HSMaker::maker),
 			compair("vs",&VSMaker::maker),
 			compair("cw", &ClusterWidenMaker::maker),
-			compair("cp", &ClusterPaddingMaker::maker) };
+			compair("cp", &ClusterPaddingMaker::maker),
+			compair("hc", &HathiCorrectMaker::maker) };
 
 		struct comp {
 			constexpr bool operator()(compair a,compair b) const

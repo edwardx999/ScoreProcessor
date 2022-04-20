@@ -146,7 +146,7 @@ namespace ScoreProcessor {
 		return changed;
 	}
 
-	bool compress_vertical(cil::CImg<unsigned char>& img,unsigned char background_threshold,unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_protection,unsigned int max_vert_protection,unsigned int optimal_height,bool only_straight_paths)
+	bool compress_vertical(cil::CImg<unsigned char>& img,unsigned char background_threshold,unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_protection,unsigned int max_vert_protection,unsigned int optimal_height,bool only_straight_paths,unsigned int staff_line_length,unsigned int min_staff_separation)
 	{
 		using count_t=short;
 		constexpr auto dim_lim=std::numeric_limits<count_t>::max();
@@ -370,17 +370,84 @@ namespace ScoreProcessor {
 					//layer0.display();
 				}
 				safe_points_raw.rotate(-90); // for cache coherency
-				safe_points.resize(path_counts._height,path_counts._width);
+				safe_points.resize(path_counts._height,path_counts._width); // rotated for cache coherency
 				for(unsigned int x=0;x<path_counts._width;++x)
 				{
 					auto const begin=&safe_points_raw(0,x);
 					exlib::get_fatten(begin,begin+path_counts._height,head_space,&safe_points(0,x));
 				}
 			}
+			//safe_points.save("test.png");
+			if(staff_line_length!=-1)
+			{
+				std::unique_ptr<char[]> staff_lines(new char[img._height]{});
+				{
+					for (unsigned int y = 0; y < img._height; ++y)
+					{
+						unsigned int count = 0;
+						unsigned char const* row = &img(0, y);
+						for (unsigned int x = 0; x < img._width; ++x)
+						{
+							if (row[x] < background_threshold)
+							{
+								++count;
+							}
+						}
+						if (count >= staff_line_length)
+						{
+							staff_lines[y] = safe;
+						}
+					}
+				}
+				for(unsigned int x=0;x<safe_points._height;++x)
+				{
+					auto const row=&safe_points(0,x);
+					unsigned int previous_hit = -1;
+					for(unsigned int y=0;y<safe_points._width;++y)
+					{
+						if(staff_lines[y]==safe)
+						{
+							if (previous_hit != -1)
+							{
+								unsigned int const dist = y - previous_hit;
+								if (dist <= min_staff_separation) // if staves close enough, allow no cutting
+								{
+									std::memset(row + previous_hit, safe, dist);
+								}
+								else
+								{
+									// cut out unsafe sections in the free parts so that the final cut
+									// cannot cause staves to become too close together
+									unsigned int const free_space = dist - min_staff_separation;
+									std::vector<unsigned int> free_coords;
+									for (unsigned int y2 = previous_hit + 1; y2 < y; ++y2)
+									{
+										if (safe_points[y2] != safe)
+										{
+											free_coords.push_back(y2);
+										}
+									}
+									// lazily cut out from the top, could be better, but probably only 1 section
+									auto unsafe_count = static_cast<unsigned int>(free_coords.size());
+									size_t i = 0;
+									while (unsafe_count > free_space)
+									{
+										row[free_coords[i]] = safe;
+										++i;
+										--unsafe_count;
+									}
+								}
+							}
+							previous_hit = y;
+						}
+					}
+				}
+			}
+			//safe_points.save("tesst.png");
 		}
 		//std::cout<<"Min space protection\n";
 		//safe_points.display();
-		//safe_points.save("tt.png");
+		//safe_points.save("test.png");
 		{
 			// hug left path tracer
 			auto const width=count_t(safe_points._width);
@@ -1575,46 +1642,52 @@ namespace ScoreProcessor {
 			unsigned int height;
 			height=lowest_in_path-bottom_of_old;
 			assert(height<image._height);
-			CImg<unsigned char> new_image(image._width,height);
+			CImg<unsigned char> new_image(image._width,height,1,image._spectrum);
 			if(path_num==0)
 			{
-				for(unsigned int x=0;x<new_image._width;++x)
+				for (unsigned int z = 0; z < image._spectrum; ++z)
 				{
-					unsigned int y=0;
-					unsigned int y_stage2=paths[path_num][x];
-					for(;y<y_stage2;++y)
+					for (unsigned int x = 0; x < new_image._width; ++x)
 					{
-						if(y<new_image._height)
-							new_image(x,y)=image(x,y);
-					}
-					for(;y<new_image._height;++y)
-					{
-						if(y<new_image._height)
-							new_image(x,y)=Grayscale::WHITE;
+						unsigned int y = 0;
+						unsigned int y_stage2 = paths[path_num][x];
+						for (; y < y_stage2; ++y)
+						{
+							if (y < new_image._height)
+								new_image(x, y, 0, z) = image(x, y, 0, z);
+						}
+						for (; y < new_image._height; ++y)
+						{
+							if (y < new_image._height)
+								new_image(x, y, 0, z) = Grayscale::WHITE;
+						}
 					}
 				}
 			}
 			else
 			{
-				for(unsigned int x=0;x<new_image._width;++x)
+				for (unsigned int z = 0; z < image._spectrum; ++z)
 				{
-					unsigned int y=0;
-					unsigned int y_stage1=paths[path_num-1][x]-bottom_of_old;
-					unsigned int y_stage2=paths[path_num][x]-bottom_of_old;
-					for(;y<y_stage1;++y)
+					for (unsigned int x = 0; x < new_image._width; ++x)
 					{
-						if(y<new_image._height)
-							new_image(x,y)=Grayscale::WHITE;
-					}
-					for(;y<y_stage2;++y)
-					{
-						if(y<new_image._height)
-							new_image(x,y)=image(x,y+bottom_of_old);
-					}
-					for(;y<new_image._height;++y)
-					{
-						if(y<new_image._height)
-							new_image(x,y)=Grayscale::WHITE;
+						unsigned int y = 0;
+						unsigned int y_stage1 = paths[path_num - 1][x] - bottom_of_old;
+						unsigned int y_stage2 = paths[path_num][x] - bottom_of_old;
+						for (; y < y_stage1; ++y)
+						{
+							if (y < new_image._height)
+								new_image(x, y,0,z) = Grayscale::WHITE;
+						}
+						for (; y < y_stage2; ++y)
+						{
+							if (y < new_image._height)
+								new_image(x, y, 0, z) = image(x, y + bottom_of_old, 0, z);
+						}
+						for (; y < new_image._height; ++y)
+						{
+							if (y < new_image._height)
+								new_image(x, y, 0, z) = Grayscale::WHITE;
+						}
 					}
 				}
 			}
@@ -1622,19 +1695,22 @@ namespace ScoreProcessor {
 			cil::save_image(new_image,save_name.c_str(),support,quality);
 			bottom_of_old=highest_in_path;
 		}
-		CImg<unsigned char> new_image(image._width,image._height-bottom_of_old);
+		CImg<unsigned char> new_image(image._width,image._height-bottom_of_old,1,image._spectrum);
 		unsigned int y_max=image._height-bottom_of_old;
-		for(unsigned int x=0;x<new_image._width;++x)
+		for (unsigned int z = 0; z < image._spectrum; ++z)
 		{
-			unsigned int y=0;
-			unsigned int y_stage1=paths.back()[x]-bottom_of_old;
-			for(;y<y_stage1;++y)
+			for (unsigned int x = 0; x < new_image._width; ++x)
 			{
-				new_image(x,y)=Grayscale::WHITE;
-			}
-			for(;y<new_image._height;++y)
-			{
-				new_image(x,y)=image(x,y+bottom_of_old);
+				unsigned int y = 0;
+				unsigned int y_stage1 = paths.back()[x] - bottom_of_old;
+				for (; y < y_stage1; ++y)
+				{
+					new_image(x, y,0,z) = Grayscale::WHITE;
+				}
+				for (; y < new_image._height; ++y)
+				{
+					new_image(x, y,0,z) = image(x, y + bottom_of_old,0,z);
+				}
 			}
 		}
 		auto const save_name=cil::number_filename(filename,++num_images,3U);
@@ -2272,14 +2348,12 @@ namespace ScoreProcessor {
 		}
 		return true;
 	}
-	void rescale_colors(CImg<unsigned char>& img,unsigned char min,unsigned char mid,unsigned char max)
+
+	static void rescale_colors(unsigned char* it, unsigned char* const limit, unsigned char min, unsigned char mid, unsigned char max)
 	{
-		assert(min<mid);
-		assert(mid<max);
 		double const scale_up=scast<double>(255-mid)/scast<double>(max-mid);
 		double const scale_down=scast<double>(mid)/scast<double>(mid-min);
-		unsigned char* const limit=img.begin()+size_t{img._width}*img._height;
-		for(unsigned char* it=img.begin();it!=limit;++it)
+		for(;it!=limit;++it)
 		{
 			unsigned char& pixel=*it;
 			if(pixel<=min)
@@ -2302,6 +2376,112 @@ namespace ScoreProcessor {
 					pixel=mid-(mid-pixel)*scale_down;
 					assert(pixel<=mid);
 				}
+			}
+		}
+	}
+
+	void rescale_colors(CImg<unsigned char>& img,unsigned char min,unsigned char mid,unsigned char max)
+	{
+		assert(min<mid);
+		assert(mid<max);
+		unsigned char* const limit=img.begin()+size_t{img._width}*img._height;
+		rescale_colors(img.begin(),limit, min, mid, max);
+	}
+
+	void hathi_correct(::cimg_library::CImg<unsigned char>& img, unsigned char min, unsigned char mid, unsigned char max, unsigned char boundary) {
+		enum class State {
+			UNKNOWN,
+			DARKENED,
+			NOT_DARKENED
+		};
+		auto const height=size_t(img.height());
+		if (height < 2)
+		{
+			return;
+		}
+		auto const width=size_t(img.width());
+		std::vector<State> states(height);
+		auto found_something = false;
+		for(size_t y=1;y<height-1;++y)
+		{
+			auto const prow=&img(0,y-1);
+			auto const row=&img(0,y);
+			auto const nrow=&img(0, y+1);
+			auto row_state = State::UNKNOWN;
+			for(size_t x=1;x<width-1;++x)
+			{
+				auto const v = row[x];
+				if(v<15)
+				{
+					states[y] = State::DARKENED;
+					found_something = true;
+					break;
+				}
+				auto const ok = [v](unsigned char const v2)
+				{
+					return (v <= v2) || ((v2 <= 70) && (v2 > 15));
+				};
+				if(row[x]<=70 && ok(row[x-1]) && ok(row[x+1]) && ok(prow[x]) && ok(nrow[x]))
+				{
+					states[y] = State::NOT_DARKENED;
+					found_something = true;
+				}
+			}
+		}
+		if (!found_something)
+		{
+			return;
+		}
+		for (size_t y = 0; y < states.size(); ++y)
+		{
+			auto rescale = [&]()
+			{
+				rescale_colors(&img(0, y), &img(0, y + 1), min, mid, max);
+			};
+			if (states[y] == State::UNKNOWN)
+			{
+				auto up = y;
+				auto down = y;
+				while (true)
+				{
+					if (up != 0)
+					{
+						--up;
+					}
+					if (down < height)
+					{
+						++down;
+					}
+					if (states[up] != State::UNKNOWN)
+					{
+						states[y] = states[up];
+						if (states[up] == State::NOT_DARKENED)
+						{
+							rescale();
+						}
+						break;
+					}
+					if (states[down] != State::UNKNOWN)
+					{
+						states[y] = states[down];
+						if (states[down] == State::NOT_DARKENED)
+						{
+							rescale();
+						}
+						break;
+					}
+				}
+			}
+			else if (states[y] == State::NOT_DARKENED)
+			{
+				rescale();
+			}
+		}
+		for (size_t y = 1; y < states.size() - 1; ++y)
+		{
+			if (states[y] == State::DARKENED && states[y - 1] == State::NOT_DARKENED && states[y + 1] == State::NOT_DARKENED)
+			{
+				rescale_colors(&img(0, y), &img(0, y + 1), min, mid, max);
 			}
 		}
 	}

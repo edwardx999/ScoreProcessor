@@ -724,7 +724,7 @@ namespace ScoreProcessor {
 
 	bool VertCompress::process(Img& img) const
 	{
-		return compress_vertical(img, background_threshold, min_vert_space, min_horiz_space, min_horizontal_protection, max_vertical_protection, 0, only_straight_paths);
+		return compress_vertical(img, background_threshold, min_vert_space, min_horiz_space, min_horizontal_protection, max_vertical_protection, 0, only_straight_paths, staff_line_length, min_staff_separation);
 	}
 
 	bool ResizeToBound::process(Img& img) const
@@ -1258,5 +1258,11 @@ namespace ScoreProcessor {
 			}
 		}
 		return changed;
+	}
+
+	bool HathiCorrect::process(Img& img) const
+	{
+		hathi_correct(img, 118, 255, 255, 10);
+		return true;
 	}
 }

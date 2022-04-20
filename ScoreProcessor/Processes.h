@@ -68,14 +68,15 @@ namespace ScoreProcessor {
 	protected:
 		exlib::maybe_fixed<unsigned int> side1,side2,tolerance;
 		unsigned char background;
-		inline PadBase(pv side1,pv side2,pv tol,unsigned char bg):side1(side1),side2(side2),tolerance(tol),background(bg)
+		bool cumulative;
+		inline PadBase(pv side1,pv side2,pv tol,unsigned char bg,bool cumulative):side1(side1),side2(side2),tolerance(tol),background(bg),cumulative(cumulative)
 		{}
 	};
 
 	class PadHoriz:public PadBase {
 	public:
 		using PadBase::pv;
-		PadHoriz(pv left,pv right,pv tol,unsigned char bg):PadBase(left,right,tol,bg)
+		PadHoriz(pv left,pv right,pv tol,unsigned char bg,bool cumulative):PadBase(left,right,tol,bg,cumulative)
 		{}
 		bool process(Img& img) const override;
 	};
@@ -83,7 +84,7 @@ namespace ScoreProcessor {
 	class PadVert:public PadBase {
 	public:
 		using PadBase::pv;
-		PadVert(pv top,pv bottom,pv tol,unsigned char bg):PadBase(top,bottom,tol,bg)
+		PadVert(pv top,pv bottom,pv tol,unsigned char bg,bool cumulative):PadBase(top,bottom,tol,bg,cumulative)
 		{}
 		bool process(Img& img) const override;
 	};
@@ -448,13 +449,19 @@ namespace ScoreProcessor {
 		unsigned int min_horizontal_protection;
 		unsigned int max_vertical_protection;
 		unsigned char background_threshold;
+		bool only_straight_paths;
+		unsigned int staff_line_length;
+		unsigned int min_staff_separation;
 	public:
-		VertCompress(unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_prot,unsigned int max_vert_prot,unsigned char bt):
+		VertCompress(unsigned int min_vert_space,unsigned int min_horiz_space,unsigned int min_horiz_prot,unsigned int max_vert_prot,unsigned char bt,bool only_straight,unsigned int staff_line_length,unsigned int min_staff_separation):
 			min_vert_space{min_vert_space},
 			min_horiz_space{min_horiz_space==-1?min_vert_space:min_horiz_space},
 			min_horizontal_protection{min_horiz_prot},
 			max_vertical_protection{max_vert_prot},
-			background_threshold{bt}{}
+			background_threshold{bt},
+			only_straight_paths{only_straight},
+			staff_line_length{staff_line_length},
+			min_staff_separation{min_staff_separation}{}
 		bool process(Img&) const override;
 	};
 
@@ -564,6 +571,12 @@ namespace ScoreProcessor {
 			_gamma(gamma),
 			_replacer(replacer)
 		{}
+		bool process(Img&) const override;
+	};
+
+	class HathiCorrect:public ImageProcess<> {
+	public:
+		HathiCorrect(){}
 		bool process(Img&) const override;
 	};
 }
