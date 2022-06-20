@@ -159,6 +159,7 @@ namespace ScoreProcessor {
 			unsafe=0,
 			candidate_path_mark,
 			real_path_mark,
+			not_dead_end,
 		};
 		cil::CImg<char> safe_points;
 		{
@@ -449,6 +450,43 @@ namespace ScoreProcessor {
 		//safe_points.display();
 		//safe_points.save("test.png");
 		{
+			// remove dead ends, flood fill from bottom that can't go down
+			std::vector<count_t> seeds;
+			unsigned int y = safe_points._height - 1;
+			for (unsigned int x = 0; x < safe_points._width; ++x)
+			{
+				if (safe_points(x, y) == unsafe)
+				{
+					safe_points(x, y) = not_dead_end;
+					seeds.push_back(x);
+				}
+			}
+			decltype(seeds) temp_seeds;
+			for (; y-- > 0;)
+			{
+				for (unsigned int const x_begin : seeds)
+				{
+					for (unsigned int x = x_begin; safe_points(x, y) == unsafe; --x)
+					{
+						safe_points(x, y) = not_dead_end;
+						temp_seeds.push_back(count_t(x));
+						if (x == 0)
+						{
+							break;
+						}
+					}
+					for (unsigned int x = x_begin + 1; x < safe_points._width && safe_points(x, y) == unsafe; ++x)
+					{
+						safe_points(x, y) = not_dead_end;
+						temp_seeds.push_back(count_t(x));
+					}
+				}
+				seeds = std::move(temp_seeds);
+				temp_seeds.clear();
+			}
+		}
+		//safe_points.save("test2.png");
+		{
 			// hug left path tracer
 			auto const width=count_t(safe_points._width);
 			auto const height=count_t(safe_points._height);
@@ -459,7 +497,7 @@ namespace ScoreProcessor {
 			{
 				{
 					auto& start=safe_points(x,0);
-					if(start!=unsafe)
+					if(start!=not_dead_end)
 					{
 						return;
 					}
@@ -475,7 +513,7 @@ namespace ScoreProcessor {
 					for(;;)
 					{
 						auto const cand=furthest_left-1;
-						if(current_row[cand]!=unsafe)
+						if(current_row[cand]!=not_dead_end)
 						{
 							break;
 						}
@@ -486,7 +524,7 @@ namespace ScoreProcessor {
 						for(;furthest_left<=x;++furthest_left)
 						{
 							auto const pix=next_row[furthest_left];
-							if(pix==unsafe)
+							if(pix==not_dead_end)
 							{
 								found_in_left=true;
 								break;
@@ -497,13 +535,13 @@ namespace ScoreProcessor {
 							for(;;++furthest_left)
 							{
 								auto const level_pix=current_row[furthest_left];
-								if(level_pix!=unsafe)
+								if(level_pix!=not_dead_end)
 								{
 									std::fill(current_row+x+1,current_row+furthest_left,candidate_path_mark);
 									return;
 								}
 								auto const next_pix=next_row[furthest_left];
-								if(next_pix==unsafe)
+								if(next_pix==not_dead_end)
 								{
 									break;
 								}
@@ -513,7 +551,7 @@ namespace ScoreProcessor {
 					for(;;)
 					{
 						auto const cand=furthest_left-1;
-						if(next_row[cand]!=unsafe)
+						if(next_row[cand]!=not_dead_end)
 						{
 							break;
 						}

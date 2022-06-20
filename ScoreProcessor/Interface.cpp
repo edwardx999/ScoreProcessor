@@ -399,7 +399,7 @@ namespace ScoreProcessor {
 			"staff line length; tag: sll\n"
 			"min staff separation; tag: mss\n",
 			"Vertical Compress",
-			"min_vert_space min_horiz_pr max_vert_pr background=128 min_horiz_space=mvs staff_line_length=-1 min_staff_separation=-1"
+			"min_vert_space min_horiz_pr max_vert_pr background=128 min_horiz_space=mvs only_straight_lines=f staff_line_length=-1 min_staff_separation=-1"
 		};
 	}
 

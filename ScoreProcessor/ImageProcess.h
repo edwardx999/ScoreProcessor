@@ -333,7 +333,7 @@ namespace ScoreProcessor {
 			}
 			else
 			{
-				throw ex;
+				throw;
 			}
 		}
 	}
@@ -577,7 +577,7 @@ namespace ScoreProcessor {
 			}
 			else
 			{
-				throw ex;
+				throw;
 			}
 		}
 	}
@@ -618,7 +618,7 @@ namespace ScoreProcessor {
 				}
 				else
 				{
-					throw ex;
+					throw;
 				}
 			}
 		}
